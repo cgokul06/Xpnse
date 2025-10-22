@@ -18,4 +18,6 @@ enum XpnseColorKey: String {
     case whiteWithAlphaFifteen = "WhiteWithAlphaFifteen"
     case white = "White"
     case primaryButtonBGColor = "PrimaryButtonBGColor"
+    case secondaryButtonBGColor = "SecondaryButtonBGColor"
+    case transactionListBGColor = "TransactionListBGColor"
 }

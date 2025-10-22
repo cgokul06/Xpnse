@@ -24,6 +24,10 @@ extension View {
         self.modifier(TopSpacerIfNoSafeArea(spacing: spacing))
     }
 
+    func bottomSpacingIfNoSafeArea(_ spacing: CGFloat = 24) -> some View {
+        self.modifier(BottomSpacerIfNoSafeArea(spacing: spacing))
+    }
+
     func gradientNavigationBackground() -> some View {
         self.modifier(GradientNavigationBackground())
     }

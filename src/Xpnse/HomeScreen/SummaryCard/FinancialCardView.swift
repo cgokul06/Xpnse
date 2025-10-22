@@ -56,6 +56,7 @@ struct SummaryCardView: View {
             HStack(spacing: 12) {
                 // Income Section
                 ExpenseComponent(type: .income, cash: income)
+                    .frame(maxWidth: .infinity)
 
                 // Divider
                 Rectangle()
@@ -64,6 +65,7 @@ struct SummaryCardView: View {
 
                 // Expenses Section
                 ExpenseComponent(type: .expense, cash: expenses)
+                    .frame(maxWidth: .infinity)
             }
         }
         .padding(.horizontal, 16)

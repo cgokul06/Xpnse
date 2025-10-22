@@ -8,22 +8,22 @@
 import SwiftUI
 
 struct ExpenseComponent: View {
-    let type: ExpenseComponentType
+    let type: TransactionType
     let cash: Double
 
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: type.imageName)
+            Image(systemName: type.displayIcon)
                 .font(.system(size: 20, weight: .bold))
                 .foregroundColor(.white)
                 .frame(width: 40, height: 40)
                 .background(
                     Circle()
-                        .fill(type.imageBackgroundColor.color)
+                        .fill(type.iconFGColor.color)
                 )
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(type.title)
+                Text(type.displayName)
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.gray)
 

@@ -10,6 +10,7 @@ import Foundation
 /// All keys used in UserDefaults
 enum UserDefaultsKey: String {
     case selectedCurrencyCode
+    case calendarAggregator
 }
 
 /// Wrapper for UserDefaults

@@ -16,6 +16,7 @@ struct TopSpacerIfNoSafeArea: ViewModifier {
                 if geometry.safeAreaInsets.top == 0 {
                     Spacer().frame(height: spacing)
                 }
+
                 content
             }
         }

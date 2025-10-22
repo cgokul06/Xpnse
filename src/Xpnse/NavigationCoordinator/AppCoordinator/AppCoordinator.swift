@@ -46,8 +46,8 @@ extension AppCoordinator {
     }
 
     func navigateToHome() {
-        currentRoute = .home
         transactionManager = FirebaseTransactionManager(authManager: authManager)
+        currentRoute = .home
     }
 
     func signOut() {

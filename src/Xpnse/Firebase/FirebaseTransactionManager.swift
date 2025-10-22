@@ -14,6 +14,8 @@ class FirebaseTransactionManager: ObservableObject {
     @Published var transactions: [Transaction] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
+    @Published private(set) var reloadTransactions: Bool = false
+    @Published private(set) var transactionSummary: TransactionSummary?
 
     private let db = Firestore.firestore()
     private var listenerRegistration: ListenerRegistration?
@@ -22,24 +24,39 @@ class FirebaseTransactionManager: ObservableObject {
 
     init(authManager: FirebaseAuthManager) {
         self.authManager = authManager
-        setupAuthListener()
+//        setupAuthListener()
     }
 
     // MARK: - Authentication Listener
 
-    private func setupAuthListener() {
-        authManager.$isAuthenticated
-            .sink { [weak self] isAuthenticated in
-                if isAuthenticated ?? false {
-                    Task {
-                        await self?.loadTransactions()
-                    }
-                } else {
-                    self?.transactions = []
-                    self?.removeListener()
-                }
-            }
-            .store(in: &cancellables)
+//    private func setupAuthListener() {
+//        authManager.$isAuthenticated
+//            .sink { [weak self] isAuthenticated in
+//                if isAuthenticated ?? false {
+//                    Task {
+//                        await self?.loadTransactionsForCurrentlyShownTimePeriod()
+//                    }
+//                } else {
+//                    self?.transactions = []
+//                    self?.removeListener()
+//                }
+//            }
+//            .store(in: &cancellables)
+//    }
+
+    /// Loads the transactions for current selected/showing time period
+//    private func loadTransactionsForCurrentlyShownTimePeriod() async {
+//        // TODO: GC, set start and end date as user default setting
+//        guard let startDate = Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: Date())),
+//              let endDate = Calendar.current.date(byAdding: DateComponents(month: 1, day: -1), to: startDate) else {
+//            return
+//        }
+//
+//        await self.loadTransactions(startDate: startDate, endDate: endDate)
+//    }
+
+    func resetReloadTransaction() {
+        self.reloadTransactions = false
     }
 
     // MARK: - CRUD Operations
@@ -65,7 +82,8 @@ class FirebaseTransactionManager: ObservableObject {
                 .document(transaction.id)
                 .setData(dataWithTimestamps)
 
-            await loadTransactions()
+//            await loadTransactionsForCurrentlyShownTimePeriod()
+            self.reloadTransactions = true
         } catch {
             errorMessage = "Failed to add transaction: \(error.localizedDescription)"
         }
@@ -73,55 +91,60 @@ class FirebaseTransactionManager: ObservableObject {
         isLoading = false
     }
 
-    func updateTransaction(_ transaction: Transaction) async {
-        guard let userId = authManager.userId else {
-            errorMessage = "User not authenticated"
-            return
+//    func updateTransaction(_ transaction: Transaction) async {
+//        guard let userId = authManager.userId else {
+//            errorMessage = "User not authenticated"
+//            return
+//        }
+//
+//        isLoading = true
+//
+//        do {
+//            var transactionData = transaction.toFirestoreData()
+//            transactionData["updatedAt"] = FieldValue.serverTimestamp()
+//
+//            try await db.collection("users")
+//                .document(userId)
+//                .collection("transactions_data")
+//                .document(transaction.id)
+//                .setData(transactionData, merge: true)
+//
+//            await loadTransactionsForCurrentlyShownTimePeriod()
+//        } catch {
+//            errorMessage = "Failed to update transaction: \(error.localizedDescription)"
+//        }
+//
+//        isLoading = false
+//    }
+
+//    func deleteTransaction(_ transaction: Transaction) async {
+//        guard let userId = authManager.userId else {
+//            errorMessage = "User not authenticated"
+//            return
+//        }
+//
+//        isLoading = true
+//
+//        do {
+//            try await db.collection("users")
+//                .document(userId)
+//                .collection("transactions_data")
+//                .document(transaction.id)
+//                .delete()
+//            await loadTransactionsForCurrentlyShownTimePeriod()
+//        } catch {
+//            errorMessage = "Failed to delete transaction: \(error.localizedDescription)"
+//        }
+//
+//        isLoading = false
+//    }
+
+    func loadTransactions(startDate: Date, endDate: Date) async {
+        if reloadTransactions {
+            self.transactionSummary = nil
+            self.resetReloadTransaction()
         }
 
-        isLoading = true
-
-        do {
-            var transactionData = transaction.toFirestoreData()
-            transactionData["updatedAt"] = FieldValue.serverTimestamp()
-
-            try await db.collection("users")
-                .document(userId)
-                .collection("transactions_data")
-                .document(transaction.id)
-                .setData(transactionData, merge: true)
-
-            await loadTransactions()
-        } catch {
-            errorMessage = "Failed to update transaction: \(error.localizedDescription)"
-        }
-
-        isLoading = false
-    }
-
-    func deleteTransaction(_ transaction: Transaction) async {
-        guard let userId = authManager.userId else {
-            errorMessage = "User not authenticated"
-            return
-        }
-
-        isLoading = true
-
-        do {
-            try await db.collection("users")
-                .document(userId)
-                .collection("transactions_data")
-                .document(transaction.id)
-                .delete()
-            await loadTransactions()
-        } catch {
-            errorMessage = "Failed to delete transaction: \(error.localizedDescription)"
-        }
-
-        isLoading = false
-    }
-
-    func loadTransactions() async {
         guard let userId = authManager.userId else { return }
 
         isLoading = true
@@ -129,10 +152,12 @@ class FirebaseTransactionManager: ObservableObject {
         // Remove existing listener
         removeListener()
 
-        // New structure: Listen to user's transactions subcollection
+        // Query with date range
         listenerRegistration = db.collection("users")
             .document(userId)
             .collection("transactions_data")
+            .whereField("date", isGreaterThanOrEqualTo: startDate.timeIntervalSince1970)
+            .whereField("date", isLessThanOrEqualTo: endDate.timeIntervalSince1970)
             .order(by: "date", descending: true)
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let self = self else { return }
@@ -157,6 +182,7 @@ class FirebaseTransactionManager: ObservableObject {
                     let loadedTransactions = await self.parseTransactions(from: documents)
                     await MainActor.run {
                         self.transactions = loadedTransactions
+                        self.transactionSummary = self.getTransactionSummary()
                         self.isLoading = false
                     }
                 }

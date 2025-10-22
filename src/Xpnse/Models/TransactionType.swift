@@ -20,4 +20,22 @@ enum TransactionType: String, CaseIterable, Codable {
         case .income: return "Income"
         }
     }
+
+    var displayIcon: String {
+        switch self {
+        case .expense:
+            "arrow.down"
+        case .income:
+            "arrow.up"
+        }
+    }
+
+    var iconFGColor: XpnseColorKey {
+        switch self {
+        case .expense:
+                .expensePrimary
+        case .income:
+                .incomePrimary
+        }
+    }
 }
