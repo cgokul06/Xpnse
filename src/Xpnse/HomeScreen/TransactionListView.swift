@@ -22,6 +22,7 @@ struct TransactionListView: View {
                         TransactionItemView(transaction: transaction)
                     }
                 }
+                .padding(.bottom, 62)
             }
         }
         .frame(maxHeight: .infinity)
