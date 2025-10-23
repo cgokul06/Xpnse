@@ -19,6 +19,7 @@ final class HomeScreenViewModel: ObservableObject {
     @Published private(set) var startDate: Date?
     @Published private(set) var endDate: Date?
     @Published private(set) var id: String = ""
+    @Published private(set) var dateSwitcherText: String = ""
 
     init() {
         let currentSelection = UserDefaultsHelper.shared.integer(forKey: .calendarAggregator)
@@ -78,6 +79,30 @@ final class HomeScreenViewModel: ObservableObject {
             self.endDate = today
         }
 
+        self.setupDateSwitcherText()
         self.id = "\(self.startDate?.timeIntervalSince1970 ?? 0)\(self.endDate?.timeIntervalSince1970 ?? 0)"
+    }
+
+    private func setupDateSwitcherText() {
+        guard let startDate, let endDate else {
+            return
+        }
+
+        let formatter = DateFormatter()
+
+        switch self.currentCalendarComparator {
+        case .fortnightly:
+            formatter.dateFormat = "dd-MM-yyyy"
+            self.dateSwitcherText = formatter.string(from: startDate) + " - " + formatter.string(from: endDate)
+            break
+        case .monthly:
+            formatter.dateFormat = "MMM yyyy"
+            self.dateSwitcherText = formatter.string(from: startDate)
+            break
+        case .yearly:
+            formatter.dateFormat = "yyyy"
+            self.dateSwitcherText = formatter.string(from: startDate)
+            break
+        }
     }
 }

@@ -16,61 +16,63 @@ struct Home: View {
         ZStack {
             PrimaryGradient()
 
-//            ScrollView {
-                VStack(spacing: 16) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Xpnse")
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .foregroundColor(XpnseColorKey.white.color)
-                            
-                            Text("Track your expenses")
-                                .foregroundColor(XpnseColorKey.white.color)
-                                .font(.headline)
-                        }
-                        
-                        Spacer()
-                        
-                        HStack(spacing: 12) {
-                            //                        Button {
-                            //
-                            //                        } label: {
-                            //                            Image(systemName: "bell.fill")
-                            //                                .resizable()
-                            //                                .renderingMode(.template)
-                            //                                .frame(width: 18, height: 18)
-                            //                                .foregroundStyle(XpnseColorKey.white.color)
-                            //                        }
-                            
-                            Button {
-                                homeCoordinator.push(.settings)
-                            } label: {
-                                Image(systemName: "gear")
-                                    .resizable()
-                                    .renderingMode(.template)
-                                    .frame(width: 32, height: 32)
-                                    .foregroundStyle(XpnseColorKey.white.color)
-                            }
-                            
-                        }
+            VStack(spacing: 16) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Xpnse")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(XpnseColorKey.white.color)
+
+                        Text("Track your expenses")
+                            .foregroundColor(XpnseColorKey.white.color)
+                            .font(.headline)
                     }
 
-                    SummaryCardView(
-                        totalBalance: self.transactionManager.transactionSummary?.totalBalance ?? 0,
-                        income: self.transactionManager.transactionSummary?.totalIncome ?? 0,
-                        expenses: self.transactionManager.transactionSummary?.totalExpenses ?? 0
-                    )
+                    Spacer()
 
-                    TransactionListView(
-                        transactions: self.transactionManager.transactionSummary?.transactions ?? []
-                    )
+                    HStack(spacing: 12) {
+                        //                        Button {
+                        //
+                        //                        } label: {
+                        //                            Image(systemName: "bell.fill")
+                        //                                .resizable()
+                        //                                .renderingMode(.template)
+                        //                                .frame(width: 18, height: 18)
+                        //                                .foregroundStyle(XpnseColorKey.white.color)
+                        //                        }
 
-                    Spacer(minLength: 0)
+                        Button {
+                            homeCoordinator.push(.settings)
+                        } label: {
+                            Image(systemName: "gear")
+                                .resizable()
+                                .renderingMode(.template)
+                                .frame(width: 32, height: 32)
+                                .foregroundStyle(XpnseColorKey.white.color)
+                        }
+
+                    }
                 }
                 .padding([.horizontal], 16)
-                .topSpacingIfNoSafeArea()
-//            }
+
+                dateSwitchView
+
+                SummaryCardView(
+                    totalBalance: self.transactionManager.transactionSummary?.totalBalance ?? 0,
+                    income: self.transactionManager.transactionSummary?.totalIncome ?? 0,
+                    expenses: self.transactionManager.transactionSummary?.totalExpenses ?? 0
+                )
+                .padding([.horizontal], 16)
+
+                TransactionListView(
+                    transactions: self.transactionManager.transactionSummary?.transactions ?? []
+                )
+                .padding([.horizontal], 16)
+
+                Spacer(minLength: 0)
+            }
+            .topSpacingIfNoSafeArea()
             .overlay(
                 alignment: .bottom,
                 content: {
@@ -89,7 +91,7 @@ struct Home: View {
                     )
                     .padding(.horizontal, 16)
                     .bottomSpacingIfNoSafeArea(8)
-            })
+                })
             .navigationBarTitleDisplayMode(.inline)
         }
         .task(id: self.homeViewModel.id) {
@@ -119,6 +121,30 @@ struct Home: View {
                 )
             }
         }
+    }
+
+    private var dateSwitchView: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "arrowtriangle.left.fill")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 12)
+
+            Spacer(minLength: 0)
+
+            Text(homeViewModel.dateSwitcherText)
+                .font(.system(size: 16, weight: .medium))
+
+            Spacer(minLength: 0)
+
+            Image(systemName: "arrowtriangle.right.fill")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 12)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 6)
+        .background(XpnseColorKey.secondaryButtonBGColor.color)
     }
 }
 
