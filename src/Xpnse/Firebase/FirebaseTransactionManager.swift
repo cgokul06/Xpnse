@@ -9,40 +9,47 @@ import Foundation
 import FirebaseFirestore
 import Combine
 
-@MainActor
-class FirebaseTransactionManager: ObservableObject {
-    @Published var transactions: [Transaction] = []
-    @Published var isLoading = false
-    @Published var errorMessage: String?
-    @Published private(set) var reloadTransactions: Bool = false
-    @Published private(set) var transactionSummary: TransactionSummary?
+struct CustomError {
+    let code: Int
+    let message: String
+}
+
+enum FirebaseErrorType: Error {
+    case unauthorized
+    case contextError
+    case customError(CustomError)
+    case noDocumentFound
+}
+
+final class FirebaseTransactionManager {
+    private static var _shared: FirebaseTransactionManager?
+    private let authManager: FirebaseAuthManager
+
+    private init(authManager: FirebaseAuthManager) {
+        self.authManager = authManager
+    }
+
+    static func setup(authManager: FirebaseAuthManager) {
+        if _shared == nil {
+            _shared = FirebaseTransactionManager(authManager: authManager)
+        }
+    }
+
+    // Static computed property to access the shared instance
+    static var shared: FirebaseTransactionManager {
+        guard let instance = _shared else {
+            fatalError("MySingleton has not been initialized. Call setup(with:) first.")
+        }
+        return instance
+    }
+
+    static func reset() {
+        self._shared = nil
+    }
 
     private let db = Firestore.firestore()
     private var listenerRegistration: ListenerRegistration?
-    private let authManager: FirebaseAuthManager
     private var cancellables: Set<AnyCancellable> = []
-
-    init(authManager: FirebaseAuthManager) {
-        self.authManager = authManager
-//        setupAuthListener()
-    }
-
-    // MARK: - Authentication Listener
-
-//    private func setupAuthListener() {
-//        authManager.$isAuthenticated
-//            .sink { [weak self] isAuthenticated in
-//                if isAuthenticated ?? false {
-//                    Task {
-//                        await self?.loadTransactionsForCurrentlyShownTimePeriod()
-//                    }
-//                } else {
-//                    self?.transactions = []
-//                    self?.removeListener()
-//                }
-//            }
-//            .store(in: &cancellables)
-//    }
 
     /// Loads the transactions for current selected/showing time period
 //    private func loadTransactionsForCurrentlyShownTimePeriod() async {
@@ -55,19 +62,19 @@ class FirebaseTransactionManager: ObservableObject {
 //        await self.loadTransactions(startDate: startDate, endDate: endDate)
 //    }
 
-    func resetReloadTransaction() {
-        self.reloadTransactions = false
-    }
+//    func resetReloadTransaction() {
+//        self.reloadTransactions = false
+//    }
 
     // MARK: - CRUD Operations
 
     func addTransaction(_ transaction: Transaction) async {
         guard let userId = authManager.userId else {
-            errorMessage = "User not authenticated"
+//            errorMessage = "User not authenticated"
             return
         }
 
-        isLoading = true
+//        isLoading = true
 
         do {
             let transactionData = transaction.toFirestoreData()
@@ -83,12 +90,12 @@ class FirebaseTransactionManager: ObservableObject {
                 .setData(dataWithTimestamps)
 
 //            await loadTransactionsForCurrentlyShownTimePeriod()
-            self.reloadTransactions = true
+//            self.reloadTransactions = true
         } catch {
-            errorMessage = "Failed to add transaction: \(error.localizedDescription)"
+//            errorMessage = "Failed to add transaction: \(error.localizedDescription)"
         }
 
-        isLoading = false
+//        isLoading = false
     }
 
 //    func updateTransaction(_ transaction: Transaction) async {
@@ -139,54 +146,38 @@ class FirebaseTransactionManager: ObservableObject {
 //        isLoading = false
 //    }
 
-    func loadTransactions(startDate: Date, endDate: Date) async {
-        if reloadTransactions {
-            self.transactionSummary = nil
-            self.resetReloadTransaction()
+    func loadTransactions(
+        startDate: Date,
+        endDate: Date,
+        range: CalendarComparison
+    ) async throws -> TransactionSummary {
+        guard let userId = authManager.userId else {
+            throw FirebaseErrorType.unauthorized
         }
-
-        guard let userId = authManager.userId else { return }
-
-        isLoading = true
 
         // Remove existing listener
         removeListener()
 
         // Query with date range
-        listenerRegistration = db.collection("users")
+        let snapshot = try? await db.collection("users")
             .document(userId)
             .collection("transactions_data")
             .whereField("date", isGreaterThanOrEqualTo: startDate.timeIntervalSince1970)
             .whereField("date", isLessThanOrEqualTo: endDate.timeIntervalSince1970)
             .order(by: "date", descending: true)
-            .addSnapshotListener { [weak self] snapshot, error in
-                guard let self = self else { return }
+            .getDocuments()
 
-                if let error = error {
-                    DispatchQueue.main.async {
-                        self.errorMessage = "Failed to load transactions: \(error.localizedDescription)"
-                        self.isLoading = false
-                    }
-                    return
-                }
+        guard let snapshot else {
+            throw FirebaseErrorType.noDocumentFound
+        }
 
-                guard let documents = snapshot?.documents else {
-                    DispatchQueue.main.async {
-                        self.transactions = []
-                        self.isLoading = false
-                    }
-                    return
-                }
-
-                Task {
-                    let loadedTransactions = await self.parseTransactions(from: documents)
-                    await MainActor.run {
-                        self.transactions = loadedTransactions
-                        self.transactionSummary = self.getTransactionSummary()
-                        self.isLoading = false
-                    }
-                }
-            }
+        let loadedTransactions = await self.parseTransactions(from: snapshot.documents)
+        return TransactionSummary(
+            transactions: loadedTransactions,
+            startDate: startDate,
+            endDate: endDate,
+            range: range
+        )
     }
 
     private func parseTransactions(from documents: [QueryDocumentSnapshot]) async -> [Transaction] {
@@ -196,7 +187,6 @@ class FirebaseTransactionManager: ObservableObject {
             let data = document.data()
 
             guard let idString = data["id"] as? String,
-                  let id = UUID(uuidString: idString),
                   let typeString = data["type"] as? String,
                   let type = TransactionType(rawValue: typeString),
                   let categoryString = data["category"] as? String,
@@ -245,74 +235,74 @@ class FirebaseTransactionManager: ObservableObject {
 
     // MARK: - Query Operations
 
-    func getTransactions(with filters: TransactionFilters) -> [Transaction] {
-        return filters.apply(to: transactions)
-    }
+//    func getTransactions(with filters: TransactionFilters) -> [Transaction] {
+//        return filters.apply(to: transactions)
+//    }
 
-    func getTransactionSummary() -> TransactionSummary {
-        return TransactionSummary(transactions: transactions)
-    }
+//    func getTransactionSummary() -> TransactionSummary {
+//        return TransactionSummary(transactions: transactions)
+//    }
 
-    func searchTransactions(query: String) -> [Transaction] {
-        let lowercasedQuery = query.lowercased()
-        return transactions.filter { transaction in
-            transaction.title.lowercased().contains(lowercasedQuery) ||
-            transaction.notes?.lowercased().contains(lowercasedQuery) == true ||
-            transaction.items.contains { $0.name.lowercased().contains(lowercasedQuery) }
-        }
-    }
+//    func searchTransactions(query: String) -> [Transaction] {
+//        let lowercasedQuery = query.lowercased()
+//        return transactions.filter { transaction in
+//            transaction.title.lowercased().contains(lowercasedQuery) ||
+//            transaction.notes?.lowercased().contains(lowercasedQuery) == true ||
+//            transaction.items.contains { $0.name.lowercased().contains(lowercasedQuery) }
+//        }
+//    }
 
     // MARK: - Statistics
 
-    func getTotalBalance() -> Double {
-        let summary = getTransactionSummary()
-        return summary.totalBalance
-    }
-
-    func getTotalIncome() -> Double {
-        let summary = getTransactionSummary()
-        return summary.totalIncome
-    }
-
-    func getTotalExpenses() -> Double {
-        let summary = getTransactionSummary()
-        return summary.totalExpenses
-    }
-
-    func getExpensesByCategory() -> [TransactionCategory: Double] {
-        let summary = getTransactionSummary()
-        return summary.expensesByCategory()
-    }
+//    func getTotalBalance() -> Double {
+//        let summary = getTransactionSummary()
+//        return summary.totalBalance
+//    }
+//
+//    func getTotalIncome() -> Double {
+//        let summary = getTransactionSummary()
+//        return summary.totalIncome
+//    }
+//
+//    func getTotalExpenses() -> Double {
+//        let summary = getTransactionSummary()
+//        return summary.totalExpenses
+//    }
+//
+//    func getExpensesByCategory() -> [TransactionCategory: Double] {
+//        let summary = getTransactionSummary()
+//        return summary.expensesByCategory()
+//    }
 
     // MARK: - Data Export/Import
 
-    func exportData() async -> Data? {
-        let exportData = transactions.map { $0.toFirestoreData() }
+//    func exportData() async -> Data? {
+//        let exportData = transactions.map { $0.toFirestoreData() }
+//
+//        do {
+//            let jsonData = try JSONSerialization.data(withJSONObject: exportData, options: .prettyPrinted)
+//            return jsonData
+//        } catch {
+//            errorMessage = "Failed to export data: \(error.localizedDescription)"
+//            return nil
+//        }
+//    }
 
-        do {
-            let jsonData = try JSONSerialization.data(withJSONObject: exportData, options: .prettyPrinted)
-            return jsonData
-        } catch {
-            errorMessage = "Failed to export data: \(error.localizedDescription)"
-            return nil
-        }
-    }
-
-    func importData(_ jsonData: Data) async {
-        do {
-            guard let jsonArray = try JSONSerialization.jsonObject(with: jsonData) as? [[String: Any]] else {
-                throw NSError(domain: "ImportError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid JSON format"])
-            }
-
-            for transactionData in jsonArray {
-                if let transaction = Transaction.fromFirestoreData(transactionData) {
-                    await addTransaction(transaction)
-                }
-            }
-        } catch {
-            errorMessage = "Failed to import data: \(error.localizedDescription)"
-        }
-    }
+//    func importData(_ jsonData: Data) async {
+//        do {
+//            guard let jsonArray = try JSONSerialization.jsonObject(with: jsonData) as? [[String: Any]] else {
+//                throw NSError(domain: "ImportError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid JSON format"])
+//            }
+//
+//            for transactionData in jsonArray {
+//                if let transaction = Transaction.fromFirestoreData(transactionData) {
+//                    await addTransaction(transaction)
+//                }
+//            }
+//        } catch {
+//            errorMessage = "Failed to import data: \(error.localizedDescription)"
+//        }
+//    }
 
     // MARK: - Helper Methods
 
@@ -321,9 +311,9 @@ class FirebaseTransactionManager: ObservableObject {
         listenerRegistration = nil
     }
 
-    func clearError() {
-        errorMessage = nil
-    }
+//    func clearError() {
+//        errorMessage = nil
+//    }
 
     deinit {
 //        removeListener()

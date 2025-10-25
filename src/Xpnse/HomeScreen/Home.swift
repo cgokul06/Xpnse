@@ -12,11 +12,9 @@ enum SwipeDirection {
 }
 
 struct Home: View {
-    @ObservedObject var transactionManager: FirebaseTransactionManager
     @EnvironmentObject var homeCoordinator: NavigationCoordinator<HomeRoute>
     @StateObject private var homeViewModel: HomeScreenViewModel = HomeScreenViewModel()
-    @State private var offset: CGFloat = 0
-    @State private var swipeDirection: SwipeDirection? = nil
+//    @State private var offset: CGFloat = 0
 
     var body: some View {
         ZStack {
@@ -24,33 +22,11 @@ struct Home: View {
 
             contentView
                 .navigationBarTitleDisplayMode(.inline)
-        }
-        .task(id: self.homeViewModel.id) {
-            guard let startDate = homeViewModel.startDate,
-                  let endDate = homeViewModel.endDate else {
-                return
-            }
-
-            await self.transactionManager.loadTransactions(
-                startDate: startDate,
-                endDate: endDate
-            )
-        }
-        .onChange(of: self.transactionManager.reloadTransactions) { _, reloadTransactions in
-            guard reloadTransactions else { return }
-
-            guard let startDate = homeViewModel.startDate,
-                  let endDate = homeViewModel.endDate else {
-                self.transactionManager.resetReloadTransaction()
-                return
-            }
-
-            Task {
-                await self.transactionManager.loadTransactions(
-                    startDate: startDate,
-                    endDate: endDate
-                )
-            }
+                .onChange(of: self.homeViewModel.currentKey) { _, newKey in
+                    Task {
+                        await homeViewModel.prefetchIfNeeded(currentKey: newKey)
+                    }
+                }
         }
     }
 
@@ -125,62 +101,47 @@ struct Home: View {
     }
 
     private var cardAndTransactionsList: some View {
-        VStack(spacing: 16) {
+        let txnSummary = self.homeViewModel.transactionSummaryDict[self.homeViewModel.currentKey]
+        return VStack(spacing: 16) {
             SummaryCardView(
-                totalBalance: self.transactionManager.transactionSummary?.totalBalance ?? 0,
-                income: self.transactionManager.transactionSummary?.totalIncome ?? 0,
-                expenses: self.transactionManager.transactionSummary?.totalExpenses ?? 0
+                totalBalance: txnSummary?.totalBalance ?? 0,
+                income: txnSummary?.totalIncome ?? 0,
+                expenses: txnSummary?.totalExpenses ?? 0
             )
             .padding([.horizontal], 16)
 
             TransactionListView(
-                transactions: self.transactionManager.transactionSummary?.transactions ?? []
+                transactions: txnSummary?.transactions ?? []
             )
             .padding([.horizontal], 16)
 
             Spacer(minLength: 0)
         }
         .contentShape(Rectangle())
-        .offset(x: offset)
         .simultaneousGesture(
             DragGesture()
                 .onChanged { gesture in
                     print("translation: \(gesture.translation.width)")
-                    offset = gesture.translation.width
+//                    offset = gesture.translation.width
                 }
                 .onEnded { gesture in
                     let horizontalAmount = gesture.translation.width
 
                     withAnimation(.spring()) {
                         if horizontalAmount < -80 {
-                            // Left swipe
-                            swipeDirection = .left
-                            print("Swiped left")
-                            //                                        offset = -100
+                            self.homeViewModel.currentKey += 1
                         } else if horizontalAmount > 80 {
-                            // Right swipe
-                            swipeDirection = .right
-                            print("Swiped right")
-                            //                                        offset = 100
-                        } else {
-                            // Not enough swipe — snap back
-                            //                                        offset = 0
-                            swipeDirection = nil
+                            self.homeViewModel.currentKey -= 1
                         }
-
-                        offset = 0
                     }
                 }
         )
-        .onChange(of: swipeDirection) { _, direction in
-            if let direction = direction {
-                print("swiped \(direction)")
-            }
-        }
     }
 
     private var dateSwitchView: some View {
-        HStack(spacing: 12) {
+        let txnSummary = self.homeViewModel.transactionSummaryDict[self.homeViewModel.currentKey]
+
+        return HStack(spacing: 12) {
             Image(systemName: "arrowtriangle.left.fill")
                 .resizable()
                 .aspectRatio(contentMode: .fit)
@@ -188,7 +149,7 @@ struct Home: View {
 
             Spacer(minLength: 0)
 
-            Text(homeViewModel.dateSwitcherText)
+            Text(txnSummary?.dateRangeText ?? "")
                 .font(.system(size: 16, weight: .medium))
 
             Spacer(minLength: 0)

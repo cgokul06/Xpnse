@@ -12,19 +12,35 @@ struct TransactionListView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Transactions")
-                .font(.system(size: 18, weight: .medium))
-                .foregroundStyle(XpnseColorKey.white.color)
+            HStack {
+                Text("Transactions")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(XpnseColorKey.white.color)
 
-            ScrollView(showsIndicators: false) {
-                VStack(spacing: 8) {
-                    ForEach(transactions) { transaction in
-                        TransactionItemView(transaction: transaction)
+                Spacer(minLength: 0)
+            }
+
+            if !transactions.isEmpty {
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 8) {
+                        ForEach(transactions) { transaction in
+                            TransactionItemView(transaction: transaction)
+                        }
                     }
+                    .padding(.bottom, 62)
                 }
-                .padding(.bottom, 62)
+            } else {
+                VStack(spacing: 8) {
+                    Spacer(minLength: 0)
+
+                    Text("No transactions found!")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(XpnseColorKey.white.color)
+
+                    Spacer(minLength: 0)
+                }
             }
         }
-        .frame(maxHeight: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

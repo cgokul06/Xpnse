@@ -12,17 +12,27 @@ struct TransactionSummary {
     let totalBalance: Double
     let totalIncome: Double
     let totalExpenses: Double
+    let startDate: Date
+    let endDate: Date
+    let dateRangeText: String
     let transactions: [Transaction]
 
-    init(transactions: [Transaction]) {
+    init(transactions: [Transaction], startDate: Date, endDate: Date, range: CalendarComparison) {
         self.transactions = transactions
 
         let incomeTransactions = transactions.filter { $0.type == .income }
         let expenseTransactions = transactions.filter { $0.type == .expense }
+        self.startDate = startDate
+        self.endDate = endDate
 
         self.totalIncome = incomeTransactions.reduce(0) { $0 + $1.totalAmount }
         self.totalExpenses = expenseTransactions.reduce(0) { $0 + $1.totalAmount }
         self.totalBalance = totalIncome - totalExpenses
+        self.dateRangeText = Self.setupDateSwitcherText(
+            currentCalendarComparator: range,
+            startDate: startDate,
+            endDate: endDate
+        ) ?? ""
     }
 
     // Category-wise breakdown
@@ -35,6 +45,23 @@ struct TransactionSummary {
         }
 
         return categoryTotals
+    }
+
+    private static func setupDateSwitcherText(
+        currentCalendarComparator: CalendarComparison,
+        startDate: Date,
+        endDate: Date
+    ) -> String? {
+        let formatter = DateFormatter()
+
+        switch currentCalendarComparator {
+        case .monthly:
+            formatter.dateFormat = "MMM yyyy"
+            return formatter.string(from: startDate)
+        case .yearly:
+            formatter.dateFormat = "yyyy"
+            return formatter.string(from: startDate)
+        }
     }
 
     // Monthly breakdown

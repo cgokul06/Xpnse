@@ -14,12 +14,18 @@ enum CalendarComparison: Int {
     case yearly = 3
 }
 
+@MainActor
 final class HomeScreenViewModel: ObservableObject {
     @Published var currentCalendarComparator: CalendarComparison
-    @Published private(set) var startDate: Date?
-    @Published private(set) var endDate: Date?
-    @Published private(set) var id: String = ""
-    @Published private(set) var dateSwitcherText: String = ""
+    @Published private(set) var transactionSummaryDict: [Int: TransactionSummary] = [:]
+    @Published var currentKey: Int = 0
+
+    private let transactionManager: FirebaseTransactionManager = .shared
+    private let calendar = Calendar.current
+    private let prefetchWindow = 6  // how many units (months, quarters, etc.) to prefetch
+
+    /// Set of keys we currently have cached (-4, -3, -2, -1, 0)
+    private(set) var loadedKeys: Set<Int> = []
 
     init() {
         let currentSelection = UserDefaultsHelper.shared.integer(forKey: .calendarAggregator)
@@ -29,80 +35,78 @@ final class HomeScreenViewModel: ObservableObject {
             self.currentCalendarComparator = .monthly
         }
 
-        self.setupStartAndEndDate()
+        Task {
+            await fetchInitialSetOfData()
+        }
     }
 
-    func setCalendarComparator(_ comparator: CalendarComparison) {
-        self.currentCalendarComparator = comparator
-        UserDefaultsHelper.shared.set(comparator.rawValue, forKey: .calendarAggregator)
+    // MARK: - Initial Prefetch
+    func fetchInitialSetOfData() async {
+        // Example: fetch last 6 months including current (0, -1, -2, -3, -4, -5)
+        let initialKeys = (-(prefetchWindow - 1)...0)
+        await fetchData(forKeys: Array(initialKeys))
     }
 
-    private func setupStartAndEndDate() {
-        let calendar = Calendar.current
-        let startOfDay = calendar.startOfDay(for: Date())
-        let today = calendar.date(byAdding: DateComponents(day: 1, second: -1), to: startOfDay)!
+    // MARK: - Data Prefetching
+    func prefetchIfNeeded(currentKey: Int) async {
+        // If user reaches the second-oldest cached key, prefetch more backwards
+        guard let minKey = loadedKeys.min(), currentKey <= minKey + 1 else { return }
 
-        switch self.currentCalendarComparator {
-//        case .fortnightly:
-//            // Start of the current year
-//            guard let startOfYear = calendar.date(from: calendar.dateComponents([.year], from: today)) else { return }
-//
-//            // Number of days since Jan 1
-//            let daysSinceStart = calendar.dateComponents([.day], from: startOfYear, to: today).day ?? 0
-//
-//            // Fortnight index (0 to 25)
-//            let fortnightIndex = daysSinceStart / 14
-//
-//            // Start date = Jan 1 + (fortnightIndex * 14) days
-//            guard let fortnightStart = calendar.date(byAdding: .day, value: fortnightIndex * 14, to: startOfYear) else { return }
-//
-//            // End date = start + 13 days (14-day range)
-//            guard let fortnightEnd = calendar.date(byAdding: .day, value: 13, to: fortnightStart) else { return }
-//
-//            self.startDate = fortnightStart
-//            self.endDate = min(fortnightEnd, today) // Use today if current period is ongoing
+        let nextRange = ((minKey - prefetchWindow)..<minKey)
+        await fetchData(forKeys: Array(nextRange))
+    }
 
-        case .monthly:
-            guard let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: today)) else { return }
-            self.startDate = startOfMonth
+    // MARK: - Fetch Logic
+    private func fetchData(forKeys keys: [Int]) async {
+        let newKeys = keys.filter { !loadedKeys.contains($0) }
 
-            if let range = calendar.range(of: .day, in: .month, for: today),
-               let endOfMonth = calendar.date(bySetting: .day, value: range.count, of: startOfMonth) {
-                self.endDate = min(endOfMonth, today)
-            } else {
-                self.endDate = today
+        guard !newKeys.isEmpty else { return }
+
+        for key in newKeys {
+            do {
+                let (startDate, endDate) = computeDateRange(forOffset: key)
+                let summary = try await transactionManager.loadTransactions(
+                    startDate: startDate,
+                    endDate: endDate,
+                    range: self.currentCalendarComparator
+                )
+
+                transactionSummaryDict[key] = summary
+                loadedKeys.insert(key)
+            } catch {
+                print("❌ Failed to fetch for key \(key): \(error)")
             }
-
-        case .yearly:
-            guard let startOfYear = calendar.date(from: calendar.dateComponents([.year], from: today)) else { return }
-            self.startDate = startOfYear
-            self.endDate = today
         }
 
-        self.setupDateSwitcherText()
-        self.id = "\(self.startDate?.timeIntervalSince1970 ?? 0)\(self.endDate?.timeIntervalSince1970 ?? 0)"
+//        updateDateSwitcherText(for: 0)
     }
 
-    private func setupDateSwitcherText() {
-        guard let startDate, let endDate else {
-            return
-        }
+    // MARK: - Compute Date Range for a Key
+    private func computeDateRange(forOffset offset: Int) -> (Date, Date) {
+        let today = Date()
 
-        let formatter = DateFormatter()
-
-        switch self.currentCalendarComparator {
-//        case .fortnightly:
-//            formatter.dateFormat = "dd-MM-yyyy"
-//            self.dateSwitcherText = formatter.string(from: startDate) + " - " + formatter.string(from: endDate)
-//            break
+        switch currentCalendarComparator {
         case .monthly:
-            formatter.dateFormat = "MMM yyyy"
-            self.dateSwitcherText = formatter.string(from: startDate)
-            break
+            guard let monthDate = calendar.date(byAdding: .month, value: offset, to: today),
+                  let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: monthDate)),
+                  let range = calendar.range(of: .day, in: .month, for: monthDate),
+                  let endOfMonth = calendar.date(bySetting: .day, value: range.count, of: startOfMonth)
+            else { return (today, today) }
+            return (startOfMonth, endOfMonth)
+
+//        case .fortnightly:
+//            let daysToSubtract = offset * 14
+//            guard let start = calendar.date(byAdding: .day, value: daysToSubtract, to: today),
+//                  let end = calendar.date(byAdding: .day, value: 13, to: start)
+//            else { return (today, today) }
+//            return (start, end)
+
         case .yearly:
-            formatter.dateFormat = "yyyy"
-            self.dateSwitcherText = formatter.string(from: startDate)
-            break
+            guard let yearDate = calendar.date(byAdding: .year, value: offset, to: today),
+                  let startOfYear = calendar.date(from: calendar.dateComponents([.year], from: yearDate)),
+                  let endOfYear = calendar.date(byAdding: DateComponents(year: 1, day: -1), to: startOfYear)
+            else { return (today, today) }
+            return (startOfYear, endOfYear)
         }
     }
 }

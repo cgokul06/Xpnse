@@ -9,7 +9,6 @@ import SwiftUI
 
 struct AddTransactionView: View {
     @EnvironmentObject var homeCoordinator: NavigationCoordinator<HomeRoute>
-    @EnvironmentObject var appCoordinator: AppCoordinator
     @Environment(\.dismiss) private var dismiss
 
     @StateObject private var billScannerService = BillScannerService()
@@ -21,6 +20,7 @@ struct AddTransactionView: View {
     @State private var description: String = ""
     @State private var selectedDate = Date()
     @State private var isLoading = false
+    private let transactionManager: FirebaseTransactionManager = .shared
 
     private var categories: [TransactionCategory] {
         TransactionCategory.categories(for: transactionType)
@@ -310,7 +310,7 @@ struct AddTransactionView: View {
             title: description
         )
          Task {
-             await appCoordinator.transactionManager?.addTransaction(transaction)
+             await transactionManager.addTransaction(transaction)
              await MainActor.run {
                  isLoading = false
                  self.dismiss()
@@ -327,6 +327,5 @@ struct AddTransactionView: View {
 
 #Preview {
     AddTransactionView()
-        .environmentObject(AppCoordinator())
         .environmentObject(NavigationCoordinator<HomeRoute>())
 }

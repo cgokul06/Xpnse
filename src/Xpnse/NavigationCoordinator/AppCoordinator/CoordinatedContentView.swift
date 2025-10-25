@@ -29,11 +29,7 @@ struct CoordinatedContentView: View {
             case .authentication:
                 AuthenticationFlowView()
             case .home:
-                if let transactionManager = appCoordinator.transactionManager {
-                    CoordinatedHomeView(transactionManager: transactionManager)
-                } else {
-                    LoadingView()
-                }
+                CoordinatedHomeView()
             }
         }
         .environmentObject(appCoordinator)

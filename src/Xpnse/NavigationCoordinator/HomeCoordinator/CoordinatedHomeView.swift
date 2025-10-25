@@ -8,27 +8,20 @@
 import SwiftUI
 
 struct CoordinatedHomeView: View {
-    @ObservedObject var transactionManager: FirebaseTransactionManager
     @EnvironmentObject var homeCoordinator: NavigationCoordinator<HomeRoute>
 //    @EnvironmentObject var appCoordinator: AppCoordinator
 
     var body: some View {
         NavigationStack(path: $homeCoordinator.path) {
-            Home(transactionManager: transactionManager)
-//            HomeMainView(transactionManager: transactionManager)
+            Home()
                 .navigationDestination(for: HomeRoute.self) { route in
                     switch route {
-                        //                    case .main:
-                        //                        Home(transactionManager: transactionManager)
                     case .transactions:
                         AddTransactionView()
-                        //                    case .settings:
-                        //                        EmptyView()
                     case .settings:
                         Settings()
                     case .billScanner:
                         BillScannerView()
-                        //                    }
                     }
                 }
         }

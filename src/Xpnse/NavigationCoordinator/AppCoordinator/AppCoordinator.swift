@@ -12,8 +12,7 @@ import Combine
 class AppCoordinator: ObservableObject {
     @Published var currentRoute: AppRoute = .splash
     @Published var authManager: FirebaseAuthManager
-    @Published var transactionManager: FirebaseTransactionManager?
-    
+
     private var cancellables = Set<AnyCancellable>()
     
     init() {
@@ -24,12 +23,13 @@ class AppCoordinator: ObservableObject {
     private func setupAuthListener() {
         authManager.$isAuthenticated
             .sink { [weak self] isAuthenticated in
-                guard let isAuthenticated else { return }
+                guard let isAuthenticated, let self else { return }
                 if isAuthenticated {
-                    self?.navigateToHome()
+                    FirebaseTransactionManager.setup(authManager: self.authManager)
+                    self.navigateToHome()
                 } else {
                     print("not auth")
-                    self?.navigateToAuthentication()
+                    self.navigateToAuthentication()
                 }
             }
             .store(in: &cancellables)
@@ -41,12 +41,11 @@ class AppCoordinator: ObservableObject {
 
 extension AppCoordinator {
     func navigateToAuthentication() {
+        FirebaseTransactionManager.reset()
         currentRoute = .authentication
-        transactionManager = nil
     }
 
     func navigateToHome() {
-        transactionManager = FirebaseTransactionManager(authManager: authManager)
         currentRoute = .home
     }
 
