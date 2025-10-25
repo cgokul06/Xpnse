@@ -22,34 +22,8 @@ struct Home: View {
         ZStack {
             PrimaryGradient()
 
-            VStack(spacing: 16) {
-                topView
-
-                dateSwitchView
-
-               contentView
-            }
-            .topSpacingIfNoSafeArea()
-            .overlay(
-                alignment: .bottom,
-                content: {
-                    Button {
-                        self.homeCoordinator.push(.transactions)
-                    } label: {
-                        Text("Add transaction")
-                            .font(.system(size: 20, weight: .bold))
-                    }
-                    .buttonStyle(
-                        XpnsePrimaryButtonStyle.defaultButton(
-                            bgColor: XpnseColorKey.secondaryButtonBGColor,
-                            isDisabled: .constant(false),
-                            isLoading: .constant(false)
-                        )
-                    )
-                    .padding(.horizontal, 16)
-                    .bottomSpacingIfNoSafeArea(8)
-                })
-            .navigationBarTitleDisplayMode(.inline)
+            contentView
+                .navigationBarTitleDisplayMode(.inline)
         }
         .task(id: self.homeViewModel.id) {
             guard let startDate = homeViewModel.startDate,
@@ -78,6 +52,36 @@ struct Home: View {
                 )
             }
         }
+    }
+
+    private var contentView: some View {
+        VStack(spacing: 16) {
+            topView
+
+            dateSwitchView
+
+           cardAndTransactionsList
+        }
+        .topSpacingIfNoSafeArea()
+        .overlay(
+            alignment: .bottom,
+            content: {
+                Button {
+                    self.homeCoordinator.push(.transactions)
+                } label: {
+                    Text("Add transaction")
+                        .font(.system(size: 20, weight: .bold))
+                }
+                .buttonStyle(
+                    XpnsePrimaryButtonStyle.defaultButton(
+                        bgColor: XpnseColorKey.secondaryButtonBGColor,
+                        isDisabled: .constant(false),
+                        isLoading: .constant(false)
+                    )
+                )
+                .padding(.horizontal, 16)
+                .bottomSpacingIfNoSafeArea(8)
+            })
     }
 
     private var topView: some View {
@@ -120,7 +124,7 @@ struct Home: View {
         .padding([.horizontal], 16)
     }
 
-    private var contentView: some View {
+    private var cardAndTransactionsList: some View {
         VStack(spacing: 16) {
             SummaryCardView(
                 totalBalance: self.transactionManager.transactionSummary?.totalBalance ?? 0,
