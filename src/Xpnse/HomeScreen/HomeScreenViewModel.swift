@@ -23,6 +23,7 @@ final class HomeScreenViewModel: ObservableObject {
     private let transactionManager: FirebaseTransactionManager = .shared
     private let calendar = Calendar.current
     private let prefetchWindow = 6  // how many units (months, quarters, etc.) to prefetch
+    let maxFuturisticRange: Int = 12
 
     /// Set of keys we currently have cached (-4, -3, -2, -1, 0)
     private(set) var loadedKeys: Set<Int> = []
@@ -43,7 +44,7 @@ final class HomeScreenViewModel: ObservableObject {
     // MARK: - Initial Prefetch
     func fetchInitialSetOfData() async {
         // Example: fetch last 6 months including current (0, -1, -2, -3, -4, -5)
-        let initialKeys = (-(prefetchWindow - 1)...0)
+        let initialKeys = (-(prefetchWindow - 1)...maxFuturisticRange)
         await fetchData(forKeys: Array(initialKeys))
     }
 

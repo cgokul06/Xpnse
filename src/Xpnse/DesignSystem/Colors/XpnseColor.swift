@@ -20,4 +20,6 @@ enum XpnseColorKey: String {
     case primaryButtonBGColor = "PrimaryButtonBGColor"
     case secondaryButtonBGColor = "SecondaryButtonBGColor"
     case transactionListBGColor = "TransactionListBGColor"
+    case black = "Black"
+    case disabled = "Disabled"
 }

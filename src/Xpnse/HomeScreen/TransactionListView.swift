@@ -30,17 +30,27 @@ struct TransactionListView: View {
                     .padding(.bottom, 62)
                 }
             } else {
-                VStack(spacing: 8) {
-                    Spacer(minLength: 0)
-
-                    Text("No transactions found!")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(XpnseColorKey.white.color)
-
-                    Spacer(minLength: 0)
-                }
+                noTransactionsFound
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var noTransactionsFound: some View {
+        VStack(spacing: 8) {
+            Spacer(minLength: 0)
+
+            HStack(spacing: 0) {
+                Spacer(minLength: 0)
+
+                Text("No transactions found!")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(XpnseColorKey.white.color)
+
+                Spacer(minLength: 0)
+            }
+
+            Spacer(minLength: 0)
+        }
     }
 }

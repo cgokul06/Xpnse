@@ -14,7 +14,6 @@ enum SwipeDirection {
 struct Home: View {
     @EnvironmentObject var homeCoordinator: NavigationCoordinator<HomeRoute>
     @StateObject private var homeViewModel: HomeScreenViewModel = HomeScreenViewModel()
-//    @State private var offset: CGFloat = 0
 
     var body: some View {
         ZStack {
@@ -122,13 +121,12 @@ struct Home: View {
             DragGesture()
                 .onChanged { gesture in
                     print("translation: \(gesture.translation.width)")
-//                    offset = gesture.translation.width
                 }
                 .onEnded { gesture in
                     let horizontalAmount = gesture.translation.width
 
                     withAnimation(.spring()) {
-                        if horizontalAmount < -80 {
+                        if horizontalAmount < -80 && self.homeViewModel.currentKey < self.homeViewModel.maxFuturisticRange {
                             self.homeViewModel.currentKey += 1
                         } else if horizontalAmount > 80 {
                             self.homeViewModel.currentKey -= 1
@@ -145,6 +143,7 @@ struct Home: View {
             Image(systemName: "arrowtriangle.left.fill")
                 .resizable()
                 .aspectRatio(contentMode: .fit)
+                .foregroundStyle(XpnseColorKey.black.color)
                 .frame(width: 12)
 
             Spacer(minLength: 0)
@@ -157,6 +156,7 @@ struct Home: View {
             Image(systemName: "arrowtriangle.right.fill")
                 .resizable()
                 .aspectRatio(contentMode: .fit)
+                .foregroundStyle(self.homeViewModel.currentKey < self.homeViewModel.maxFuturisticRange ? XpnseColorKey.black.color : XpnseColorKey.disabled.color)
                 .frame(width: 12)
         }
         .padding(.horizontal, 16)
