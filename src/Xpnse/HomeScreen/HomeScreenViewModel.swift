@@ -9,7 +9,7 @@ import Combine
 import Foundation
 
 enum CalendarComparison: Int {
-    case fortnightly = 1 // once in two weeks
+//    case fortnightly = 1 // once in two weeks
     case monthly = 2
     case yearly = 3
 }
@@ -43,24 +43,24 @@ final class HomeScreenViewModel: ObservableObject {
         let today = calendar.date(byAdding: DateComponents(day: 1, second: -1), to: startOfDay)!
 
         switch self.currentCalendarComparator {
-        case .fortnightly:
-            // Start of the current year
-            guard let startOfYear = calendar.date(from: calendar.dateComponents([.year], from: today)) else { return }
-
-            // Number of days since Jan 1
-            let daysSinceStart = calendar.dateComponents([.day], from: startOfYear, to: today).day ?? 0
-
-            // Fortnight index (0 to 25)
-            let fortnightIndex = daysSinceStart / 14
-
-            // Start date = Jan 1 + (fortnightIndex * 14) days
-            guard let fortnightStart = calendar.date(byAdding: .day, value: fortnightIndex * 14, to: startOfYear) else { return }
-
-            // End date = start + 13 days (14-day range)
-            guard let fortnightEnd = calendar.date(byAdding: .day, value: 13, to: fortnightStart) else { return }
-
-            self.startDate = fortnightStart
-            self.endDate = min(fortnightEnd, today) // Use today if current period is ongoing
+//        case .fortnightly:
+//            // Start of the current year
+//            guard let startOfYear = calendar.date(from: calendar.dateComponents([.year], from: today)) else { return }
+//
+//            // Number of days since Jan 1
+//            let daysSinceStart = calendar.dateComponents([.day], from: startOfYear, to: today).day ?? 0
+//
+//            // Fortnight index (0 to 25)
+//            let fortnightIndex = daysSinceStart / 14
+//
+//            // Start date = Jan 1 + (fortnightIndex * 14) days
+//            guard let fortnightStart = calendar.date(byAdding: .day, value: fortnightIndex * 14, to: startOfYear) else { return }
+//
+//            // End date = start + 13 days (14-day range)
+//            guard let fortnightEnd = calendar.date(byAdding: .day, value: 13, to: fortnightStart) else { return }
+//
+//            self.startDate = fortnightStart
+//            self.endDate = min(fortnightEnd, today) // Use today if current period is ongoing
 
         case .monthly:
             guard let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: today)) else { return }
@@ -91,10 +91,10 @@ final class HomeScreenViewModel: ObservableObject {
         let formatter = DateFormatter()
 
         switch self.currentCalendarComparator {
-        case .fortnightly:
-            formatter.dateFormat = "dd-MM-yyyy"
-            self.dateSwitcherText = formatter.string(from: startDate) + " - " + formatter.string(from: endDate)
-            break
+//        case .fortnightly:
+//            formatter.dateFormat = "dd-MM-yyyy"
+//            self.dateSwitcherText = formatter.string(from: startDate) + " - " + formatter.string(from: endDate)
+//            break
         case .monthly:
             formatter.dateFormat = "MMM yyyy"
             self.dateSwitcherText = formatter.string(from: startDate)
