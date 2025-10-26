@@ -16,7 +16,7 @@ struct AddTransactionView: View {
 
     @State private var transactionType: TransactionType = .expense
     @State private var amount: String = ""
-    @State private var selectedCategory: TransactionCategory?
+    @State private var selectedCategory: TransactionCategory = .other
     @State private var description: String = ""
     @State private var selectedDate = Date()
     @State private var isLoading = false
@@ -27,7 +27,7 @@ struct AddTransactionView: View {
     }
 
     private var isFormValid: Bool {
-        !(amount.isEmpty || selectedCategory == nil)
+        !(amount.isEmpty) && !description.isEmpty
     }
 
     var body: some View {
@@ -90,10 +90,11 @@ struct AddTransactionView: View {
                         self.dismiss()
                     }, label: {
                         Image(systemName: "xmark")
+                            .foregroundStyle(XpnseColorKey.white.color)
                             .bold()
                             .padding(.all, 8)
                     })
-                    .foregroundStyle(Color.white)
+//                    .foregroundStyle(Color.white)
                 }
 
                 ToolbarItem(placement: .principal) {
@@ -112,7 +113,7 @@ struct AddTransactionView: View {
         HStack(spacing: 12) {
             Button(action: {
                 transactionType = .expense
-                selectedCategory = nil
+                selectedCategory = .other
             }) {
                 HStack(spacing: 8) {
                     Image(systemName: "arrow.down")
@@ -123,13 +124,13 @@ struct AddTransactionView: View {
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
-                .background(transactionType == .expense ? XpnseColorKey.primaryButtonBGColor.color : Color.gray.opacity(0.3))
+                .background(transactionType == .expense ? XpnseColorKey.expensePrimary.color : Color.gray.opacity(0.3))
                 .xpnseRoundedCorner()
             }
 
             Button(action: {
                 transactionType = .income
-                selectedCategory = nil
+                selectedCategory = .other
             }) {
                 HStack(spacing: 8) {
                     Image(systemName: "arrow.up")
@@ -140,7 +141,7 @@ struct AddTransactionView: View {
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
-                .background(transactionType == .income ? XpnseColorKey.primaryButtonBGColor.color : Color.gray.opacity(0.3))
+                .background(transactionType == .income ? XpnseColorKey.incomePrimary.color : Color.gray.opacity(0.3))
                 .xpnseRoundedCorner()
             }
         }
@@ -169,48 +170,19 @@ struct AddTransactionView: View {
 
     // MARK: - Category Selection Section (Square Scrollable Box)
     private var categorySelectionSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        HStack(spacing: 16) {
             Text("Category")
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundColor(.white)
 
-            // Square scrollable box
-            GeometryReader { geometry in
-                let boxSize = min(geometry.size.width, 320)
-                ScrollView {
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 16) {
-                        ForEach(categories, id: \.self) { category in
-                            Button(action: {
-                                selectedCategory = category
-                            }) {
-                                VStack(spacing: 8) {
-                                    Image(systemName: category.icon)
-                                        .font(.system(size: 20))
-                                        .foregroundColor(.white)
-                                        .frame(width: 50, height: 50)
-                                        .background(selectedCategory == category ? XpnseColorKey.primaryButtonBGColor.color : Color.gray.opacity(0.3))
-                                        .clipShape(Circle())
+            Spacer(minLength: 0)
 
-                                    Text(category.displayName)
-                                        .font(.system(size: 12, weight: .medium))
-                                        .foregroundColor(.white)
-                                        .lineLimit(2)
-                                        .frame(height: 30, alignment: .top)
-                                }
-                            }
-                        }
-                    }
-                    .padding(.all, 12)
-                }
-                .frame(height: boxSize)
-                .background(Color.white.opacity(0.08))
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(XpnseColorKey.whiteWithAlphaThirty.color, lineWidth: 2)
-                )
-            }
-            .frame(height: 320)
+            DropDownMenu(
+                options: categories,
+                menuWdith: 250,
+                maxItemDisplayed: 6,
+                selectedCategory: self.$selectedCategory
+            )
         }
     }
 
@@ -222,6 +194,7 @@ struct AddTransactionView: View {
                 .foregroundColor(.white)
 
             TextField("Add a description", text: $description)
+                .font(.system(size: 20, weight: .bold))
                 .textFieldStyle(XpnseTextFieldStyle())
         }
     }
@@ -297,14 +270,14 @@ struct AddTransactionView: View {
 
     // MARK: - Actions
     private func addTransaction() {
-        guard let category = selectedCategory, !amount.isEmpty else { return }
+        guard !amount.isEmpty else { return }
 
         isLoading = true
 
         let transaction = Transaction(
             id: UUID().uuidString,
             type: transactionType,
-            category: category,
+            category: self.selectedCategory,
             amount: Double(amount) ?? 0.0,
             date: selectedDate.timeIntervalSince1970,
             title: description

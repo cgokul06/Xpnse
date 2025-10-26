@@ -33,8 +33,7 @@ enum TransactionCategory: String, CaseIterable, Codable {
     case subscriptions = "subscriptions"
     case taxes = "taxes"
     case debt = "debt"
-    case other = "other"
-    
+
     // MARK: - Income Categories
     case salary = "salary"
     case freelance = "freelance"
@@ -64,7 +63,9 @@ enum TransactionCategory: String, CaseIterable, Codable {
     case settlement = "settlement"
     case compensation = "compensation"
     case pension = "pension"
-    case otherIncome = "otherIncome"
+
+    // MARK: - Common
+    case other = "other"
 
     var displayName: String {
         switch self {
@@ -121,7 +122,6 @@ enum TransactionCategory: String, CaseIterable, Codable {
         case .settlement: return "Settlement"
         case .compensation: return "Compensation"
         case .pension: return "Pension"
-        case .otherIncome: return "Other Income"
         }
     }
 
@@ -180,7 +180,6 @@ enum TransactionCategory: String, CaseIterable, Codable {
         case .settlement: return "doc.text.magnifyingglass"
         case .compensation: return "hand.raised.fill"
         case .pension: return "person.2"
-        case .otherIncome: return "plus.circle"
         }
     }
     
@@ -204,7 +203,7 @@ enum TransactionCategory: String, CaseIterable, Codable {
             .gifts, .lottery, .gambling, .insuranceClaim, .insuranceMaturity,
             .sipMaturity, .fdMaturity, .mutualFunds, .stockTrading,
             .saleOfItem, .refund, .rebate, .cashback, .rewards, .inheritance,
-            .settlement, .compensation, .pension, .otherIncome
+            .settlement, .compensation, .pension, .other
         ]
     }
     
