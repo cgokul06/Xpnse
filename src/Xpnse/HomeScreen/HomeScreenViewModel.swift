@@ -19,6 +19,7 @@ final class HomeScreenViewModel: ObservableObject {
     @Published var currentCalendarComparator: CalendarComparison
     @Published private(set) var transactionSummaryDict: [Int: TransactionSummary] = [:]
     @Published var currentKey: Int = 0
+    @Published private(set) var isLoading: Bool = true
 
     private let transactionManager: FirebaseTransactionManager = .shared
     private let calendar = Calendar.current
@@ -37,15 +38,23 @@ final class HomeScreenViewModel: ObservableObject {
         }
 
         Task {
-            await fetchInitialSetOfData()
+            await fetchCurrentMonthData()
+            await fetchInitialNearbySetOfData()
         }
     }
 
+    func fetchCurrentMonthData() async {
+        await fetchData(forKeys: [0])
+        self.isLoading = false
+    }
+
     // MARK: - Initial Prefetch
-    func fetchInitialSetOfData() async {
+    func fetchInitialNearbySetOfData() async {
         // Example: fetch last 6 months including current (0, -1, -2, -3, -4, -5)
-        let initialKeys = (-(prefetchWindow - 1)...maxFuturisticRange)
-        await fetchData(forKeys: Array(initialKeys))
+        let preCurrentKeys = (-(prefetchWindow - 1)...0)
+        await fetchData(forKeys: Array(preCurrentKeys))
+        let postCurrentKeys = (1...maxFuturisticRange)
+        await fetchData(forKeys: Array(postCurrentKeys))
     }
 
     // MARK: - Data Prefetching

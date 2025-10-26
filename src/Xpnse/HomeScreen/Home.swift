@@ -19,13 +19,19 @@ struct Home: View {
         ZStack {
             PrimaryGradient()
 
-            contentView
-                .navigationBarTitleDisplayMode(.inline)
-                .onChange(of: self.homeViewModel.currentKey) { _, newKey in
-                    Task {
-                        await homeViewModel.prefetchIfNeeded(currentKey: newKey)
+            if !homeViewModel.transactionSummaryDict.isEmpty {
+                contentView
+                    .navigationBarTitleDisplayMode(.inline)
+                    .onChange(of: self.homeViewModel.currentKey) { _, newKey in
+                        Task {
+                            await homeViewModel.prefetchIfNeeded(currentKey: newKey)
+                        }
                     }
-                }
+            }
+
+            if homeViewModel.isLoading {
+                ProgressView()
+            }
         }
     }
 
@@ -35,7 +41,7 @@ struct Home: View {
 
             dateSwitchView
 
-           cardAndTransactionsList
+            cardAndTransactionsList
         }
         .topSpacingIfNoSafeArea()
         .overlay(
