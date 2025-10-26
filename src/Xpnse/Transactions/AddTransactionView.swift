@@ -11,9 +11,7 @@ struct AddTransactionView: View {
     @EnvironmentObject var homeCoordinator: NavigationCoordinator<HomeRoute>
     @Environment(\.dismiss) private var dismiss
 
-    @StateObject private var billScannerService = BillScannerService()
-    @State private var showingBillScanner = false
-
+    @ObservedObject var billScannerService: BillScannerService
     @State private var transactionType: TransactionType = .expense
     @State private var amount: String = ""
     @State private var selectedCategory: TransactionCategory = .other
@@ -58,26 +56,15 @@ struct AddTransactionView: View {
                     .padding(.horizontal, 20)
                     .padding(.top, 20)
                 }
-//                .onChange(of: billScannerService.extractedData) { extractedData in
-//                    if let data = extractedData {
-//                        // Auto-fill the form with extracted data
-//                        if let cost = data.amount {
-//                            amount = String(format: "%.2f", cost)
-//                        }
-//                        if let merchant = data.merchant {
-//                            description = merchant
-//                        }
-//                        if let category = data.category {
-//                            selectedCategory = category
-//                        }
-//                        if let date = data.date {
-//                            selectedDate = date
-//                        }
-//
-//                        // Close the scanner after auto-filling
-//                        showingBillScanner = false
-//                    }
-//                }
+                .onChange(of: billScannerService.extractedTransaction) { _, extractedData in
+                    if let data = extractedData {
+                        // Auto-fill the form with extracted data
+                        self.amount = String(format: "%.2f", data.amount)
+                        self.description = data.title
+                        self.selectedCategory = data.category
+                        self.selectedDate = data.formattedDate
+                    }
+                }
             }
             .safeAreaInset(edge: .bottom, content: {
                 // Bottom Buttons
@@ -195,6 +182,7 @@ struct AddTransactionView: View {
 
             TextField("Add a description", text: $description)
                 .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(XpnseColorKey.white.color)
                 .textFieldStyle(XpnseTextFieldStyle())
         }
     }
@@ -293,12 +281,11 @@ struct AddTransactionView: View {
 
     private func scanBill() {
         // Implement bill scanning functionality
-//        print("Scan bill tapped")
         self.homeCoordinator.push(.billScanner)
     }
 }
 
-#Preview {
-    AddTransactionView()
-        .environmentObject(NavigationCoordinator<HomeRoute>())
-}
+//#Preview {
+//    AddTransactionView()
+//        .environmentObject(NavigationCoordinator<HomeRoute>())
+//}

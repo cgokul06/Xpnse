@@ -15,7 +15,7 @@ import Combine
 @MainActor
 class BillScannerService: ObservableObject {
     @Published var isScanning = false
-    @Published var extractedTransaction: Transaction?
+    @Published var extractedTransaction: ScannedTransaction?
     @Published var errorMessage: String?
 
     // MARK: - Scan Methods
@@ -36,7 +36,7 @@ class BillScannerService: ObservableObject {
 
     // MARK: - Data Extraction
 
-    private func extractTransactionFromImage(_ image: UIImage) async throws -> Transaction {
+    private func extractTransactionFromImage(_ image: UIImage) async throws -> ScannedTransaction {
         guard let cgImage = image.cgImage else {
             throw BillScannerError.invalidImage
         }
@@ -53,10 +53,10 @@ class BillScannerService: ObservableObject {
 
     // MARK: - LanguageModelSession Parsing
 
-    private func parseTransactionWithLanguageModel(_ extractedText: String) async throws -> Transaction {
+    private func parseTransactionWithLanguageModel(_ extractedText: String) async throws -> ScannedTransaction {
         let prompt = """
-        Analyze this receipt text and extract transaction information. 
-        \(extractedText)
+        Analyze this receipt text and extract transaction information. The date might be in different formats. Find the eact date format used here and map it to 'dateFormat' property.
+        \(extractedText).
         """
 
         let session = LanguageModelSession()
@@ -78,7 +78,7 @@ class BillScannerService: ObservableObject {
             }
             print(text)
         }
-        let c = try await session.respond(to: prompt, generating: Transaction.self)
+        let c = try await session.respond(to: prompt, generating: ScannedTransaction.self)
 
         return c.content
     }

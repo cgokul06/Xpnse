@@ -32,7 +32,7 @@ struct DropDownMenu: View {
                             Image(systemName: selectedCategory.icon)
                                 .resizable()
                                 .aspectRatio(contentMode: .fill)
-                                .frame(width: 18, height: 18)
+                                .frame(width: 20, height: 20)
 
                             Text(selectedCategory.displayName)
                                 .font(.system(size: 20, weight: .bold))
@@ -64,7 +64,7 @@ struct DropDownMenu: View {
                                             Image(systemName: option.icon)
                                                 .resizable()
                                                 .aspectRatio(contentMode: .fill)
-                                                .frame(width: 16, height: 16)
+                                                .frame(width: 18, height: 18)
 
                                             Text(option.displayName)
                                                 .font(.system(size: 18, weight: .semibold))

@@ -10,7 +10,7 @@ import SwiftUI
 import VisionKit
 
 struct BillScannerView: View {
-    @StateObject var billScannerService: BillScannerService = BillScannerService()
+    @ObservedObject var billScannerService: BillScannerService
     @Environment(\.dismiss) private var dismiss
     @State private var showingImagePicker = false
     @State private var showingCamera = false
@@ -92,14 +92,19 @@ struct BillScannerView: View {
                     }
                     
                     // Extracted Data Preview
-                    if let extractedData = billScannerService.extractedTransaction {
-                        ExtractedDataPreview(data: extractedData)
-                    }
+//                    if let extractedData = billScannerService.extractedTransaction {
+//                        ExtractedDataPreview(data: extractedData)
+//                    }
                     
                     Spacer()
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
+            .onChange(of: self.billScannerService.extractedTransaction, { _, newTxn in
+                if newTxn != nil {
+                    self.dismiss()
+                }
+            })
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") {

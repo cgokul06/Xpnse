@@ -9,6 +9,7 @@ import SwiftUI
 
 struct CoordinatedHomeView: View {
     @EnvironmentObject var homeCoordinator: NavigationCoordinator<HomeRoute>
+    @StateObject var billScannerService: BillScannerService = BillScannerService()
 //    @EnvironmentObject var appCoordinator: AppCoordinator
 
     var body: some View {
@@ -17,11 +18,11 @@ struct CoordinatedHomeView: View {
                 .navigationDestination(for: HomeRoute.self) { route in
                     switch route {
                     case .transactions:
-                        AddTransactionView()
+                        AddTransactionView(billScannerService: billScannerService)
                     case .settings:
                         Settings()
                     case .billScanner:
-                        BillScannerView()
+                        BillScannerView(billScannerService: billScannerService)
                     }
                 }
         }

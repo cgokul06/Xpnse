@@ -10,7 +10,7 @@ import FoundationModels
 
 // MARK: - Transaction Item
 @Generable
-struct TransactionItem: Identifiable, Codable {
+struct TransactionItem: Identifiable, Codable, Equatable {
     let id = UUID()
     var name: String
     var quantity: Double
