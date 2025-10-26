@@ -225,12 +225,13 @@ struct AddTransactionView: View {
                     }
 
                     Text("Done")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 18, weight: .semibold))
                 }
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
-                .background(isFormValid ? XpnseColorKey.primaryButtonBGColor.color : Color.gray.opacity(0.3))
+                .background(XpnseColorKey.secondaryButtonBGColor.color)
+                .opacity(isFormValid ? 1.0 : 0.7)
                 .xpnseRoundedCorner()
             }
             .disabled(!isFormValid || isLoading)
@@ -241,15 +242,15 @@ struct AddTransactionView: View {
             }) {
                 HStack(spacing: 8) {
                     Image(systemName: "doc.text.viewfinder")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 18, weight: .semibold))
 
                     Text("Scan Bill")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 18, weight: .semibold))
                 }
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
-                .background(Color.gray.opacity(0.3))
+                .background(XpnseColorKey.secondaryButtonBGColor.color)
                 .xpnseRoundedCorner()
             }
         }
