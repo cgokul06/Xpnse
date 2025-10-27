@@ -8,6 +8,8 @@
 import SwiftUI
 
 struct TransactionItemView: View {
+    @EnvironmentObject var homeCoordinator: NavigationCoordinator<HomeRoute>
+    @State private var isPressed = false
     var transaction: Transaction
 
     var body: some View {
@@ -35,5 +37,16 @@ struct TransactionItemView: View {
         .frame(maxWidth: .infinity)
         .background(XpnseColorKey.transactionListBGColor.color)
         .xpnseRoundedCorner()
+        .shadow(color: .black.opacity(isPressed ? 0.3 : 0), radius: isPressed ? 8 : 0, x: 0, y: 4)
+        .scaleEffect(isPressed ? 0.97 : 1.0)
+        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressed)
+        .onLongPressGesture(minimumDuration: 0, maximumDistance: 50, pressing: { pressing in
+            withAnimation {
+                isPressed = pressing
+            }
+        }, perform: {
+            // handle tap action here
+            self.homeCoordinator.push(.editTransaction(transaction: transaction))
+        })
     }
 }

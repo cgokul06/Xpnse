@@ -19,6 +19,11 @@ struct CoordinatedHomeView: View {
                     switch route {
                     case .transactions:
                         AddTransactionView(billScannerService: billScannerService)
+                    case .editTransaction(let transaction):
+                        AddTransactionView(
+                            billScannerService: billScannerService,
+                            transaction: transaction
+                        )
                     case .settings:
                         Settings()
                     case .billScanner:

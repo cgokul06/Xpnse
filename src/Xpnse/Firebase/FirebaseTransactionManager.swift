@@ -48,23 +48,7 @@ final class FirebaseTransactionManager {
     }
 
     private let db = Firestore.firestore()
-    private var listenerRegistration: ListenerRegistration?
-    private var cancellables: Set<AnyCancellable> = []
 
-    /// Loads the transactions for current selected/showing time period
-//    private func loadTransactionsForCurrentlyShownTimePeriod() async {
-//        // TODO: GC, set start and end date as user default setting
-//        guard let startDate = Calendar.current.date(from: Calendar.current.dateComponents([.year, .month], from: Date())),
-//              let endDate = Calendar.current.date(byAdding: DateComponents(month: 1, day: -1), to: startDate) else {
-//            return
-//        }
-//
-//        await self.loadTransactions(startDate: startDate, endDate: endDate)
-//    }
-
-//    func resetReloadTransaction() {
-//        self.reloadTransactions = false
-//    }
 
     // MARK: - CRUD Operations
 
@@ -98,31 +82,31 @@ final class FirebaseTransactionManager {
 //        isLoading = false
     }
 
-//    func updateTransaction(_ transaction: Transaction) async {
-//        guard let userId = authManager.userId else {
+    func updateTransaction(_ transaction: Transaction) async {
+        guard let userId = authManager.userId else {
 //            errorMessage = "User not authenticated"
-//            return
-//        }
-//
+            return
+        }
+
 //        isLoading = true
-//
-//        do {
-//            var transactionData = transaction.toFirestoreData()
-//            transactionData["updatedAt"] = FieldValue.serverTimestamp()
-//
-//            try await db.collection("users")
-//                .document(userId)
-//                .collection("transactions_data")
-//                .document(transaction.id)
-//                .setData(transactionData, merge: true)
-//
+
+        do {
+            var transactionData = transaction.toFirestoreData()
+            transactionData["updatedAt"] = FieldValue.serverTimestamp()
+
+            try await db.collection("users")
+                .document(userId)
+                .collection("transactions_data")
+                .document(transaction.id)
+                .setData(transactionData, merge: true)
+
 //            await loadTransactionsForCurrentlyShownTimePeriod()
-//        } catch {
+        } catch {
 //            errorMessage = "Failed to update transaction: \(error.localizedDescription)"
-//        }
-//
+        }
+
 //        isLoading = false
-//    }
+    }
 
 //    func deleteTransaction(_ transaction: Transaction) async {
 //        guard let userId = authManager.userId else {
@@ -154,9 +138,6 @@ final class FirebaseTransactionManager {
         guard let userId = authManager.userId else {
             throw FirebaseErrorType.unauthorized
         }
-
-        // Remove existing listener
-        removeListener()
 
         // Query with date range
         let snapshot = try? await db.collection("users")
@@ -198,8 +179,8 @@ final class FirebaseTransactionManager {
 
             // Parse date
             let date: Date
-            if let timestamp = data["date"] as? Timestamp {
-                date = timestamp.dateValue()
+            if let timestamp = data["date"] as? Double {
+                date = Date(timeIntervalSince1970: timestamp)
             } else {
                 date = Date()
             }
@@ -231,91 +212,5 @@ final class FirebaseTransactionManager {
         }
 
         return parsedTransactions
-    }
-
-    // MARK: - Query Operations
-
-//    func getTransactions(with filters: TransactionFilters) -> [Transaction] {
-//        return filters.apply(to: transactions)
-//    }
-
-//    func getTransactionSummary() -> TransactionSummary {
-//        return TransactionSummary(transactions: transactions)
-//    }
-
-//    func searchTransactions(query: String) -> [Transaction] {
-//        let lowercasedQuery = query.lowercased()
-//        return transactions.filter { transaction in
-//            transaction.title.lowercased().contains(lowercasedQuery) ||
-//            transaction.notes?.lowercased().contains(lowercasedQuery) == true ||
-//            transaction.items.contains { $0.name.lowercased().contains(lowercasedQuery) }
-//        }
-//    }
-
-    // MARK: - Statistics
-
-//    func getTotalBalance() -> Double {
-//        let summary = getTransactionSummary()
-//        return summary.totalBalance
-//    }
-//
-//    func getTotalIncome() -> Double {
-//        let summary = getTransactionSummary()
-//        return summary.totalIncome
-//    }
-//
-//    func getTotalExpenses() -> Double {
-//        let summary = getTransactionSummary()
-//        return summary.totalExpenses
-//    }
-//
-//    func getExpensesByCategory() -> [TransactionCategory: Double] {
-//        let summary = getTransactionSummary()
-//        return summary.expensesByCategory()
-//    }
-
-    // MARK: - Data Export/Import
-
-//    func exportData() async -> Data? {
-//        let exportData = transactions.map { $0.toFirestoreData() }
-//
-//        do {
-//            let jsonData = try JSONSerialization.data(withJSONObject: exportData, options: .prettyPrinted)
-//            return jsonData
-//        } catch {
-//            errorMessage = "Failed to export data: \(error.localizedDescription)"
-//            return nil
-//        }
-//    }
-
-//    func importData(_ jsonData: Data) async {
-//        do {
-//            guard let jsonArray = try JSONSerialization.jsonObject(with: jsonData) as? [[String: Any]] else {
-//                throw NSError(domain: "ImportError", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid JSON format"])
-//            }
-//
-//            for transactionData in jsonArray {
-//                if let transaction = Transaction.fromFirestoreData(transactionData) {
-//                    await addTransaction(transaction)
-//                }
-//            }
-//        } catch {
-//            errorMessage = "Failed to import data: \(error.localizedDescription)"
-//        }
-//    }
-
-    // MARK: - Helper Methods
-
-    private func removeListener() {
-        listenerRegistration?.remove()
-        listenerRegistration = nil
-    }
-
-//    func clearError() {
-//        errorMessage = nil
-//    }
-
-    deinit {
-//        removeListener()
     }
 }

@@ -8,7 +8,7 @@
 import Foundation
 
 // MARK: - Transaction
-struct Transaction: Identifiable, Codable {
+struct Transaction: Identifiable, Codable, Equatable, Hashable {
     let id: String
     var type: TransactionType
     var category: TransactionCategory
@@ -146,5 +146,10 @@ struct Transaction: Identifiable, Codable {
             tags: data["tags"] as? [String] ?? [],
             currency: CurrencyManager.shared.currencies.first(where: { $0.id == currencyId }) ?? CurrencyManager.shared.selectedCurrency
         )
+    }
+
+    // MARK: - Hashable
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
     }
 }

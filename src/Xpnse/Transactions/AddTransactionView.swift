@@ -19,6 +19,8 @@ struct AddTransactionView: View {
     @State private var selectedDate = Date()
     @State private var isLoading = false
     private let transactionManager: FirebaseTransactionManager = .shared
+    private var transaction: Transaction?
+    private let isEditing: Bool
 
     private var categories: [TransactionCategory] {
         TransactionCategory.categories(for: transactionType)
@@ -26,6 +28,26 @@ struct AddTransactionView: View {
 
     private var isFormValid: Bool {
         !(amount.isEmpty) && !description.isEmpty
+    }
+
+    init(
+        billScannerService: BillScannerService,
+        transaction: Transaction? = nil
+    ) {
+        self.billScannerService = billScannerService
+        self.transaction = transaction
+        self.isEditing = transaction != nil
+    }
+
+    private func mapEditableDatas() {
+        guard let txn = self.transaction else {
+            return
+        }
+
+        self.amount = "\(txn.amount)"
+        self.selectedDate = Date(timeIntervalSince1970: txn.date)
+        self.description = txn.title
+        self.selectedCategory = txn.category
     }
 
     var body: some View {
@@ -81,7 +103,6 @@ struct AddTransactionView: View {
                             .bold()
                             .padding(.all, 8)
                     })
-//                    .foregroundStyle(Color.white)
                 }
 
                 ToolbarItem(placement: .principal) {
@@ -90,6 +111,9 @@ struct AddTransactionView: View {
                         .fontWeight(.bold)
                         .foregroundColor(.white)
                 }
+            }
+            .onAppear {
+                self.mapEditableDatas()
             }
         }
         .navigationBarBackButtonHidden()
@@ -212,7 +236,7 @@ struct AddTransactionView: View {
         HStack(spacing: 16) {
             // Done Button
             Button(action: {
-                addTransaction()
+                addOrUpdateTransaction()
             }) {
                 HStack(spacing: 8) {
                     if isLoading {
@@ -224,7 +248,7 @@ struct AddTransactionView: View {
                             .font(.system(size: 16, weight: .semibold))
                     }
 
-                    Text("Done")
+                    Text("Save")
                         .font(.system(size: 18, weight: .semibold))
                 }
                 .foregroundColor(.white)
@@ -236,43 +260,50 @@ struct AddTransactionView: View {
             }
             .disabled(!isFormValid || isLoading)
 
-            // Scan Bill Button
-            Button(action: {
-                scanBill()
-            }) {
-                HStack(spacing: 8) {
-                    Image(systemName: "doc.text.viewfinder")
-                        .font(.system(size: 18, weight: .semibold))
+            if !self.isEditing {
+                // Scan Bill Button
+                Button(action: {
+                    scanBill()
+                }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "doc.text.viewfinder")
+                            .font(.system(size: 18, weight: .semibold))
 
-                    Text("Scan Bill")
-                        .font(.system(size: 18, weight: .semibold))
+                        Text("Scan Bill")
+                            .font(.system(size: 18, weight: .semibold))
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(XpnseColorKey.secondaryButtonBGColor.color)
+                    .xpnseRoundedCorner()
                 }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(XpnseColorKey.secondaryButtonBGColor.color)
-                .xpnseRoundedCorner()
             }
         }
         .padding(.horizontal, 20)
     }
 
     // MARK: - Actions
-    private func addTransaction() {
+    private func addOrUpdateTransaction() {
         guard !amount.isEmpty else { return }
 
         isLoading = true
 
-        let transaction = Transaction(
-            id: UUID().uuidString,
+        var transaction = Transaction(
+            id: isEditing ? (self.transaction?.id ?? UUID().uuidString) : UUID().uuidString,
             type: transactionType,
             category: self.selectedCategory,
             amount: Double(amount) ?? 0.0,
             date: selectedDate.timeIntervalSince1970,
             title: description
         )
+
          Task {
-             await transactionManager.addTransaction(transaction)
+             if isEditing {
+                 await transactionManager.updateTransaction(transaction)
+             } else {
+                 await transactionManager.addTransaction(transaction)
+             }
              await MainActor.run {
                  isLoading = false
                  self.dismiss()
@@ -285,8 +316,3 @@ struct AddTransactionView: View {
         self.homeCoordinator.push(.billScanner)
     }
 }
-
-//#Preview {
-//    AddTransactionView()
-//        .environmentObject(NavigationCoordinator<HomeRoute>())
-//}
