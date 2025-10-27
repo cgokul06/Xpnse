@@ -22,7 +22,7 @@ struct TransactionListView: View {
 
             if !transactions.isEmpty {
                 ScrollView(showsIndicators: false) {
-                    VStack(spacing: 8) {
+                    LazyVStack(spacing: 8) {
                         ForEach(transactions) { transaction in
                             TransactionItemView(transaction: transaction)
                         }
