@@ -110,27 +110,27 @@ final class FirebaseTransactionManager {
         //        isLoading = false
     }
 
-    //    func deleteTransaction(_ transaction: Transaction) async {
-    //        guard let userId = authManager.userId else {
-    //            errorMessage = "User not authenticated"
-    //            return
-    //        }
-    //
-    //        isLoading = true
-    //
-    //        do {
-    //            try await db.collection("users")
-    //                .document(userId)
-    //                .collection("transactions_data")
-    //                .document(transaction.id)
-    //                .delete()
-    //            await loadTransactionsForCurrentlyShownTimePeriod()
-    //        } catch {
-    //            errorMessage = "Failed to delete transaction: \(error.localizedDescription)"
-    //        }
-    //
-    //        isLoading = false
-    //    }
+        func deleteTransaction(_ transaction: Transaction) async {
+            guard let userId = authManager.userId else {
+//                errorMessage = "User not authenticated"
+                return
+            }
+    
+//            isLoading = true
+    
+            do {
+                try await db.collection("users")
+                    .document(userId)
+                    .collection("transactions_data")
+                    .document(transaction.id)
+                    .delete()
+//                await loadTransactionsForCurrentlyShownTimePeriod()
+            } catch {
+//                errorMessage = "Failed to delete transaction: \(error.localizedDescription)"
+            }
+    
+//            isLoading = false
+        }
 
     func loadTransactions(
         startDate: Date,

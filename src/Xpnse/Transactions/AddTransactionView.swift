@@ -18,6 +18,8 @@ struct AddTransactionView: View {
     @State private var description: String = ""
     @State private var selectedDate = Date()
     @State private var isLoading = false
+    @State private var showDeleteAlert: Bool = false
+    @State private var isDeleting: Bool = false
     private let transactionManager: FirebaseTransactionManager = .shared
     private var transaction: Transaction?
     private let isEditing: Bool
@@ -87,6 +89,10 @@ struct AddTransactionView: View {
                         self.selectedDate = data.formattedDate
                     }
                 }
+
+                if isDeleting {
+                    ProgressView()
+                }
             }
             .safeAreaInset(edge: .bottom, content: {
                 // Bottom Buttons
@@ -111,9 +117,39 @@ struct AddTransactionView: View {
                         .fontWeight(.bold)
                         .foregroundColor(.white)
                 }
+
+                if isEditing {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button(action: {
+                            self.showDeleteAlert = true
+                        }, label: {
+                            Image(systemName: "trash")
+                                .foregroundStyle(XpnseColorKey.white.color)
+                                .bold()
+                                .padding(.all, 8)
+                        })
+                    }
+                }
             }
             .onAppear {
                 self.mapEditableDatas()
+            }
+            .alert(isPresented: $showDeleteAlert) {
+                Alert(
+                    title: Text("Are you sure you want to delete this transaction?"),
+                    primaryButton: .destructive(
+                        Text("Yes"),
+                        action: {
+                        Task {
+                            await self.deleteTransaction()
+                        }
+                    }),
+                    secondaryButton: .default(
+                        Text("No"),
+                        action: {
+                        self.showDeleteAlert = false
+                    })
+                )
             }
         }
         .navigationBarBackButtonHidden()
@@ -289,7 +325,7 @@ struct AddTransactionView: View {
 
         isLoading = true
 
-        var transaction = Transaction(
+        let transaction = Transaction(
             id: isEditing ? (self.transaction?.id ?? UUID().uuidString) : UUID().uuidString,
             type: transactionType,
             category: self.selectedCategory,
@@ -314,5 +350,11 @@ struct AddTransactionView: View {
     private func scanBill() {
         // Implement bill scanning functionality
         self.homeCoordinator.push(.billScanner)
+    }
+
+    private func deleteTransaction() async {
+        guard let transaction else { return }
+        await self.transactionManager.deleteTransaction(transaction)
+        self.dismiss()
     }
 }
