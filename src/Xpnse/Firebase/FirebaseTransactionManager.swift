@@ -29,6 +29,8 @@ final class FirebaseTransactionManager {
         self.authManager = authManager
     }
 
+    private var listeners: [String: ListenerRegistration] = [:]
+
     static func setup(authManager: FirebaseAuthManager) {
         if _shared == nil {
             _shared = FirebaseTransactionManager(authManager: authManager)
@@ -54,11 +56,11 @@ final class FirebaseTransactionManager {
 
     func addTransaction(_ transaction: Transaction) async {
         guard let userId = authManager.userId else {
-//            errorMessage = "User not authenticated"
+            //            errorMessage = "User not authenticated"
             return
         }
 
-//        isLoading = true
+        //        isLoading = true
 
         do {
             let transactionData = transaction.toFirestoreData()
@@ -73,22 +75,22 @@ final class FirebaseTransactionManager {
                 .document(transaction.id)
                 .setData(dataWithTimestamps)
 
-//            await loadTransactionsForCurrentlyShownTimePeriod()
-//            self.reloadTransactions = true
+            //            await loadTransactionsForCurrentlyShownTimePeriod()
+            //            self.reloadTransactions = true
         } catch {
-//            errorMessage = "Failed to add transaction: \(error.localizedDescription)"
+            //            errorMessage = "Failed to add transaction: \(error.localizedDescription)"
         }
 
-//        isLoading = false
+        //        isLoading = false
     }
 
     func updateTransaction(_ transaction: Transaction) async {
         guard let userId = authManager.userId else {
-//            errorMessage = "User not authenticated"
+            //            errorMessage = "User not authenticated"
             return
         }
 
-//        isLoading = true
+        //        isLoading = true
 
         do {
             var transactionData = transaction.toFirestoreData()
@@ -100,65 +102,86 @@ final class FirebaseTransactionManager {
                 .document(transaction.id)
                 .setData(transactionData, merge: true)
 
-//            await loadTransactionsForCurrentlyShownTimePeriod()
+            //            await loadTransactionsForCurrentlyShownTimePeriod()
         } catch {
-//            errorMessage = "Failed to update transaction: \(error.localizedDescription)"
+            //            errorMessage = "Failed to update transaction: \(error.localizedDescription)"
         }
 
-//        isLoading = false
+        //        isLoading = false
     }
 
-//    func deleteTransaction(_ transaction: Transaction) async {
-//        guard let userId = authManager.userId else {
-//            errorMessage = "User not authenticated"
-//            return
-//        }
-//
-//        isLoading = true
-//
-//        do {
-//            try await db.collection("users")
-//                .document(userId)
-//                .collection("transactions_data")
-//                .document(transaction.id)
-//                .delete()
-//            await loadTransactionsForCurrentlyShownTimePeriod()
-//        } catch {
-//            errorMessage = "Failed to delete transaction: \(error.localizedDescription)"
-//        }
-//
-//        isLoading = false
-//    }
+    //    func deleteTransaction(_ transaction: Transaction) async {
+    //        guard let userId = authManager.userId else {
+    //            errorMessage = "User not authenticated"
+    //            return
+    //        }
+    //
+    //        isLoading = true
+    //
+    //        do {
+    //            try await db.collection("users")
+    //                .document(userId)
+    //                .collection("transactions_data")
+    //                .document(transaction.id)
+    //                .delete()
+    //            await loadTransactionsForCurrentlyShownTimePeriod()
+    //        } catch {
+    //            errorMessage = "Failed to delete transaction: \(error.localizedDescription)"
+    //        }
+    //
+    //        isLoading = false
+    //    }
 
     func loadTransactions(
         startDate: Date,
         endDate: Date,
-        range: CalendarComparison
-    ) async throws -> TransactionSummary {
+        range: CalendarComparison,
+        onUpdate: @escaping (Result<TransactionSummary, FirebaseErrorType>) -> Void
+    ) async throws {
         guard let userId = authManager.userId else {
             throw FirebaseErrorType.unauthorized
         }
 
+        // Create a unique key for this range
+        let key = "\(startDate.timeIntervalSince1970)-\(endDate.timeIntervalSince1970)"
+
+        // Remove any existing listener for this range
+        removeListener(for: key)
+
         // Query with date range
-        let snapshot = try? await db.collection("users")
+        let listener = db.collection("users")
             .document(userId)
             .collection("transactions_data")
             .whereField("date", isGreaterThanOrEqualTo: startDate.timeIntervalSince1970)
             .whereField("date", isLessThanOrEqualTo: endDate.timeIntervalSince1970)
             .order(by: "date", descending: true)
-            .getDocuments()
+            .addSnapshotListener { [weak self] snapshot, error in
+                guard let self = self else { return }
 
-        guard let snapshot else {
-            throw FirebaseErrorType.noDocumentFound
-        }
+                if let error = error {
+                    onUpdate(.failure(.customError(CustomError(
+                        code: (error as NSError).code,
+                        message: error.localizedDescription
+                    ))))
+                    return
+                }
 
-        let loadedTransactions = await self.parseTransactions(from: snapshot.documents)
-        return TransactionSummary(
-            transactions: loadedTransactions,
-            startDate: startDate,
-            endDate: endDate,
-            range: range
-        )
+                guard let documents = snapshot?.documents else {
+                    onUpdate(.failure(.noDocumentFound))
+                    return
+                }
+                Task {
+                    let transactions = await self.parseTransactions(from: documents)
+                    let summary = TransactionSummary(
+                        transactions: transactions,
+                        startDate: startDate,
+                        endDate: endDate,
+                        range: range
+                    )
+                    onUpdate(.success(summary))
+                }
+            }
+        listeners[key] = listener
     }
 
     private func parseTransactions(from documents: [QueryDocumentSnapshot]) async -> [Transaction] {
@@ -212,5 +235,21 @@ final class FirebaseTransactionManager {
         }
 
         return parsedTransactions
+    }
+
+    // MARK: - Remove Specific Listener
+    func removeListener(for key: String) {
+        if let listener = listeners[key] {
+            listener.remove()
+            listeners.removeValue(forKey: key)
+        }
+    }
+
+    // MARK: - Remove All Listeners
+    func removeAllListeners() {
+        for (_, listener) in listeners {
+            listener.remove()
+        }
+        listeners.removeAll()
     }
 }

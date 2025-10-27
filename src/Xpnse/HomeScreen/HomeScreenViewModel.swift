@@ -75,20 +75,25 @@ final class HomeScreenViewModel: ObservableObject {
         for key in newKeys {
             do {
                 let (startDate, endDate) = computeDateRange(forOffset: key)
-                let summary = try await transactionManager.loadTransactions(
+                try await transactionManager.loadTransactions(
                     startDate: startDate,
                     endDate: endDate,
                     range: self.currentCalendarComparator
-                )
-
-                transactionSummaryDict[key] = summary
-                loadedKeys.insert(key)
+                ) { [weak self] result in
+                    DispatchQueue.main.async {
+                        switch result {
+                        case .success(let summary):
+                            self?.transactionSummaryDict[key] = summary
+                            self?.loadedKeys.insert(key)
+                        case .failure(let error):
+                            print("Error listening to transactions:", error)
+                        }
+                    }
+                }
             } catch {
                 print("❌ Failed to fetch for key \(key): \(error)")
             }
         }
-
-//        updateDateSwitcherText(for: 0)
     }
 
     // MARK: - Compute Date Range for a Key
