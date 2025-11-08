@@ -114,11 +114,6 @@ struct BillScannerView: View {
                 }
             }
         }
-//        .sheet(
-//            isPresented: $showingCamera
-//        ) {
-//            ImagePicker(selectedImages: $selectedImages, sourceType: .camera)
-//        }
         .onChange(of: imagePicker.uiImages) { image in
             if let image = image.first {
                 Task {
@@ -134,6 +129,16 @@ struct BillScannerView: View {
         } message: {
             Text(billScannerService.errorMessage ?? "")
         }
+        .fullScreenCover(isPresented: $showingCamera, content: {
+            CameraPicker { image in
+                Task {
+                    await billScannerService.scanBill(from: image)
+                }
+            } onCancel: {
+                // no-op
+            }
+            .ignoresSafeArea()
+        })
     }
 }
 
