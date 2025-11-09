@@ -184,8 +184,8 @@ final class FirebaseTransactionManager {
         listeners[key] = listener
     }
 
-    private func parseTransactions(from documents: [QueryDocumentSnapshot]) async -> [Transaction] {
-        var parsedTransactions: [Transaction] = []
+    private func parseTransactions(from documents: [QueryDocumentSnapshot]) async -> [Date: [Transaction]] {
+        var parsedTransactions: [Date: [Transaction]] = [:]
 
         for document in documents {
             let data = document.data()
@@ -231,7 +231,8 @@ final class FirebaseTransactionManager {
                 tags: data["tags"] as? [String] ?? []
             )
 
-            parsedTransactions.append(transaction)
+            let dateOfTransaction = Calendar.current.startOfDay(for: date)
+            parsedTransactions[dateOfTransaction, default: []].append(transaction)
         }
 
         return parsedTransactions

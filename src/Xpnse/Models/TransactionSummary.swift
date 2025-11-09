@@ -15,13 +15,17 @@ struct TransactionSummary {
     let startDate: Date
     let endDate: Date
     let dateRangeText: String
-    let transactions: [Transaction]
+    let transactions: [Date: [Transaction]]
+    var allTransactions: [Transaction] = []
 
-    init(transactions: [Transaction], startDate: Date, endDate: Date, range: CalendarComparison) {
+    init(transactions: [Date: [Transaction]], startDate: Date, endDate: Date, range: CalendarComparison) {
         self.transactions = transactions
 
-        let incomeTransactions = transactions.filter { $0.type == .income }
-        let expenseTransactions = transactions.filter { $0.type == .expense }
+        for (_, value) in transactions {
+            allTransactions.append(contentsOf: value)
+        }
+        let incomeTransactions = self.allTransactions.filter { $0.type == .income }
+        let expenseTransactions = self.allTransactions.filter { $0.type == .expense }
         self.startDate = startDate
         self.endDate = endDate
 
@@ -37,7 +41,7 @@ struct TransactionSummary {
 
     // Category-wise breakdown
     func expensesByCategory() -> [TransactionCategory: Double] {
-        let expenseTransactions = transactions.filter { $0.type == .expense }
+        let expenseTransactions = allTransactions.filter { $0.type == .expense }
         var categoryTotals: [TransactionCategory: Double] = [:]
 
         for transaction in expenseTransactions {
