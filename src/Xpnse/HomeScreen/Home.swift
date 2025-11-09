@@ -116,7 +116,7 @@ struct Home: View {
             .padding([.horizontal], 16)
 
             TransactionListView(
-                transactions: txnSummary?.allTransactions ?? []
+                dateTransactions: txnSummary?.transactions ?? [:]
             )
             .padding([.horizontal], 16)
 

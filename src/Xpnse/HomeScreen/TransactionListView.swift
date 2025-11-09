@@ -8,7 +8,16 @@
 import SwiftUI
 
 struct TransactionListView: View {
-    var transactions: [Transaction]
+    var dateTransactions: [Date: [Transaction]]
+    var dates: [Date] = []
+
+    init(dateTransactions: [Date : [Transaction]]) {
+        self.dateTransactions = dateTransactions
+        for (key, _) in dateTransactions {
+            self.dates.append(key)
+        }
+        self.dates.sort(by: {$0 > $1})
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -20,11 +29,11 @@ struct TransactionListView: View {
                 Spacer(minLength: 0)
             }
 
-            if !transactions.isEmpty {
+            if !self.dates.isEmpty {
                 ScrollView(showsIndicators: false) {
-                    LazyVStack(spacing: 8) {
-                        ForEach(transactions) { transaction in
-                            TransactionItemView(transaction: transaction)
+                    LazyVStack(spacing: 12) {
+                        ForEach(self.dates, id: \.self) { date in
+                            self.transactionList(date: date, transactions: dateTransactions[date] ?? [])
                         }
                     }
                     .padding(.bottom, 62)
@@ -34,6 +43,20 @@ struct TransactionListView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func transactionList(date: Date, transactions: [Transaction]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(date.formattedDate())
+                .font(.system(size: 12, weight: .regular))
+                .foregroundStyle(XpnseColorKey.white.color)
+
+            VStack(spacing: 8) {
+                ForEach(transactions) { transaction in
+                    TransactionItemView(transaction: transaction)
+                }
+            }
+        }
     }
 
     private var noTransactionsFound: some View {
