@@ -176,15 +176,6 @@ struct AddTransactionView: View {
                 self.mapEditableDatas()
                 // Load persisted suggestions and seed from manager if empty
                 suggestionEngine.load()
-//                Task { @MainActor in
-//                    // If you have transactions available from the manager, build the index once
-//                    if let all = await transactionManager.() {
-//                        // If your manager does not expose this API, you can remove this block or adapt.
-//                        suggestionEngine.build(from: all.map { tx in
-//                            TransactionAdapter(title: tx.title, categoryIdentifier: tx.category.rawValue, date: Date(timeIntervalSince1970: tx.date))
-//                        })
-//                    }
-//                }
             }
             .alert(isPresented: $showDeleteAlert) {
                 Alert(
@@ -478,9 +469,5 @@ struct AddTransactionView: View {
         self.dismiss()
     }
 
-    struct TransactionAdapter: TransactionLike {
-        let title: String
-        let categoryIdentifier: String?
-        let date: Date
-    }
+
 }

@@ -17,6 +17,13 @@ public protocol TransactionLike {
     var date: Date { get }
 }
 
+struct TransactionAdapter: TransactionLike {
+    let title: String
+    let categoryIdentifier: String?
+    let date: Date
+}
+
+
 @MainActor
 public final class SuggestionEngine {
     private var suggestions: [SuggestionItem] = []
