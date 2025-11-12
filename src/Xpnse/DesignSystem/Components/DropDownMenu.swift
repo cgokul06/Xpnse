@@ -15,7 +15,7 @@ struct DropDownMenu: View {
     var maxItemDisplayed: Int = 3
 
     @Binding var selectedCategory: TransactionCategory
-    @State private var showDropdown: Bool = false
+    @Binding var showDropdown: Bool
     @State private var scrollPosition: TransactionCategory?
 
     var body: some  View {
@@ -24,7 +24,11 @@ struct DropDownMenu: View {
                 // selected item
                 Button(action: {
                     withAnimation(.easeInOut) {
-                        showDropdown.toggle()
+                        self.hideKeyboard()
+                        
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                            showDropdown.toggle()
+                        }
                     }
                 }, label: {
                     HStack(spacing: nil) {
