@@ -1,17 +1,6 @@
 import Foundation
 import FirebaseFirestore
 
-/// Protocol for a sink that accepts created transactions.
-public protocol TransactionSink: Sendable {
-    /// Adds a transaction with given details.
-    /// - Parameters:
-    ///   - title: Title or description.
-    ///   - categoryIdentifier: Optional category identifier.
-    ///   - amount: Transaction amount.
-    ///   - date: Date of the transaction.
-    func addTransaction(title: String, categoryIdentifier: String?, amount: Decimal, date: Date)
-}
-
 /// Manager for recurring transactions: persists and processes them using a repository backing (e.g. Firestore).
 public final class RecurringTransactionManager {
     private var items: [RecurringTransaction] = []
@@ -79,6 +68,14 @@ public final class RecurringTransactionManager {
         return items
     }
 
+    public func loadAndProcess() async {
+        await self.load()
+
+        for item in items {
+            await self.processPending()
+        }
+    }
+
     /// Loads recurring transactions asynchronously from the repository.
     /// On load, ensures `nextOccurrence` is set if missing.
     public func load() async {
@@ -109,7 +106,6 @@ public final class RecurringTransactionManager {
     ///   - calendar: Calendar to use for date calculations. Defaults to current.
     public func processPending(
         upTo now: Date = Date(),
-        sink: TransactionSink,
         calendar: Calendar = .current
     ) async {
         guard let userId = authManager.userId else {
@@ -123,11 +119,14 @@ public final class RecurringTransactionManager {
             }
             let endDate = items[i].endDate
             while next <= now, endDate.map({ next <= $0 }) ?? true {
-                sink.addTransaction(
-                    title: items[i].title,
-                    categoryIdentifier: items[i].categoryIdentifier,
-                    amount: items[i].amount,
-                    date: next
+                await FirebaseTransactionManager.shared.addTransaction(
+                    Transaction(
+                        id: UUID().uuidString,
+                        type: TransactionType(rawValue: items[i].type) ?? .expense,
+                        category: TransactionCategory(rawValue: items[i].categoryIdentifier!) ?? .other,
+                        amount: Double(truncating: items[i].amount as NSNumber),
+                        title: items[i].title
+                    )
                 )
                 guard let newNext = items[i].recurrence.nextOccurrence(after: next, calendar: calendar) else {
                     items[i].nextOccurrence = nil

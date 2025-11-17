@@ -18,9 +18,22 @@
 		51B3C76D2E191B9500B0C61E /* Xpnse.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Xpnse.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		515BB6D92ECAC83100C77D01 /* Exceptions for "Xpnse" folder in "Xpnse" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 51B3C76C2E191B9500B0C61E /* Xpnse */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		51B3C76F2E191B9500B0C61E /* Xpnse */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				515BB6D92ECAC83100C77D01 /* Exceptions for "Xpnse" folder in "Xpnse" target */,
+			);
 			path = Xpnse;
 			sourceTree = "<group>";
 		};
@@ -276,6 +289,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Xpnse/Info.plist;
 				INFOPLIST_KEY_NSAppleMusicUsageDescription = "This app needs media access to scan bills and receipts for automatic data extraction.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "This app needs camera access to scan bills and receipts for automatic data extraction.";
 				INFOPLIST_KEY_NSMainCameraUsageDescription = "This app needs camera access to scan bills and receipts for automatic data extraction.";
@@ -325,6 +339,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Xpnse/Info.plist;
 				INFOPLIST_KEY_NSAppleMusicUsageDescription = "This app needs media access to scan bills and receipts for automatic data extraction.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "This app needs camera access to scan bills and receipts for automatic data extraction.";
 				INFOPLIST_KEY_NSMainCameraUsageDescription = "This app needs camera access to scan bills and receipts for automatic data extraction.";

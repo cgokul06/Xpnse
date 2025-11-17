@@ -13,6 +13,8 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
     public var id: UUID
     /// Title or description of the transaction.
     public var title: String
+    /// Type of transaction
+    public var type: String
     /// Optional category identifier.
     public var categoryIdentifier: String?
     /// Amount of the transaction.
@@ -32,6 +34,7 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
     public init(
         id: UUID,
         title: String,
+        type: String,
         categoryIdentifier: String?,
         amount: Decimal,
         startDate: Date,
@@ -42,6 +45,7 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
     ) {
         self.id = id
         self.title = title
+        self.type = type
         self.categoryIdentifier = categoryIdentifier
         self.amount = amount
         self.startDate = startDate
@@ -54,6 +58,7 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
     /// Convenience initializer that generates `id` and computes the first `nextOccurrence`.
     public init(
         title: String,
+        type: String,
         categoryIdentifier: String? = nil,
         amount: Decimal,
         startDate: Date,
@@ -64,6 +69,7 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
     ) {
         self.id = UUID()
         self.title = title
+        self.type = type
         self.categoryIdentifier = categoryIdentifier
         self.amount = amount
         self.startDate = startDate

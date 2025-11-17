@@ -24,9 +24,18 @@ enum FirebaseErrorType: Error {
 final class FirebaseTransactionManager {
     private static var _shared: FirebaseTransactionManager?
     private let authManager: FirebaseAuthManager
+    private let recurringTransactionManager: RecurringTransactionManager
 
     private init(authManager: FirebaseAuthManager) {
         self.authManager = authManager
+        self.recurringTransactionManager = RecurringTransactionManager(authManager: authManager)
+        self.processRecurringTransactions()
+    }
+
+    func processRecurringTransactions() {
+        Task {
+            await self.recurringTransactionManager.loadAndProcess()
+        }
     }
 
     private var listeners: [String: ListenerRegistration] = [:]
