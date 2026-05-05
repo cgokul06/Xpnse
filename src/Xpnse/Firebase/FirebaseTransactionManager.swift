@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Combine
 
 struct CustomError {
     let code: Int
@@ -40,6 +41,9 @@ final class FirebaseTransactionManager {
     }
 
     private var listeners: Set<String> = []
+    var changesPublisher: AnyPublisher<Void, Never> {
+        transactionRepository.changesPublisher
+    }
 
     static func setup(authManager: FirebaseAuthManager) {
         // Kept for call-site compatibility while removing login dependencies.

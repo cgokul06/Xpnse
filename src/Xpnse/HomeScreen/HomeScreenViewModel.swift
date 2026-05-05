@@ -25,6 +25,7 @@ final class HomeScreenViewModel: ObservableObject {
     private let calendar = Calendar.current
     private let prefetchWindow = 6  // how many units (months, quarters, etc.) to prefetch
     let maxFuturisticRange: Int = 12
+    private var cancellables = Set<AnyCancellable>()
 
     /// Set of keys we currently have cached (-4, -3, -2, -1, 0)
     private(set) var loadedKeys: Set<Int> = []
@@ -36,6 +37,8 @@ final class HomeScreenViewModel: ObservableObject {
         } else {
             self.currentCalendarComparator = .monthly
         }
+
+        setupObservers()
 
         Task {
             await fetchCurrentMonthData()
@@ -69,6 +72,16 @@ final class HomeScreenViewModel: ObservableObject {
     func refreshVisibleData() async {
         let keysToRefresh = loadedKeys.isEmpty ? [0] : Array(loadedKeys)
         await fetchData(forKeys: keysToRefresh, forceReload: true)
+    }
+
+    private func setupObservers() {
+        transactionManager.changesPublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                Task { await self.refreshVisibleData() }
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Fetch Logic
