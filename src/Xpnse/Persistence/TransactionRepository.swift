@@ -11,6 +11,7 @@ import Combine
 
 protocol TransactionRepository {
     var changesPublisher: AnyPublisher<Void, Never> { get }
+    func updatedAtById() async throws -> [String: Date]
     func add(_ transaction: Transaction) async throws
     func update(_ transaction: Transaction) async throws
     func delete(_ transaction: Transaction) async throws
@@ -36,6 +37,14 @@ final class SwiftDataTransactionRepository: TransactionRepository {
     @MainActor
     private func context() -> ModelContext {
         ModelContext(container)
+    }
+
+    @MainActor
+    func updatedAtById() async throws -> [String: Date] {
+        let context = context()
+        let descriptor = FetchDescriptor<TransactionEntity>()
+        let all = try context.fetch(descriptor)
+        return Dictionary(uniqueKeysWithValues: all.map { ($0.id, $0.updatedAt) })
     }
 
     @MainActor

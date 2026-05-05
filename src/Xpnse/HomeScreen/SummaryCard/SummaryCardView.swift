@@ -10,6 +10,7 @@ import SwiftUI
 // MARK: - Financial Summary Card View
 
 struct SummaryCardView: View {
+    @ObservedObject private var currencyManager = CurrencyManager.shared
     let totalBalance: Double
     let income: Double
     let expenses: Double
@@ -29,7 +30,7 @@ struct SummaryCardView: View {
                         .font(.system(size: 16, weight: .medium))
                         .foregroundColor(.gray)
                     
-                    Text("\(CurrencyManager.shared.selectedCurrency.symbol) \(totalBalance, specifier: "%.2f")")
+                    Text("\(currencyManager.selectedCurrency.symbol) \(totalBalance, specifier: "%.2f")")
                         .font(.system(size: 32, weight: .bold))
                         .foregroundColor(.white)
                 }

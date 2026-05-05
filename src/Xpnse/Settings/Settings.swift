@@ -147,6 +147,7 @@ struct Settings: View {
                         }
                         let content = try String(contentsOf: fileURL, encoding: .utf8)
                         try await exportService.importAllData(content)
+                        selectedCurrency = CurrencyManager.shared.selectedCurrency.code
                         importResultText = "Import completed successfully."
                     } catch {
                         importResultText = "Import failed: \(error.localizedDescription)"

@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct ExpenseComponent: View {
+    @ObservedObject private var currencyManager = CurrencyManager.shared
     let type: TransactionType
     let cash: Double
 
@@ -27,7 +28,7 @@ struct ExpenseComponent: View {
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.gray)
 
-                Text("\(CurrencyManager.shared.selectedCurrency.symbol) \(cash, specifier: "%.2f")")
+                Text("\(currencyManager.selectedCurrency.symbol) \(cash, specifier: "%.2f")")
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundColor(.white)
             }

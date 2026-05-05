@@ -12,6 +12,7 @@ import SwiftData
 protocol RecurringRepository {
     /// Fetches all recurring transactions.
     func fetchAll() async throws -> [RecurringTransaction]
+    func updatedAtById() async throws -> [UUID: Date]
 
     /// Inserts or updates a recurring transaction.
     func upsert(_ item: RecurringTransaction) async throws
@@ -44,6 +45,14 @@ final class SwiftDataRecurringRepository: RecurringRepository {
             sortBy: [SortDescriptor(\.startDate, order: .forward)]
         )
         return try context.fetch(descriptor).compactMap { $0.toDomain() }
+    }
+
+    @MainActor
+    func updatedAtById() async throws -> [UUID: Date] {
+        let context = context()
+        let descriptor = FetchDescriptor<RecurringTransactionEntity>()
+        let all = try context.fetch(descriptor)
+        return Dictionary(uniqueKeysWithValues: all.map { ($0.id, $0.updatedAt) })
     }
 
     @MainActor
