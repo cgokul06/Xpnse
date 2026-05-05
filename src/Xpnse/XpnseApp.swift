@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 @main
 struct XpnseApp: App {
@@ -15,5 +16,6 @@ struct XpnseApp: App {
         WindowGroup {
             CoordinatedContentView()
         }
+        .modelContainer(SwiftDataStack.sharedContainer)
     }
 }

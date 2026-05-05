@@ -9,6 +9,6 @@ import Foundation
 
 enum AppRoute {
     case splash
-    case authentication
+//    case authentication
     case home
 }

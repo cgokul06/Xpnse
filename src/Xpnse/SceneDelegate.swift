@@ -15,4 +15,8 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func sceneDidBecomeActive(_ scene: UIScene) {
         FirebaseTransactionManager.shared.processRecurringTransactions()
     }
+
+    func sceneWillEnterForeground(_ scene: UIScene) {
+        FirebaseTransactionManager.shared.processRecurringTransactions()
+    }
 }

@@ -1,12 +1,14 @@
 import Foundation
-import FirebaseFirestore
+
+protocol TransactionSink {
+    func addTransaction(_ transaction: Transaction) async
+}
 
 /// Manager for recurring transactions: persists and processes them using a repository backing (e.g. Firestore).
-public final class RecurringTransactionManager {
+final class RecurringTransactionManager {
     private var items: [RecurringTransaction] = []
     private let repository: RecurringRepository
     private let calendar: Calendar
-    private let authManager: FirebaseAuthManager
 
     /// Initializes the manager, setting up repository and calendar.
     /// - Parameters:
@@ -14,77 +16,56 @@ public final class RecurringTransactionManager {
     ///   - userIdProvider: Closure to get current user id.
     ///   - calendar: Calendar to use for date calculations. Defaults to current.
     init(
-        repository: RecurringRepository = FirestoreRecurringRepository.shared,
-        authManager: FirebaseAuthManager,
+        repository: RecurringRepository = SwiftDataRecurringRepository.shared,
         calendar: Calendar = .current
     ) {
         self.repository = repository
-        self.authManager = authManager
         self.calendar = calendar
     }
 
     /// Creates and stores a new recurring transaction asynchronously.
     /// - Parameter item: The recurring transaction to create.
-    public func create(_ item: RecurringTransaction) async {
-        guard let userId = authManager.userId else {
-            return
-        }
-
+    func create(_ item: RecurringTransaction) async {
         items.append(item)
-        try? await repository.upsert(item, for: userId)
+        try? await repository.upsert(item)
     }
 
     /// Updates an existing recurring transaction asynchronously by matching id.
     /// - Parameter item: The updated recurring transaction.
-    public func update(_ item: RecurringTransaction) async {
-        guard let userId = authManager.userId else {
-            return
-        }
-
+    func update(_ item: RecurringTransaction) async {
         guard let index = items.firstIndex(where: { $0.id == item.id }) else {
             return
         }
         items[index] = item
-        try? await repository.upsert(item, for: userId)
+        try? await repository.upsert(item)
     }
 
     /// Deletes a recurring transaction asynchronously by its identifier.
     /// - Parameter id: The UUID of the transaction to delete.
-    public func delete(id: UUID) async {
-        guard let userId = authManager.userId else {
-            return
-        }
-
+    func delete(id: UUID) async {
         guard let index = items.firstIndex(where: { $0.id == id }) else {
             return
         }
         items.remove(at: index)
-        try? await repository.delete(id: id, for: userId)
+        try? await repository.delete(id: id)
     }
 
     /// Returns all stored recurring transactions.
     /// - Returns: Array of recurring transactions.
-    public func all() -> [RecurringTransaction] {
+    func all() -> [RecurringTransaction] {
         return items
     }
 
-    public func loadAndProcess() async {
+    func loadAndProcess(sink: TransactionSink) async {
         await self.load()
-
-        for item in items {
-            await self.processPending()
-        }
+        await self.processPending(sink: sink)
     }
 
     /// Loads recurring transactions asynchronously from the repository.
     /// On load, ensures `nextOccurrence` is set if missing.
-    public func load() async {
-        guard let userId = authManager.userId else {
-            return
-        }
-
+    func load() async {
         do {
-            let loaded = try await repository.fetchAll(for: userId)
+            let loaded = try await repository.fetchAll()
             items = loaded.map { item in
                 var copy = item
                 if copy.nextOccurrence == nil {
@@ -104,14 +85,11 @@ public final class RecurringTransactionManager {
     ///   - now: The date up to which to process occurrences. Defaults to current date.
     ///   - sink: The sink to receive created transactions.
     ///   - calendar: Calendar to use for date calculations. Defaults to current.
-    public func processPending(
+    func processPending(
         upTo now: Date = Date(),
+        sink: TransactionSink,
         calendar: Calendar = .current
     ) async {
-        guard let userId = authManager.userId else {
-            return
-        }
-
         var changed = false
         for i in items.indices {
             guard var next = items[i].nextOccurrence else {
@@ -119,7 +97,7 @@ public final class RecurringTransactionManager {
             }
             let endDate = items[i].endDate
             while next <= now, endDate.map({ next <= $0 }) ?? true {
-                await FirebaseTransactionManager.shared.addTransaction(
+                await sink.addTransaction(
                     Transaction(
                         id: UUID().uuidString,
                         type: TransactionType(rawValue: items[i].type) ?? .expense,
@@ -146,7 +124,7 @@ public final class RecurringTransactionManager {
         
         if changed {
             for item in items {
-                try? await repository.upsert(item, for: userId)
+                try? await repository.upsert(item)
             }
         }
     }

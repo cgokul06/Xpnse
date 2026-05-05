@@ -17,7 +17,7 @@ enum CalendarComparison: Int {
 @MainActor
 final class HomeScreenViewModel: ObservableObject {
     @Published var currentCalendarComparator: CalendarComparison
-    @Published private(set) var transactionSummaryDict: [Int: TransactionSummary] = [:]
+    @Published var transactionSummaryDict: [Int: TransactionSummary] = [:]
     @Published var currentKey: Int = 0
     @Published private(set) var isLoading: Bool = true
 
@@ -66,13 +66,18 @@ final class HomeScreenViewModel: ObservableObject {
         await fetchData(forKeys: Array(nextRange))
     }
 
+    func refreshVisibleData() async {
+        let keysToRefresh = loadedKeys.isEmpty ? [0] : Array(loadedKeys)
+        await fetchData(forKeys: keysToRefresh, forceReload: true)
+    }
+
     // MARK: - Fetch Logic
-    private func fetchData(forKeys keys: [Int]) async {
-        let newKeys = keys.filter { !loadedKeys.contains($0) }
+    private func fetchData(forKeys keys: [Int], forceReload: Bool = false) async {
+        let targetKeys = forceReload ? keys : keys.filter { !loadedKeys.contains($0) }
 
-        guard !newKeys.isEmpty else { return }
+        guard !targetKeys.isEmpty else { return }
 
-        for key in newKeys {
+        for key in targetKeys {
             do {
                 let (startDate, endDate) = computeDateRange(forOffset: key)
                 try await transactionManager.loadTransactions(

@@ -6,8 +6,6 @@
 //
 
 import Foundation
-import FirebaseFirestore
-import Combine
 
 struct CustomError {
     let code: Int
@@ -22,123 +20,61 @@ enum FirebaseErrorType: Error {
 }
 
 final class FirebaseTransactionManager {
-    private static var _shared: FirebaseTransactionManager?
-    private let authManager: FirebaseAuthManager
+    static let shared = FirebaseTransactionManager()
+
+    private let transactionRepository: TransactionRepository
     private let recurringTransactionManager: RecurringTransactionManager
 
-    private init(authManager: FirebaseAuthManager) {
-        self.authManager = authManager
-        self.recurringTransactionManager = RecurringTransactionManager(authManager: authManager)
-        self.processRecurringTransactions()
+    private init(
+        transactionRepository: TransactionRepository = SwiftDataTransactionRepository.shared,
+        recurringTransactionManager: RecurringTransactionManager = RecurringTransactionManager()
+    ) {
+        self.transactionRepository = transactionRepository
+        self.recurringTransactionManager = recurringTransactionManager
     }
 
     func processRecurringTransactions() {
         Task {
-            await self.recurringTransactionManager.loadAndProcess()
+            await self.recurringTransactionManager.loadAndProcess(sink: self)
         }
     }
 
-    private var listeners: [String: ListenerRegistration] = [:]
+    private var listeners: Set<String> = []
 
     static func setup(authManager: FirebaseAuthManager) {
-        if _shared == nil {
-            _shared = FirebaseTransactionManager(authManager: authManager)
-        }
-    }
-
-    // Static computed property to access the shared instance
-    static var shared: FirebaseTransactionManager {
-        guard let instance = _shared else {
-            fatalError("MySingleton has not been initialized. Call setup(with:) first.")
-        }
-        return instance
+        // Kept for call-site compatibility while removing login dependencies.
+        _ = authManager
     }
 
     static func reset() {
-        self._shared = nil
+        // No-op for local SwiftData-backed storage.
     }
-
-    private let db = Firestore.firestore()
 
 
     // MARK: - CRUD Operations
 
     func addTransaction(_ transaction: Transaction) async {
-        guard let userId = authManager.userId else {
-            //            errorMessage = "User not authenticated"
-            return
-        }
-
-        //        isLoading = true
-
         do {
-            let transactionData = transaction.toFirestoreData()
-            var dataWithTimestamps = transactionData
-            dataWithTimestamps["createdAt"] = FieldValue.serverTimestamp()
-            dataWithTimestamps["updatedAt"] = FieldValue.serverTimestamp()
-
-            // New structure: users/{userId}/transactions/{transactionId}
-            try await db.collection("users")
-                .document(userId)
-                .collection("transactions_data")
-                .document(transaction.id)
-                .setData(dataWithTimestamps)
-
-            //            await loadTransactionsForCurrentlyShownTimePeriod()
-            //            self.reloadTransactions = true
+            try await transactionRepository.add(transaction)
         } catch {
-            //            errorMessage = "Failed to add transaction: \(error.localizedDescription)"
+            print("Failed to add transaction: \(error.localizedDescription)")
         }
-
-        //        isLoading = false
     }
 
     func updateTransaction(_ transaction: Transaction) async {
-        guard let userId = authManager.userId else {
-            //            errorMessage = "User not authenticated"
-            return
-        }
-
-        //        isLoading = true
-
         do {
-            var transactionData = transaction.toFirestoreData()
-            transactionData["updatedAt"] = FieldValue.serverTimestamp()
-
-            try await db.collection("users")
-                .document(userId)
-                .collection("transactions_data")
-                .document(transaction.id)
-                .setData(transactionData, merge: true)
-
-            //            await loadTransactionsForCurrentlyShownTimePeriod()
+            try await transactionRepository.update(transaction)
         } catch {
-            //            errorMessage = "Failed to update transaction: \(error.localizedDescription)"
+            print("Failed to update transaction: \(error.localizedDescription)")
         }
-
-        //        isLoading = false
     }
 
         func deleteTransaction(_ transaction: Transaction) async {
-            guard let userId = authManager.userId else {
-//                errorMessage = "User not authenticated"
-                return
-            }
-    
-//            isLoading = true
-    
             do {
-                try await db.collection("users")
-                    .document(userId)
-                    .collection("transactions_data")
-                    .document(transaction.id)
-                    .delete()
-//                await loadTransactionsForCurrentlyShownTimePeriod()
+                try await transactionRepository.delete(transaction)
             } catch {
-//                errorMessage = "Failed to delete transaction: \(error.localizedDescription)"
+                print("Failed to delete transaction: \(error.localizedDescription)")
             }
-    
-//            isLoading = false
         }
 
     func loadTransactions(
@@ -147,119 +83,45 @@ final class FirebaseTransactionManager {
         range: CalendarComparison,
         onUpdate: @escaping (Result<TransactionSummary, FirebaseErrorType>) -> Void
     ) async throws {
-        guard let userId = authManager.userId else {
-            throw FirebaseErrorType.unauthorized
-        }
-
-        // Create a unique key for this range
         let key = "\(startDate.timeIntervalSince1970)-\(endDate.timeIntervalSince1970)"
-
-        // Remove any existing listener for this range
         removeListener(for: key)
-
-        // Query with date range
-        let listener = db.collection("users")
-            .document(userId)
-            .collection("transactions_data")
-            .whereField("date", isGreaterThanOrEqualTo: startDate.timeIntervalSince1970)
-            .whereField("date", isLessThanOrEqualTo: endDate.timeIntervalSince1970)
-            .order(by: "date", descending: true)
-            .addSnapshotListener { [weak self] snapshot, error in
-                guard let self = self else { return }
-
-                if let error = error {
-                    onUpdate(.failure(.customError(CustomError(
-                        code: (error as NSError).code,
-                        message: error.localizedDescription
-                    ))))
-                    return
-                }
-
-                guard let documents = snapshot?.documents else {
-                    onUpdate(.failure(.noDocumentFound))
-                    return
-                }
-                Task {
-                    let transactions = await self.parseTransactions(from: documents)
-                    let summary = TransactionSummary(
-                        transactions: transactions,
-                        startDate: startDate,
-                        endDate: endDate,
-                        range: range
-                    )
-                    onUpdate(.success(summary))
-                }
-            }
-        listeners[key] = listener
-    }
-
-    private func parseTransactions(from documents: [QueryDocumentSnapshot]) async -> [Date: [Transaction]] {
+        listeners.insert(key)
+        let transactions = try await transactionRepository.fetch(startDate: startDate, endDate: endDate)
         var parsedTransactions: [Date: [Transaction]] = [:]
 
-        for document in documents {
-            let data = document.data()
-
-            guard let idString = data["id"] as? String,
-                  let typeString = data["type"] as? String,
-                  let type = TransactionType(rawValue: typeString),
-                  let categoryString = data["category"] as? String,
-                  let category = TransactionCategory(rawValue: categoryString),
-                  let title = data["title"] as? String,
-                  let amount = data["amount"] as? Double else {
-                continue
-            }
-
-            // Parse date
-            let date: Date
-            if let timestamp = data["date"] as? Double {
-                date = Date(timeIntervalSince1970: timestamp)
-            } else {
-                date = Date()
-            }
-
-            // Parse items
-            let items: [TransactionItem] = (data["items"] as? [[String: Any]])?.compactMap { itemData in
-                guard let name = itemData["name"] as? String,
-                      let quantity = itemData["quantity"] as? Double,
-                      let unitPrice = itemData["unitPrice"] as? Double else {
-                    return nil
-                }
-                return TransactionItem(name: name, quantity: quantity, unitPrice: unitPrice)
-            } ?? []
-
-            let transaction = Transaction(
-                id: idString,
-                type: type,
-                category: category,
-                amount: amount,
-                date: date.timeIntervalSince1970,
-                title: title,
-                notes: data["notes"] as? String,
-                items: items,
-                location: data["location"] as? String,
-                tags: data["tags"] as? [String] ?? []
-            )
-
+        for transaction in transactions {
+            let date = Date(timeIntervalSince1970: transaction.date)
             let dateOfTransaction = Calendar.current.startOfDay(for: date)
             parsedTransactions[dateOfTransaction, default: []].append(transaction)
         }
 
-        return parsedTransactions
+        let summary = TransactionSummary(
+            transactions: parsedTransactions,
+            startDate: startDate,
+            endDate: endDate,
+            range: range
+        )
+        onUpdate(.success(summary))
     }
 
     // MARK: - Remove Specific Listener
     func removeListener(for key: String) {
-        if let listener = listeners[key] {
-            listener.remove()
-            listeners.removeValue(forKey: key)
-        }
+        listeners.remove(key)
     }
 
     // MARK: - Remove All Listeners
     func removeAllListeners() {
-        for (_, listener) in listeners {
-            listener.remove()
+        listeners = []
+    }
+
+    func clearAll() async {
+        do {
+            try await transactionRepository.clearAll()
+            try await SwiftDataRecurringRepository.shared.clearAll()
+        } catch {
+            print("Failed to clear local data: \(error.localizedDescription)")
         }
-        listeners.removeAll()
     }
 }
+
+extension FirebaseTransactionManager: TransactionSink {}

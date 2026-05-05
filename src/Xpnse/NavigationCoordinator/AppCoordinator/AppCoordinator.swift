@@ -10,29 +10,10 @@ import Combine
 
 @MainActor
 class AppCoordinator: ObservableObject {
-    @Published var currentRoute: AppRoute = .splash
-    @Published var authManager: FirebaseAuthManager
-
-    private var cancellables = Set<AnyCancellable>()
+    @Published var currentRoute: AppRoute = .home
     
     init() {
-        self.authManager = FirebaseAuthManager()
-        setupAuthListener()
-    }
-    
-    private func setupAuthListener() {
-        authManager.$isAuthenticated
-            .sink { [weak self] isAuthenticated in
-                guard let isAuthenticated, let self else { return }
-                if isAuthenticated {
-                    FirebaseTransactionManager.setup(authManager: self.authManager)
-                    self.navigateToHome()
-                } else {
-                    print("not auth")
-                    self.navigateToAuthentication()
-                }
-            }
-            .store(in: &cancellables)
+        FirebaseTransactionManager.shared.processRecurringTransactions()
     }
 }
 
@@ -41,8 +22,7 @@ class AppCoordinator: ObservableObject {
 
 extension AppCoordinator {
     func navigateToAuthentication() {
-        FirebaseTransactionManager.reset()
-        currentRoute = .authentication
+        currentRoute = .home
     }
 
     func navigateToHome() {
@@ -50,6 +30,6 @@ extension AppCoordinator {
     }
 
     func signOut() {
-        authManager.signOut()
+        currentRoute = .home
     }
 }

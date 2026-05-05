@@ -6,12 +6,20 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct Settings: View {
-    @EnvironmentObject var appCoordinator: AppCoordinator
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedCurrency: String = CurrencyManager.shared.selectedCurrency.code
+    @State private var exportService = ExportImportService()
+    @State private var exportDocument = BackupDocument()
+    @State private var exportFilename = "xpnse_backup.json"
+    @State private var showExporter = false
+    @State private var showImporter = false
+    @State private var showImportResult = false
+    @State private var importResultText = ""
+    @State private var isWorking = false
 
     var body: some View {
         ScrollView {
@@ -48,12 +56,33 @@ struct Settings: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
-                // Logout Section
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Data Portability")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(.white)
+
+                    Button {
+                        self.startExport()
+                    } label: {
+                        self.actionLabel(text: "Export All Data")
+                    }
+
+                    Button {
+                        self.showImporter = true
+                    } label: {
+                        self.actionLabel(text: "Import All Data")
+                    }
+                }
+
                 VStack {
                     Button(role: .destructive) {
-                        self.appCoordinator.signOut()
+                        Task {
+                            isWorking = true
+                            await FirebaseTransactionManager.shared.clearAll()
+                            isWorking = false
+                        }
                     } label: {
-                        Text("Logout")
+                        Text("Clear Local Data")
                             .font(.system(size: 18, weight: .medium))
                             .foregroundColor(.red)
                             .frame(maxWidth: .infinity, alignment: .center)
@@ -89,5 +118,78 @@ struct Settings: View {
             }
         }
         .navigationBarBackButtonHidden()
+        .overlay {
+            if isWorking {
+                ProgressView()
+            }
+        }
+        .fileExporter(
+            isPresented: $showExporter,
+            document: exportDocument,
+            contentType: .json,
+            defaultFilename: exportFilename
+        ) { _ in }
+        .fileImporter(
+            isPresented: $showImporter,
+            allowedContentTypes: [.json, .plainText],
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case .success(let files):
+                guard let fileURL = files.first else { return }
+                Task {
+                    do {
+                        let didAccess = fileURL.startAccessingSecurityScopedResource()
+                        defer {
+                            if didAccess {
+                                fileURL.stopAccessingSecurityScopedResource()
+                            }
+                        }
+                        let content = try String(contentsOf: fileURL, encoding: .utf8)
+                        try await exportService.importAllData(content)
+                        importResultText = "Import completed successfully."
+                    } catch {
+                        importResultText = "Import failed: \(error.localizedDescription)"
+                    }
+                    showImportResult = true
+                }
+            case .failure(let error):
+                importResultText = "Import failed: \(error.localizedDescription)"
+                showImportResult = true
+            }
+        }
+        .alert("Import Status", isPresented: $showImportResult) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(importResultText)
+        }
+    }
+
+    private func actionLabel(text: String) -> some View {
+        Text(text)
+            .font(.system(size: 16, weight: .medium))
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, 12)
+            .padding(.horizontal, 12)
+            .background(.white.opacity(0.1))
+            .xpnseRoundedCorner()
+    }
+
+    private func startExport() {
+        Task {
+            do {
+                isWorking = true
+                let backup = try await exportService.exportAllData()
+                exportDocument = BackupDocument(text: backup)
+                exportFilename = "xpnse_backup.json"
+                showExporter = true
+                isWorking = false
+            } catch {
+                isWorking = false
+                importResultText = "Export failed: \(error.localizedDescription)"
+                showImportResult = true
+            }
+        }
     }
 }

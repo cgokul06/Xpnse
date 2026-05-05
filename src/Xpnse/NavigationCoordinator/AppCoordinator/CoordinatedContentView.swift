@@ -9,7 +9,6 @@ import SwiftUI
 
 struct CoordinatedContentView: View {
     @StateObject private var appCoordinator = AppCoordinator()
-    @StateObject private var authCoordinator = NavigationCoordinator<AuthRoute>()
     @StateObject private var homeCoordinator = NavigationCoordinator<HomeRoute>()
     
     var body: some View {
@@ -26,14 +25,13 @@ struct CoordinatedContentView: View {
                     endPoint: .bottomTrailing
                 )
                 .ignoresSafeArea()
-            case .authentication:
-                AuthenticationFlowView()
+//            case .authentication:
+//                CoordinatedHomeView()
             case .home:
                 CoordinatedHomeView()
             }
         }
         .environmentObject(appCoordinator)
-        .environmentObject(authCoordinator)
         .environmentObject(homeCoordinator)
         .animation(.easeInOut(duration: 0.3), value: appCoordinator.currentRoute)
     }

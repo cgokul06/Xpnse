@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 enum SwipeDirection {
     case left, right
@@ -14,6 +15,13 @@ enum SwipeDirection {
 struct Home: View {
     @EnvironmentObject var homeCoordinator: NavigationCoordinator<HomeRoute>
     @StateObject private var homeViewModel: HomeScreenViewModel = HomeScreenViewModel()
+    @Query(sort: \TransactionEntity.updatedAt, order: .reverse) private var transactionEntities: [TransactionEntity]
+
+    private var transactionDataVersion: String {
+        transactionEntities
+            .map { "\($0.id)-\($0.updatedAt.timeIntervalSince1970)" }
+            .joined(separator: "|")
+    }
 
     var body: some View {
         ZStack {
@@ -32,6 +40,9 @@ struct Home: View {
             if homeViewModel.isLoading {
                 ProgressView()
             }
+        }
+        .task(id: transactionDataVersion) {
+            await homeViewModel.refreshVisibleData()
         }
     }
 

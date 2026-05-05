@@ -80,20 +80,20 @@ struct SummaryCardView: View {
 
 // MARK: - Preview
 
-struct SummaryCardView_Previews: PreviewProvider {
-    static var previews: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
-            
-            VStack(spacing: 30) {
-                Text("Financial Summary Card")
-                    .font(.title)
-                    .fontWeight(.bold)
-                    .foregroundColor(.white)
-                
-                SummaryCardView()
-            }
-            .padding(.horizontal, 16)
-        }
-    }
-}
+//struct SummaryCardView_Previews: PreviewProvider {
+//    static var previews: some View {
+//        ZStack {
+//            Color.black.ignoresSafeArea()
+//            
+//            VStack(spacing: 30) {
+//                Text("Financial Summary Card")
+//                    .font(.title)
+//                    .fontWeight(.bold)
+//                    .foregroundColor(.white)
+//                
+//                SummaryCardView()
+//            }
+//            .padding(.horizontal, 16)
+//        }
+//    }
+//}
