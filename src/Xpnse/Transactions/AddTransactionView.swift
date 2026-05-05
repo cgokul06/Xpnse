@@ -34,6 +34,8 @@ struct AddTransactionView: View {
     @State private var showSuggestions: Bool = false
     @State private var isDescriptionChangeBecauseOfSelection: Bool = false
     @State private var showDropdownForCategory: Bool = false
+    @State private var isRecurring: Bool = false
+    @State private var recurrenceFrequency: RecurrenceFrequency = .daily
     private let transactionManager: FirebaseTransactionManager = .shared
     private var transaction: Transaction?
     private let isEditing: Bool
@@ -44,6 +46,10 @@ struct AddTransactionView: View {
 
     private var isFormValid: Bool {
         !(amount.isEmpty) && !description.isEmpty
+    }
+
+    private var recurrenceOptions: [RecurrenceFrequency] {
+        RecurrenceFrequency.uiOptions(for: selectedDate)
     }
 
     init(
@@ -89,6 +95,8 @@ struct AddTransactionView: View {
                         // Category Selection (as a square scrollable box)
                         categorySelectionSection
 
+                        recurringSection
+
                         // Spacer for bottom buttons
                         Spacer()
                     }
@@ -128,6 +136,9 @@ struct AddTransactionView: View {
                     if !show {
                         self.suggestions = []
                     }
+                }
+                .onChange(of: selectedDate) { _, newValue in
+                    recurrenceFrequency = recurrenceFrequency.aligned(to: newValue)
                 }
 
                 if isDeleting {
@@ -279,6 +290,36 @@ struct AddTransactionView: View {
                 showDropdown: self.$showDropdownForCategory
             )
             .focused(self.$focussedField, equals: .category)
+        }
+    }
+
+    // MARK: - Recurring Section
+    private var recurringSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Toggle(isOn: $isRecurring) {
+                Text("Recurring")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.white)
+            }
+            .toggleStyle(.switch)
+            .tint(XpnseColorKey.secondaryButtonBGColor.color)
+
+            if isRecurring {
+                HStack {
+                    Text("Frequency")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.white)
+
+                    Spacer(minLength: 0)
+
+                    Picker("Frequency", selection: $recurrenceFrequency) {
+                        ForEach(recurrenceOptions, id: \.self) { option in
+                            Text(option.displayName).tag(option)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                }
+            }
         }
     }
 
@@ -445,17 +486,32 @@ struct AddTransactionView: View {
         // Update suggestion engine immediately
         suggestionEngine.upsert(from: TransactionAdapter(title: transaction.title, categoryIdentifier: transaction.category.rawValue, date: Date(timeIntervalSince1970: transaction.date)))
 
-         Task {
-             if isEditing {
-                 await transactionManager.updateTransaction(transaction)
-             } else {
-                 await transactionManager.addTransaction(transaction)
-             }
-             await MainActor.run {
-                 isLoading = false
-                 self.dismiss()
-             }
-         }
+        Task {
+            if isRecurring && !isEditing {
+                let recurring = RecurringTransaction(
+                    title: description,
+                    type: transactionType.rawValue,
+                    categoryIdentifier: selectedCategory.rawValue,
+                    amount: Decimal(Double(amount) ?? 0.0),
+                    startDate: selectedDate,
+                    recurrence: mappedRecurrenceFrequency(),
+                    metadata: [
+                        "createdFrom": "AddTransactionView"
+                    ]
+                )
+                await transactionManager.createRecurringTransaction(recurring)
+                await transactionManager.processRecurringTransactions()
+            } else if isEditing {
+                await transactionManager.updateTransaction(transaction)
+            } else {
+                await transactionManager.addTransaction(transaction)
+            }
+
+            await MainActor.run {
+                isLoading = false
+                self.dismiss()
+            }
+        }
     }
 
     private func scanBill() {
@@ -469,5 +525,8 @@ struct AddTransactionView: View {
         self.dismiss()
     }
 
+    private func mappedRecurrenceFrequency() -> RecurrenceFrequency {
+        recurrenceFrequency.aligned(to: selectedDate)
+    }
 
 }

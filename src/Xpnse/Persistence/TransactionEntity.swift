@@ -24,6 +24,8 @@ final class TransactionEntity {
     var currencyCode: String
     var currencyName: String
     var currencySymbol: String
+    var recurringSeriesId: String?
+    var recurringOccurrenceDate: Double?
     var createdAt: Date
     var updatedAt: Date
 
@@ -42,6 +44,8 @@ final class TransactionEntity {
         self.currencyCode = transaction.currency.code
         self.currencyName = transaction.currency.name
         self.currencySymbol = transaction.currency.symbol
+        self.recurringSeriesId = transaction.recurringSeriesId
+        self.recurringOccurrenceDate = transaction.recurringOccurrenceDate
         self.createdAt = Date()
         self.updatedAt = Date()
     }
@@ -60,6 +64,8 @@ final class TransactionEntity {
         self.currencyCode = transaction.currency.code
         self.currencyName = transaction.currency.name
         self.currencySymbol = transaction.currency.symbol
+        self.recurringSeriesId = transaction.recurringSeriesId
+        self.recurringOccurrenceDate = transaction.recurringOccurrenceDate
         self.updatedAt = Date()
     }
 
@@ -86,7 +92,9 @@ final class TransactionEntity {
             items: items,
             location: location,
             tags: tags,
-            currency: currency
+            currency: currency,
+            recurringSeriesId: recurringSeriesId,
+            recurringOccurrenceDate: recurringOccurrenceDate
         )
     }
 }

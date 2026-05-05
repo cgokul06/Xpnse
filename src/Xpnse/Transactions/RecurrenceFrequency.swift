@@ -2,45 +2,91 @@ import Foundation
 
 /// Represents recurrence frequencies with their parameters.
 public enum RecurrenceFrequency: Codable, Hashable, Sendable {
-    /// Monthly recurrence on a specified day with overflow adjustment.
-    /// - Parameters:
-    ///   - day: The desired day of month (1...31).
-    ///   - overflow: How to handle months where the day does not exist.
-    case monthly(day: Int, overflow: MonthOverflowAdjustment)
+    case daily
+    case weeklyOn(day: Weekday)
+    case monthlyOn(day: Int, overflow: MonthOverflowAdjustment)
+    case everyTwoWeeksOn(day: Weekday)
+    case everyThreeWeeksOn(day: Weekday)
+    case everyFourWeeksOn(day: Weekday)
+    case onceInEveryTwoMonthsOn(day: Int, overflow: MonthOverflowAdjustment)
+    case onceInEveryQuarterOn(day: Int, overflow: MonthOverflowAdjustment)
 
-    /// Weekly recurrence on specified weekdays.
-    /// - Parameter days: Array of weekdays on which the recurrence happens.
-    case weeklyOn(days: [Weekday])
-    
-    /// Recurrence once in every specified number of days.
-    /// - Parameter days: Interval in days between occurrences; minimum is 1.
-    case onceInEvery(days: Int)
+    var displayName: String {
+        switch self {
+        case .daily: return "Daily"
+        case .weeklyOn: return "Weekly"
+        case .monthlyOn: return "Monthly"
+        case .everyTwoWeeksOn: return "Every two weeks"
+        case .everyThreeWeeksOn: return "Every three weeks"
+        case .everyFourWeeksOn: return "Every four weeks"
+        case .onceInEveryTwoMonthsOn: return "Once in every two months"
+        case .onceInEveryQuarterOn: return "Once in every quarter"
+        }
+    }
 
-    /// Factory method to create `.monthly` safely clamping the day into 1...31.
+    static func uiOptions(for date: Date, calendar: Calendar = .current) -> [RecurrenceFrequency] {
+        let day = calendar.component(.day, from: date)
+        let weekdayRaw = calendar.component(.weekday, from: date)
+        let weekday = Weekday(rawValue: weekdayRaw) ?? .monday
+        return [
+            .daily,
+            .weeklyOn(day: weekday),
+            .monthlyOn(day: day, overflow: .lastDayOfMonth),
+            .everyTwoWeeksOn(day: weekday),
+            .everyThreeWeeksOn(day: weekday),
+            .everyFourWeeksOn(day: weekday),
+            .onceInEveryTwoMonthsOn(day: day, overflow: .lastDayOfMonth),
+            .onceInEveryQuarterOn(day: day, overflow: .lastDayOfMonth)
+        ]
+    }
+
+    func aligned(to date: Date, calendar: Calendar = .current) -> RecurrenceFrequency {
+        let day = calendar.component(.day, from: date)
+        let weekdayRaw = calendar.component(.weekday, from: date)
+        let weekday = Weekday(rawValue: weekdayRaw) ?? .monday
+        switch self {
+        case .daily:
+            return .daily
+        case .weeklyOn:
+            return .weeklyOn(day: weekday)
+        case let .monthlyOn(_, overflow):
+            return .monthlyOn(day: day, overflow: overflow)
+        case .everyTwoWeeksOn:
+            return .everyTwoWeeksOn(day: weekday)
+        case .everyThreeWeeksOn:
+            return .everyThreeWeeksOn(day: weekday)
+        case .everyFourWeeksOn:
+            return .everyFourWeeksOn(day: weekday)
+        case let .onceInEveryTwoMonthsOn(_, overflow):
+            return .onceInEveryTwoMonthsOn(day: day, overflow: overflow)
+        case let .onceInEveryQuarterOn(_, overflow):
+            return .onceInEveryQuarterOn(day: day, overflow: overflow)
+        }
+    }
+
+    /// Factory method to create `.monthlyOn` safely clamping the day into 1...31.
     /// - Parameters:
     ///   - day: Desired day of month (any Int, will be clamped).
     ///   - overflow: Overflow adjustment behavior.
-    /// - Returns: A `RecurrenceFrequency.monthly` value with clamped day.
-    public static func monthlySafe(day: Int, overflow: MonthOverflowAdjustment) -> RecurrenceFrequency {
+    /// - Returns: A `RecurrenceFrequency.monthlyOn` value with clamped day.
+    public static func monthlyOnSafe(day: Int, overflow: MonthOverflowAdjustment) -> RecurrenceFrequency {
         let clampedDay = min(max(day, 1), 31)
-        return .monthly(day: clampedDay, overflow: overflow)
+        return .monthlyOn(day: clampedDay, overflow: overflow)
     }
 
-    /// Factory method to create `.weeklyOn` safely by deduplicating and sorting days.
-    /// - Parameter days: Array of weekdays.
-    /// - Returns: A `RecurrenceFrequency.weeklyOn` value with unique sorted days, or defaults to Monday if empty.
-    public static func weeklyOnSafe(days: [Weekday]) -> RecurrenceFrequency {
-        let unique = Array(Set(days)).sorted(by: { $0.rawValue < $1.rawValue })
-        if unique.isEmpty { return .weeklyOn(days: [.monday]) }
-        return .weeklyOn(days: unique)
+    /// Factory method to create `.weeklyOn`.
+    public static func weeklyOnSafe(day: Weekday) -> RecurrenceFrequency {
+        .weeklyOn(day: day)
     }
 
-    /// Factory method to create `.onceInEvery` safely clamping the interval to at least 1 day.
-    /// - Parameter days: The recurrence interval in days.
-    /// - Returns: A `RecurrenceFrequency.onceInEvery` value with at least 1 day interval.
-    public static func onceInEverySafe(days: Int) -> RecurrenceFrequency {
-        let d = max(1, days)
-        return .onceInEvery(days: d)
+    public static func onceInEveryTwoMonthsOnSafe(day: Int, overflow: MonthOverflowAdjustment) -> RecurrenceFrequency {
+        let clampedDay = min(max(day, 1), 31)
+        return .onceInEveryTwoMonthsOn(day: clampedDay, overflow: overflow)
+    }
+
+    public static func onceInEveryQuarterOnSafe(day: Int, overflow: MonthOverflowAdjustment) -> RecurrenceFrequency {
+        let clampedDay = min(max(day, 1), 31)
+        return .onceInEveryQuarterOn(day: clampedDay, overflow: overflow)
     }
 
     /// Returns the first occurrence of the recurrence on or after the given start date.
@@ -51,25 +97,65 @@ public enum RecurrenceFrequency: Codable, Hashable, Sendable {
     /// - Returns: The first occurrence date on or after `start`, or `nil` if it cannot be computed.
     public func firstOccurrence(onOrAfter start: Date, calendar: Calendar = .current) -> Date? {
         switch self {
-        case let .monthly(day, overflow):
+        case .daily:
+            return RecurrenceFrequency.computeEveryNDaysOccurrence(
+                from: start,
+                intervalDays: 1,
+                calendar: calendar,
+                inclusive: true
+            )
+        case let .weeklyOn(day):
+            return RecurrenceFrequency.computeWeeklyOccurrence(
+                from: start,
+                day: day,
+                calendar: calendar,
+                inclusive: true
+            )
+        case let .monthlyOn(day, overflow):
             return RecurrenceFrequency.computeMonthlyOccurrence(
                 from: start,
                 day: day,
                 overflow: overflow,
+                intervalMonths: 1,
                 calendar: calendar,
                 inclusive: true
             )
-        case let .weeklyOn(days):
+        case let .everyTwoWeeksOn(day):
             return RecurrenceFrequency.computeWeeklyOccurrence(
                 from: start,
-                days: days,
+                day: day,
                 calendar: calendar,
                 inclusive: true
             )
-        case let .onceInEvery(n):
-            return RecurrenceFrequency.computeEveryNDaysOccurrence(
+        case let .everyThreeWeeksOn(day):
+            return RecurrenceFrequency.computeWeeklyOccurrence(
                 from: start,
-                intervalDays: n,
+                day: day,
+                calendar: calendar,
+                inclusive: true
+            )
+        case let .everyFourWeeksOn(day):
+            return RecurrenceFrequency.computeWeeklyOccurrence(
+                from: start,
+                day: day,
+                calendar: calendar,
+                inclusive: true
+            )
+        case let .onceInEveryTwoMonthsOn(day, overflow):
+            return RecurrenceFrequency.computeMonthlyOccurrence(
+                from: start,
+                day: day,
+                overflow: overflow,
+                intervalMonths: 2,
+                calendar: calendar,
+                inclusive: true
+            )
+        case let .onceInEveryQuarterOn(day, overflow):
+            return RecurrenceFrequency.computeMonthlyOccurrence(
+                from: start,
+                day: day,
+                overflow: overflow,
+                intervalMonths: 3,
                 calendar: calendar,
                 inclusive: true
             )
@@ -84,25 +170,50 @@ public enum RecurrenceFrequency: Codable, Hashable, Sendable {
     /// - Returns: The next occurrence date strictly after `date`, or `nil` if it cannot be computed.
     public func nextOccurrence(after date: Date, calendar: Calendar = .current) -> Date? {
         switch self {
-        case let .monthly(day, overflow):
+        case .daily:
+            return RecurrenceFrequency.computeEveryNDaysOccurrence(
+                from: date,
+                intervalDays: 1,
+                calendar: calendar,
+                inclusive: false
+            )
+        case let .weeklyOn(day):
+            return RecurrenceFrequency.computeWeeklyOccurrence(
+                from: date,
+                day: day,
+                calendar: calendar,
+                inclusive: false
+            )
+        case let .monthlyOn(day, overflow):
             return RecurrenceFrequency.computeMonthlyOccurrence(
                 from: date,
                 day: day,
                 overflow: overflow,
+                intervalMonths: 1,
                 calendar: calendar,
                 inclusive: false
             )
-        case let .weeklyOn(days):
-            return RecurrenceFrequency.computeWeeklyOccurrence(
+        case .everyTwoWeeksOn:
+            return calendar.date(byAdding: .day, value: 14, to: date)
+        case .everyThreeWeeksOn:
+            return calendar.date(byAdding: .day, value: 21, to: date)
+        case .everyFourWeeksOn:
+            return calendar.date(byAdding: .day, value: 28, to: date)
+        case let .onceInEveryTwoMonthsOn(day, overflow):
+            return RecurrenceFrequency.computeMonthlyOccurrence(
                 from: date,
-                days: days,
+                day: day,
+                overflow: overflow,
+                intervalMonths: 2,
                 calendar: calendar,
                 inclusive: false
             )
-        case let .onceInEvery(n):
-            return RecurrenceFrequency.computeEveryNDaysOccurrence(
+        case let .onceInEveryQuarterOn(day, overflow):
+            return RecurrenceFrequency.computeMonthlyOccurrence(
                 from: date,
-                intervalDays: n,
+                day: day,
+                overflow: overflow,
+                intervalMonths: 3,
                 calendar: calendar,
                 inclusive: false
             )
@@ -117,6 +228,7 @@ extension RecurrenceFrequency {
         from base: Date,
         day: Int,
         overflow: MonthOverflowAdjustment,
+        intervalMonths: Int,
         calendar: Calendar,
         inclusive: Bool
     ) -> Date? {
@@ -136,11 +248,12 @@ extension RecurrenceFrequency {
             }
         }
 
-        // Otherwise, move to next month
-        var nextMonth = month + 1
+        // Otherwise, move by interval months
+        let clampedInterval = max(1, intervalMonths)
+        var nextMonth = month + clampedInterval
         var nextYear = year
-        if nextMonth > 12 {
-            nextMonth = 1
+        while nextMonth > 12 {
+            nextMonth -= 12
             nextYear += 1
         }
 
@@ -223,7 +336,7 @@ extension RecurrenceFrequency {
     /// Compute the next weekly occurrence based on inclusive flag.
     private static func computeWeeklyOccurrence(
         from base: Date,
-        days: [Weekday],
+        day: Weekday,
         calendar: Calendar,
         inclusive: Bool
     ) -> Date? {
@@ -232,9 +345,7 @@ extension RecurrenceFrequency {
         // Current weekday in Calendar (1=Sunday ... 7=Saturday)
         let currentWeekday = calendar.component(.weekday, from: base)
 
-        // Prepare sorted unique weekday integers corresponding to Calendar
-        let targetWeekdays = Array(Set(days)).map { $0.rawValue }.sorted()
-        if targetWeekdays.isEmpty { return nil }
+        let targetWeekday = day.rawValue
 
         // Helper to build date for a given weekday delta
         func dateByAdding(days delta: Int) -> Date? {
@@ -246,16 +357,10 @@ extension RecurrenceFrequency {
 
         // Compute the smallest non-negative delta (inclusive) or strictly positive delta (exclusive)
         var bestDelta: Int? = nil
-        for w in targetWeekdays {
-            // Distance in days to target weekday within the same week cycle
-            var delta = (w - currentWeekday + 7) % 7
-            if inclusive {
-                // allow delta == 0 only if time >= base time comparison; since we preserve time, check date comparison after constructing
-            } else {
-                if delta == 0 { delta = 7 }
-            }
-            if bestDelta == nil || delta < bestDelta! { bestDelta = delta }
-        }
+        // Distance in days to target weekday within the same week cycle
+        var delta = (targetWeekday - currentWeekday + 7) % 7
+        if !inclusive && delta == 0 { delta = 7 }
+        bestDelta = delta
 
         guard var delta = bestDelta else { return nil }
 
@@ -266,18 +371,13 @@ extension RecurrenceFrequency {
             }
             // Need the next scheduled weekday after today
             // Find the next weekday strictly after currentWeekday in the target list
-            if let nextW = targetWeekdays.first(where: { $0 > currentWeekday }) {
-                delta = (nextW - currentWeekday + 7) % 7
-            } else {
-                // wrap to first in list next week
-                delta = (targetWeekdays.first! - currentWeekday + 7) % 7
-                if delta == 0 { delta = 7 }
-            }
+            delta = (targetWeekday - currentWeekday + 7) % 7
+            if delta == 0 { delta = 7 }
         }
 
         return dateByAdding(days: delta)
     }
-    
+
     /// Compute the next occurrence for `.onceInEvery(days:)` based on inclusive flag.
     private static func computeEveryNDaysOccurrence(
         from base: Date,
@@ -318,6 +418,7 @@ extension RecurrenceFrequency {
         comps.hour = time.hour; comps.minute = time.minute; comps.second = time.second; comps.nanosecond = time.nanosecond
         return calendar.date(from: comps)
     }
+
 }
 
 /// Defines how to adjust the day when the specified day of month

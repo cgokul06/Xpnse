@@ -20,6 +20,12 @@ struct Transaction: Identifiable, Codable, Equatable, Hashable {
     var location: String?
     var tags: [String]
     var currency: CurrencyOption
+    var recurringSeriesId: String?
+    var recurringOccurrenceDate: Double?
+
+    var isRecurringGenerated: Bool {
+        recurringSeriesId != nil
+    }
 
     // Computed properties
     var totalAmount: Double {
@@ -52,7 +58,9 @@ struct Transaction: Identifiable, Codable, Equatable, Hashable {
         items: [TransactionItem] = [],
         location: String? = nil,
         tags: [String] = [],
-        currency: CurrencyOption = CurrencyManager.shared.selectedCurrency
+        currency: CurrencyOption = CurrencyManager.shared.selectedCurrency,
+        recurringSeriesId: String? = nil,
+        recurringOccurrenceDate: Double? = nil
     ) {
         self.id = id
         self.type = type
@@ -65,6 +73,8 @@ struct Transaction: Identifiable, Codable, Equatable, Hashable {
         self.location = location
         self.tags = tags
         self.currency = currency
+        self.recurringSeriesId = recurringSeriesId
+        self.recurringOccurrenceDate = recurringOccurrenceDate
     }
 
     // MARK: - Firebase Conversion

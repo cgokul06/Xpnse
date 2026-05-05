@@ -24,6 +24,16 @@ struct TransactionItemView: View {
                 Text(transaction.title)
                     .font(.system(size: 16, weight: .medium))
 
+                if transaction.isRecurringGenerated {
+                    Text("Recurring")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.orange.opacity(0.8))
+                        .clipShape(Capsule())
+                }
+
                 Text(transaction.formattedDate)
                     .font(.system(size: 12, weight: .light))
             }

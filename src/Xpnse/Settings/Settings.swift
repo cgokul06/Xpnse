@@ -74,6 +74,18 @@ struct Settings: View {
                     }
                 }
 
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Recurring")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(.white)
+
+                    NavigationLink {
+                        RecurringTransactionsView()
+                    } label: {
+                        self.actionLabel(text: "Manage Recurring Transactions")
+                    }
+                }
+
                 VStack {
                     Button(role: .destructive) {
                         Task {

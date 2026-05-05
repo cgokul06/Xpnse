@@ -126,6 +126,26 @@ final class FirebaseTransactionManager {
             print("Failed to clear local data: \(error.localizedDescription)")
         }
     }
+
+    func createRecurringTransaction(_ recurring: RecurringTransaction) async {
+        await recurringTransactionManager.create(recurring)
+    }
+
+    func updateRecurringTransaction(_ recurring: RecurringTransaction) async {
+        await recurringTransactionManager.update(recurring)
+    }
+
+    func cancelRecurringTransaction(id: UUID) async {
+        await recurringTransactionManager.cancel(id: id)
+    }
+
+    func skipRecurringTransaction(id: UUID) async {
+        await recurringTransactionManager.skipNextOccurrence(id: id)
+    }
+
+    func fetchRecurringTransactions() async -> [RecurringTransaction] {
+        await recurringTransactionManager.fetchAll()
+    }
 }
 
 extension FirebaseTransactionManager: TransactionSink {}

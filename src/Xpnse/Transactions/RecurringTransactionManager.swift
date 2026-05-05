@@ -56,6 +56,11 @@ final class RecurringTransactionManager {
         return items
     }
 
+    func fetchAll() async -> [RecurringTransaction] {
+        await self.load()
+        return items
+    }
+
     func loadAndProcess(sink: TransactionSink) async {
         await self.load()
         await self.processPending(sink: sink)
@@ -101,9 +106,12 @@ final class RecurringTransactionManager {
                     Transaction(
                         id: UUID().uuidString,
                         type: TransactionType(rawValue: items[i].type) ?? .expense,
-                        category: TransactionCategory(rawValue: items[i].categoryIdentifier!) ?? .other,
+                        category: TransactionCategory(rawValue: items[i].categoryIdentifier ?? "") ?? .other,
                         amount: Double(truncating: items[i].amount as NSNumber),
-                        title: items[i].title
+                        date: next.timeIntervalSince1970,
+                        title: items[i].title,
+                        recurringSeriesId: items[i].id.uuidString,
+                        recurringOccurrenceDate: next.timeIntervalSince1970
                     )
                 )
                 guard let newNext = items[i].recurrence.nextOccurrence(after: next, calendar: calendar) else {
@@ -127,5 +135,21 @@ final class RecurringTransactionManager {
                 try? await repository.upsert(item)
             }
         }
+    }
+
+    func cancel(id: UUID, at date: Date = Date()) async {
+        await self.load()
+        guard let index = items.firstIndex(where: { $0.id == id }) else { return }
+        items[index].endDate = date
+        items[index].nextOccurrence = nil
+        try? await repository.upsert(items[index])
+    }
+
+    func skipNextOccurrence(id: UUID, calendar: Calendar = .current) async {
+        await self.load()
+        guard let index = items.firstIndex(where: { $0.id == id }) else { return }
+        guard let next = items[index].nextOccurrence else { return }
+        items[index].nextOccurrence = items[index].recurrence.nextOccurrence(after: next, calendar: calendar)
+        try? await repository.upsert(items[index])
     }
 }
