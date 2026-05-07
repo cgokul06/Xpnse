@@ -19,6 +19,7 @@ final class RecurringTransactionEntity {
     var endDate: Date?
     var recurrenceData: Data
     var nextOccurrence: Date?
+    var lastTransactionAddedOn: Date?
     var metadataData: Data?
     var updatedAt: Date
 
@@ -32,6 +33,7 @@ final class RecurringTransactionEntity {
         self.endDate = recurringTransaction.endDate
         self.recurrenceData = (try? JSONEncoder().encode(recurringTransaction.recurrence)) ?? Data()
         self.nextOccurrence = recurringTransaction.nextOccurrence
+        self.lastTransactionAddedOn = recurringTransaction.lastTransactionAddedOn
         self.metadataData = try? JSONEncoder().encode(recurringTransaction.metadata ?? [:])
         self.updatedAt = Date()
     }
@@ -45,6 +47,7 @@ final class RecurringTransactionEntity {
         self.endDate = recurringTransaction.endDate
         self.recurrenceData = (try? JSONEncoder().encode(recurringTransaction.recurrence)) ?? Data()
         self.nextOccurrence = recurringTransaction.nextOccurrence
+        self.lastTransactionAddedOn = recurringTransaction.lastTransactionAddedOn
         self.metadataData = try? JSONEncoder().encode(recurringTransaction.metadata ?? [:])
         self.updatedAt = Date()
     }
@@ -67,6 +70,7 @@ final class RecurringTransactionEntity {
             endDate: endDate,
             recurrence: recurrence,
             nextOccurrence: nextOccurrence,
+            lastTransactionAddedOn: lastTransactionAddedOn,
             metadata: metadata
         )
     }

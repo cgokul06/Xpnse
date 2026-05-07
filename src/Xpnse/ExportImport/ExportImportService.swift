@@ -160,6 +160,7 @@ struct ExportImportService {
                     endDate: recurring.endDate,
                     recurrence: recurring.recurrence,
                     nextOccurrence: recurring.nextOccurrence,
+                    lastTransactionAddedOn: recurring.lastTransactionAddedOn,
                     metadata: recurring.metadata
                 )
                 try await recurringRepository.upsert(merged)

@@ -102,6 +102,24 @@ final class RecurringTransactionManager {
             }
             let endDate = items[i].endDate
             while next <= now, endDate.map({ next <= $0 }) ?? true {
+                if let lastAdded = items[i].lastTransactionAddedOn,
+                   calendar.isDate(lastAdded, inSameDayAs: next) {
+                    guard let newNext = items[i].recurrence.nextOccurrence(after: next, calendar: calendar) else {
+                        items[i].nextOccurrence = nil
+                        changed = true
+                        break
+                    }
+                    if let end = endDate, newNext > end {
+                        items[i].nextOccurrence = nil
+                        changed = true
+                        break
+                    }
+                    items[i].nextOccurrence = newNext
+                    next = newNext
+                    changed = true
+                    continue
+                }
+
                 await sink.addTransaction(
                     Transaction(
                         id: UUID().uuidString,
@@ -114,6 +132,7 @@ final class RecurringTransactionManager {
                         recurringOccurrenceDate: next.timeIntervalSince1970
                     )
                 )
+                items[i].lastTransactionAddedOn = next
                 guard let newNext = items[i].recurrence.nextOccurrence(after: next, calendar: calendar) else {
                     items[i].nextOccurrence = nil
                     changed = true

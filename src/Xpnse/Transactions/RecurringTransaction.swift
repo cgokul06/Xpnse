@@ -27,6 +27,8 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
     public var recurrence: RecurrenceFrequency
     /// The next scheduled occurrence date, or nil if none.
     public var nextOccurrence: Date?
+    /// Last date on which a transaction instance was materialized from this rule.
+    public var lastTransactionAddedOn: Date?
     /// Optional additional metadata.
     public var metadata: [String: String]?
 
@@ -41,6 +43,7 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
         endDate: Date?,
         recurrence: RecurrenceFrequency,
         nextOccurrence: Date?,
+        lastTransactionAddedOn: Date? = nil,
         metadata: [String: String]?
     ) {
         self.id = id
@@ -52,6 +55,7 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
         self.endDate = endDate
         self.recurrence = recurrence
         self.nextOccurrence = nextOccurrence
+        self.lastTransactionAddedOn = lastTransactionAddedOn
         self.metadata = metadata
     }
 
@@ -64,6 +68,7 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
         startDate: Date,
         endDate: Date? = nil,
         recurrence: RecurrenceFrequency,
+        lastTransactionAddedOn: Date? = nil,
         metadata: [String: String]? = nil,
         calendar: Calendar = .current
     ) {
@@ -75,6 +80,7 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
         self.startDate = startDate
         self.endDate = endDate
         self.recurrence = recurrence
+        self.lastTransactionAddedOn = lastTransactionAddedOn
         self.metadata = metadata
         self.nextOccurrence = recurrence.firstOccurrence(onOrAfter: startDate, calendar: calendar)
     }
