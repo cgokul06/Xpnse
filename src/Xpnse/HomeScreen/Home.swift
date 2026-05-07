@@ -125,9 +125,6 @@ struct Home: View {
         .contentShape(Rectangle())
         .simultaneousGesture(
             DragGesture()
-                .onChanged { gesture in
-                    print("translation: \(gesture.translation.width)")
-                }
                 .onEnded { gesture in
                     let horizontalAmount = gesture.translation.width
 

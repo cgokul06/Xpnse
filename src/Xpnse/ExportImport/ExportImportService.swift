@@ -161,6 +161,7 @@ struct ExportImportService {
                     recurrence: recurring.recurrence,
                     nextOccurrence: recurring.nextOccurrence,
                     lastTransactionAddedOn: recurring.lastTransactionAddedOn,
+                    state: recurring.state,
                     metadata: recurring.metadata
                 )
                 try await recurringRepository.upsert(merged)
@@ -238,6 +239,7 @@ struct ExportImportService {
             recurring.endDate.map { ISO8601DateFormatter().string(from: $0) } ?? "",
             recurrenceRaw,
             recurring.nextOccurrence.map { ISO8601DateFormatter().string(from: $0) } ?? "",
+            recurring.state.rawValue,
             metadata
         ].joined(separator: "||")
     }

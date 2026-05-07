@@ -36,9 +36,7 @@ struct AddTransactionView: View {
     @State private var showDropdownForCategory: Bool = false
     @State private var isRecurring: Bool = false
     @State private var recurrenceFrequency: RecurrenceFrequency = .daily
-    @State private var hasRecurringStartDate: Bool = false
     @State private var hasRecurringEndDate: Bool = false
-    @State private var recurringStartDate: Date = Date()
     @State private var recurringEndDate: Date = Date()
     private let transactionManager: FirebaseTransactionManager = .shared
     private var transaction: Transaction?
@@ -54,8 +52,8 @@ struct AddTransactionView: View {
 
     private var recurringDateRangeValid: Bool {
         guard isRecurring else { return true }
-        guard hasRecurringStartDate, hasRecurringEndDate else { return true }
-        return recurringEndDate >= recurringStartDate
+        guard hasRecurringEndDate else { return true }
+        return recurringEndDate >= selectedDate
     }
 
     private var recurrenceOptions: [RecurrenceFrequency] {
@@ -332,25 +330,6 @@ struct AddTransactionView: View {
                     .pickerStyle(.menu)
                 }
 
-                Toggle(isOn: $hasRecurringStartDate) {
-                    Text("Set start date")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.white)
-                }
-                .toggleStyle(.switch)
-                .tint(XpnseColorKey.secondaryButtonBGColor.color)
-
-                if hasRecurringStartDate {
-                    DatePicker(
-                        "Start date",
-                        selection: $recurringStartDate,
-                        displayedComponents: .date
-                    )
-                    .datePickerStyle(.compact)
-                    .colorScheme(.dark)
-                    .foregroundColor(.white)
-                }
-
                 Toggle(isOn: $hasRecurringEndDate) {
                     Text("Set end date")
                         .font(.system(size: 16, weight: .medium))
@@ -544,14 +523,13 @@ struct AddTransactionView: View {
 
         Task {
             if isRecurring && !isEditing {
-                let computedStartDate = hasRecurringStartDate ? recurringStartDate : selectedDate
                 let computedEndDate = hasRecurringEndDate ? recurringEndDate : nil
                 let recurring = RecurringTransaction(
                     title: description,
                     type: transactionType.rawValue,
                     categoryIdentifier: selectedCategory.rawValue,
                     amount: Decimal(Double(amount) ?? 0.0),
-                    startDate: computedStartDate,
+                    startDate: selectedDate,
                     endDate: computedEndDate,
                     recurrence: mappedRecurrenceFrequency(),
                     metadata: [

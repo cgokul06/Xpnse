@@ -20,6 +20,7 @@ final class RecurringTransactionEntity {
     var recurrenceData: Data
     var nextOccurrence: Date?
     var lastTransactionAddedOn: Date?
+    var stateRaw: String?
     var metadataData: Data?
     var updatedAt: Date
 
@@ -34,6 +35,7 @@ final class RecurringTransactionEntity {
         self.recurrenceData = (try? JSONEncoder().encode(recurringTransaction.recurrence)) ?? Data()
         self.nextOccurrence = recurringTransaction.nextOccurrence
         self.lastTransactionAddedOn = recurringTransaction.lastTransactionAddedOn
+        self.stateRaw = recurringTransaction.state.rawValue
         self.metadataData = try? JSONEncoder().encode(recurringTransaction.metadata ?? [:])
         self.updatedAt = Date()
     }
@@ -48,6 +50,7 @@ final class RecurringTransactionEntity {
         self.recurrenceData = (try? JSONEncoder().encode(recurringTransaction.recurrence)) ?? Data()
         self.nextOccurrence = recurringTransaction.nextOccurrence
         self.lastTransactionAddedOn = recurringTransaction.lastTransactionAddedOn
+        self.stateRaw = recurringTransaction.state.rawValue
         self.metadataData = try? JSONEncoder().encode(recurringTransaction.metadata ?? [:])
         self.updatedAt = Date()
     }
@@ -59,6 +62,7 @@ final class RecurringTransactionEntity {
 
         let metadata = metadataData.flatMap { try? JSONDecoder().decode([String: String].self, from: $0) }
         let amount = Decimal(string: amountString) ?? 0
+        let state = RecurringTransactionState(rawValue: stateRaw ?? "") ?? .active
 
         return RecurringTransaction(
             id: id,
@@ -71,6 +75,7 @@ final class RecurringTransactionEntity {
             recurrence: recurrence,
             nextOccurrence: nextOccurrence,
             lastTransactionAddedOn: lastTransactionAddedOn,
+            state: state,
             metadata: metadata
         )
     }

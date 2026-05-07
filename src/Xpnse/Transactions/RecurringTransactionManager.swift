@@ -97,6 +97,9 @@ final class RecurringTransactionManager {
     ) async {
         var changed = false
         for i in items.indices {
+            guard items[i].state == .active else {
+                continue
+            }
             guard var next = items[i].nextOccurrence else {
                 continue
             }
@@ -157,9 +160,10 @@ final class RecurringTransactionManager {
     }
 
     func cancel(id: UUID, at date: Date = Date()) async {
+        _ = date
         await self.load()
         guard let index = items.firstIndex(where: { $0.id == id }) else { return }
-        items[index].endDate = date
+        items[index].state = .paused
         items[index].nextOccurrence = nil
         try? await repository.upsert(items[index])
     }
@@ -167,8 +171,17 @@ final class RecurringTransactionManager {
     func skipNextOccurrence(id: UUID, calendar: Calendar = .current) async {
         await self.load()
         guard let index = items.firstIndex(where: { $0.id == id }) else { return }
+        guard items[index].state == .active else { return }
         guard let next = items[index].nextOccurrence else { return }
         items[index].nextOccurrence = items[index].recurrence.nextOccurrence(after: next, calendar: calendar)
+        try? await repository.upsert(items[index])
+    }
+
+    func markDeleted(id: UUID) async {
+        await self.load()
+        guard let index = items.firstIndex(where: { $0.id == id }) else { return }
+        items[index].state = .deleted
+        items[index].nextOccurrence = nil
         try? await repository.upsert(items[index])
     }
 }

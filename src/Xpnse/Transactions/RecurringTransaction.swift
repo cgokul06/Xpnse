@@ -7,8 +7,28 @@
 
 import Foundation
 
+public enum RecurringTransactionState: String, Codable, Hashable, Sendable {
+    case active
+    case paused
+    case deleted
+}
+
 /// A recurring financial transaction, with recurrence pattern and metadata.
 public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case title
+        case type
+        case categoryIdentifier
+        case amount
+        case startDate
+        case endDate
+        case recurrence
+        case nextOccurrence
+        case lastTransactionAddedOn
+        case state
+        case metadata
+    }
     /// Unique identifier.
     public var id: UUID
     /// Title or description of the transaction.
@@ -29,6 +49,8 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
     public var nextOccurrence: Date?
     /// Last date on which a transaction instance was materialized from this rule.
     public var lastTransactionAddedOn: Date?
+    /// Operational state of recurring transaction lifecycle.
+    public var state: RecurringTransactionState
     /// Optional additional metadata.
     public var metadata: [String: String]?
 
@@ -44,6 +66,7 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
         recurrence: RecurrenceFrequency,
         nextOccurrence: Date?,
         lastTransactionAddedOn: Date? = nil,
+        state: RecurringTransactionState = .active,
         metadata: [String: String]?
     ) {
         self.id = id
@@ -56,6 +79,7 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
         self.recurrence = recurrence
         self.nextOccurrence = nextOccurrence
         self.lastTransactionAddedOn = lastTransactionAddedOn
+        self.state = state
         self.metadata = metadata
     }
 
@@ -69,6 +93,7 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
         endDate: Date? = nil,
         recurrence: RecurrenceFrequency,
         lastTransactionAddedOn: Date? = nil,
+        state: RecurringTransactionState = .active,
         metadata: [String: String]? = nil,
         calendar: Calendar = .current
     ) {
@@ -81,7 +106,24 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
         self.endDate = endDate
         self.recurrence = recurrence
         self.lastTransactionAddedOn = lastTransactionAddedOn
+        self.state = state
         self.metadata = metadata
         self.nextOccurrence = recurrence.firstOccurrence(onOrAfter: startDate, calendar: calendar)
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decode(UUID.self, forKey: .id)
+        self.title = try container.decode(String.self, forKey: .title)
+        self.type = try container.decode(String.self, forKey: .type)
+        self.categoryIdentifier = try container.decodeIfPresent(String.self, forKey: .categoryIdentifier)
+        self.amount = try container.decode(Decimal.self, forKey: .amount)
+        self.startDate = try container.decode(Date.self, forKey: .startDate)
+        self.endDate = try container.decodeIfPresent(Date.self, forKey: .endDate)
+        self.recurrence = try container.decode(RecurrenceFrequency.self, forKey: .recurrence)
+        self.nextOccurrence = try container.decodeIfPresent(Date.self, forKey: .nextOccurrence)
+        self.lastTransactionAddedOn = try container.decodeIfPresent(Date.self, forKey: .lastTransactionAddedOn)
+        self.state = try container.decodeIfPresent(RecurringTransactionState.self, forKey: .state) ?? .active
+        self.metadata = try container.decodeIfPresent([String: String].self, forKey: .metadata)
     }
 }

@@ -41,12 +41,13 @@ struct RecurringTransactionsView: View {
                     }
                     .tint(.orange)
 
-                    Button("Cancel", role: .destructive) {
+                    Button("Pause") {
                         Task {
                             await transactionManager.cancelRecurringTransaction(id: item.id)
                             await reload()
                         }
                     }
+                    .tint(.gray)
                 }
                 .onTapGesture {
                     selectedForEdit = item
@@ -73,6 +74,7 @@ struct RecurringTransactionsView: View {
     private func reload() async {
         isLoading = true
         recurringItems = await transactionManager.fetchRecurringTransactions()
+            .filter { $0.state != .deleted }
             .sorted { ($0.nextOccurrence ?? .distantFuture) < ($1.nextOccurrence ?? .distantFuture) }
         isLoading = false
     }
@@ -86,6 +88,7 @@ private struct EditRecurringTransactionView: View {
     @State private var selectedCategory: TransactionCategory
     @State private var description: String
     @State private var initialTransactionDate: Date
+    @State private var recurringStartDate: Date
     @State private var recurrence: RecurrenceFrequency
     @State private var hasRecurringEndDate: Bool
     @State private var recurringEndDate: Date
@@ -99,11 +102,15 @@ private struct EditRecurringTransactionView: View {
     }
 
     private var recurrenceOptions: [RecurrenceFrequency] {
-        RecurrenceFrequency.uiOptions(for: initialTransactionDate)
+        RecurrenceFrequency.uiOptions(for: recurringStartDate)
+    }
+
+    private var canEditStartDate: Bool {
+        Calendar.current.startOfDay(for: original.startDate) > Calendar.current.startOfDay(for: Date())
     }
 
     private var isDateRangeValid: Bool {
-        !hasRecurringEndDate || recurringEndDate >= initialTransactionDate
+        !hasRecurringEndDate || recurringEndDate >= recurringStartDate
     }
 
     init(item: RecurringTransaction, onSaved: @escaping () -> Void) {
@@ -114,6 +121,7 @@ private struct EditRecurringTransactionView: View {
         self._selectedCategory = State(initialValue: TransactionCategory(rawValue: item.categoryIdentifier ?? "") ?? .other)
         self._description = State(initialValue: item.title)
         self._initialTransactionDate = State(initialValue: item.startDate)
+        self._recurringStartDate = State(initialValue: item.startDate)
         self._recurrence = State(initialValue: item.recurrence)
         self._hasRecurringEndDate = State(initialValue: item.endDate != nil)
         self._recurringEndDate = State(initialValue: item.endDate ?? item.startDate)
@@ -133,6 +141,7 @@ private struct EditRecurringTransactionView: View {
                         amountInputSection
                         categorySelectionSection
                         recurrenceSection
+                        deleteRecurringButton
                         Spacer()
                     }
                     .padding(.horizontal, 20)
@@ -160,11 +169,14 @@ private struct EditRecurringTransactionView: View {
                                 type: transactionType.rawValue,
                                 categoryIdentifier: selectedCategory.rawValue,
                                 amount: Decimal(string: amount) ?? original.amount,
-                                startDate: initialTransactionDate,
+                                startDate: recurringStartDate,
                                 endDate: computedEndDate,
                                 recurrence: recurrence,
-                                nextOccurrence: recurrence.firstOccurrence(onOrAfter: initialTransactionDate),
+                                nextOccurrence: original.state == .active
+                                    ? recurrence.firstOccurrence(onOrAfter: recurringStartDate)
+                                    : nil,
                                 lastTransactionAddedOn: original.lastTransactionAddedOn,
+                                state: original.state,
                                 metadata: original.metadata
                             )
                             await transactionManager.updateRecurringTransaction(updated)
@@ -175,7 +187,8 @@ private struct EditRecurringTransactionView: View {
                     .disabled(!isDateRangeValid || amount.isEmpty || description.isEmpty)
                 }
             }
-            .onChange(of: initialTransactionDate) { _, newValue in
+            .onChange(of: recurringStartDate) { _, newValue in
+                initialTransactionDate = newValue
                 recurrence = recurrence.aligned(to: newValue)
                 if hasRecurringEndDate, recurringEndDate < newValue {
                     recurringEndDate = newValue
@@ -222,10 +235,9 @@ private struct EditRecurringTransactionView: View {
 
             Spacer(minLength: 0)
 
-            DatePicker("", selection: $initialTransactionDate, displayedComponents: .date)
-                .labelsHidden()
-                .datePickerStyle(.compact)
-                .colorScheme(.dark)
+            Text(initialTransactionDate.formatted(date: .abbreviated, time: .omitted))
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.white.opacity(0.8))
         }
     }
 
@@ -302,9 +314,11 @@ private struct EditRecurringTransactionView: View {
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.white)
                 Spacer(minLength: 0)
-                Text(initialTransactionDate.formatted(date: .abbreviated, time: .omitted))
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.white.opacity(0.8))
+                DatePicker("", selection: $recurringStartDate, displayedComponents: .date)
+                    .labelsHidden()
+                    .datePickerStyle(.compact)
+                    .colorScheme(.dark)
+                    .disabled(!canEditStartDate)
             }
 
             Toggle(isOn: $hasRecurringEndDate) {
@@ -327,6 +341,24 @@ private struct EditRecurringTransactionView: View {
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(.red)
             }
+        }
+    }
+
+    private var deleteRecurringButton: some View {
+        Button(role: .destructive) {
+            Task {
+                await transactionManager.deleteRecurringTransaction(id: original.id)
+                onSaved()
+                dismiss()
+            }
+        } label: {
+            Text("Delete Recurring Transaction")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(Color.red.opacity(0.85))
+                .xpnseRoundedCorner()
         }
     }
 }

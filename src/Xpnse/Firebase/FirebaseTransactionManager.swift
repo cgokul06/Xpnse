@@ -143,6 +143,10 @@ final class FirebaseTransactionManager {
         await recurringTransactionManager.skipNextOccurrence(id: id)
     }
 
+    func deleteRecurringTransaction(id: UUID) async {
+        await recurringTransactionManager.markDeleted(id: id)
+    }
+
     func fetchRecurringTransactions() async -> [RecurringTransaction] {
         await recurringTransactionManager.fetchAll()
     }
