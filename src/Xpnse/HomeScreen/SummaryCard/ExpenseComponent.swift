@@ -28,7 +28,7 @@ struct ExpenseComponent: View {
                     .font(.system(size: 16, weight: .medium))
                     .foregroundColor(.gray)
 
-                Text("\(currencyManager.selectedCurrency.symbol) \(cash, specifier: "%.2f")")
+                Text("\(currencyManager.selectedCurrency.symbol) \(cash.abbreviatedFloor())")
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundColor(.white)
             }
