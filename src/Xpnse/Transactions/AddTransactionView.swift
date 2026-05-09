@@ -530,11 +530,15 @@ struct AddTransactionView: View {
             title: description
         )
 
-        // Update suggestion engine immediately
-        suggestionEngine.upsert(from: TransactionAdapter(title: transaction.title, categoryIdentifier: transaction.category.rawValue, date: Date(timeIntervalSince1970: transaction.date)))
-
         Task {
             if isRecurring && !isEditing {
+                suggestionEngine.upsert(
+                    from: TransactionAdapter(
+                        title: transaction.title,
+                        categoryIdentifier: transaction.category.rawValue,
+                        date: Date(timeIntervalSince1970: transaction.date)
+                    )
+                )
                 let computedEndDate = hasRecurringEndDate ? recurringEndDate : nil
                 let recurring = RecurringTransaction(
                     title: description,
@@ -553,6 +557,13 @@ struct AddTransactionView: View {
             } else if isEditing {
                 await transactionManager.updateTransaction(transaction)
             } else {
+                suggestionEngine.upsert(
+                    from: TransactionAdapter(
+                        title: transaction.title,
+                        categoryIdentifier: transaction.category.rawValue,
+                        date: Date(timeIntervalSince1970: transaction.date)
+                    )
+                )
                 await transactionManager.addTransaction(transaction)
             }
 
@@ -571,6 +582,7 @@ struct AddTransactionView: View {
     private func deleteTransaction() async {
         guard let transaction else { return }
         await self.transactionManager.deleteTransaction(transaction)
+        suggestionEngine.decrement(title: transaction.title)
         self.dismiss()
     }
 

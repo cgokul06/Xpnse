@@ -76,6 +76,8 @@ struct ExportImportService {
            let selectedCurrency = CurrencyManager.shared.currency(for: selectedCurrencyCode) {
             CurrencyManager.shared.selectedCurrency = selectedCurrency
         }
+
+        scheduleSuggestionRebuildAfterImport()
     }
 
     private func mergeTransactionsOneByOne(_ imported: [Transaction], payload: BackupPayload) async throws {
@@ -242,6 +244,23 @@ struct ExportImportService {
             recurring.state.rawValue,
             metadata
         ].joined(separator: "||")
+    }
+
+    private func scheduleSuggestionRebuildAfterImport() {
+        Task(priority: .utility) {
+            guard let transactions = try? await transactionRepository.fetchAll() else {
+                return
+            }
+
+            await MainActor.run {
+                let engine = SuggestionEngine()
+                engine.load()
+                engine.rebuildFromRecentTransactions(
+                    transactions,
+                    monthsBack: SuggestionEngine.importRebuildLookbackMonths
+                )
+            }
+        }
     }
 }
 

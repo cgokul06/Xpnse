@@ -26,6 +26,9 @@ struct TransactionAdapter: TransactionLike {
 
 @MainActor
 public final class SuggestionEngine {
+    /// Configurable lookback (in months) for suggestion rebuild after import.
+    public static var importRebuildLookbackMonths: Int = 3
+
     private var suggestions: [SuggestionItem] = []
     private var buckets: [String: [SuggestionItem]] = [:]
     
@@ -54,12 +57,18 @@ public final class SuggestionEngine {
             let normalized = Self.normalize(tx.title)
             guard !normalized.isEmpty else { continue }
             
-            let key = frequencyMapKey(title: tx.title, categoryIdentifier: tx.categoryIdentifier)
+            let key = frequencyMapKey(title: tx.title)
             
             if let existing = frequencyMap[key] {
                 let freq = existing.frequency + 1
                 let lastUsed = max(existing.lastUsed, tx.date)
-                frequencyMap[key] = SuggestionItem(title: tx.title, categoryIdentifier: tx.categoryIdentifier, frequency: freq, lastUsed: lastUsed)
+                let resolvedCategory = lastUsed == tx.date ? tx.categoryIdentifier : existing.categoryIdentifier
+                frequencyMap[key] = SuggestionItem(
+                    title: tx.title,
+                    categoryIdentifier: resolvedCategory,
+                    frequency: freq,
+                    lastUsed: lastUsed
+                )
             } else {
                 frequencyMap[key] = SuggestionItem(title: tx.title, categoryIdentifier: tx.categoryIdentifier, frequency: 1, lastUsed: tx.date)
             }
@@ -76,18 +85,45 @@ public final class SuggestionEngine {
         let normalized = Self.normalize(transaction.title)
         guard !normalized.isEmpty else { return }
         
-        let key = frequencyMapKey(title: transaction.title, categoryIdentifier: transaction.categoryIdentifier)
+        let key = frequencyMapKey(title: transaction.title)
         
-        if let index = suggestions.firstIndex(where: { frequencyMapKey(title: $0.title, categoryIdentifier: $0.categoryIdentifier) == key }) {
+        if let index = suggestions.firstIndex(where: { frequencyMapKey(title: $0.title) == key }) {
             let old = suggestions[index]
             let newFreq = old.frequency + 1
             let newLastUsed = max(old.lastUsed, transaction.date)
-            let updated = SuggestionItem(title: transaction.title, categoryIdentifier: transaction.categoryIdentifier, frequency: newFreq, lastUsed: newLastUsed)
+            let updated = SuggestionItem(
+                title: transaction.title,
+                categoryIdentifier: newLastUsed == transaction.date ? transaction.categoryIdentifier : old.categoryIdentifier,
+                frequency: newFreq,
+                lastUsed: newLastUsed
+            )
             suggestions[index] = updated
         } else {
             let newItem = SuggestionItem(title: transaction.title, categoryIdentifier: transaction.categoryIdentifier, frequency: 1, lastUsed: transaction.date)
             suggestions.append(newItem)
         }
+        buildBuckets()
+        save()
+    }
+
+    /// Decrements usage count for a transaction title.
+    /// Removes the suggestion when frequency reaches zero.
+    /// - Parameter title: The transaction title to decrement.
+    public func decrement(title: String) {
+        let key = frequencyMapKey(title: title)
+        guard !key.isEmpty else { return }
+
+        guard let index = suggestions.firstIndex(where: { frequencyMapKey(title: $0.title) == key }) else {
+            return
+        }
+
+        if suggestions[index].frequency <= 1 {
+            suggestions.remove(at: index)
+        } else {
+            suggestions[index].frequency -= 1
+            suggestions[index].lastUsed = Date()
+        }
+
         buildBuckets()
         save()
     }
@@ -165,13 +201,37 @@ public final class SuggestionEngine {
         do {
             let data = try Data(contentsOf: persistenceURL)
             let decoded = try JSONDecoder().decode([SuggestionItem].self, from: data)
-            suggestions = decoded
+            suggestions = Self.mergeByNormalizedTitle(decoded)
             buildBuckets()
         } catch {
             // If file missing or decode fails, start empty
             suggestions = []
             buckets = [:]
         }
+    }
+
+    /// Rebuilds suggestions from recent transactions only, using a month-based lookback.
+    /// Existing suggestions are replaced by the rebuilt dataset.
+    /// - Parameters:
+    ///   - transactions: Source transactions.
+    ///   - monthsBack: Number of months to look back from now.
+    public func rebuildFromRecentTransactions(_ transactions: [Transaction], monthsBack: Int = SuggestionEngine.importRebuildLookbackMonths) {
+        let sanitizedMonths = max(1, monthsBack)
+        let now = Date()
+        let calendar = Calendar.current
+        let cutoff = calendar.date(byAdding: .month, value: -sanitizedMonths, to: now) ?? now
+
+        let adapters: [TransactionAdapter] = transactions
+            .map {
+                TransactionAdapter(
+                    title: $0.title,
+                    categoryIdentifier: $0.category.rawValue,
+                    date: Date(timeIntervalSince1970: $0.date)
+                )
+            }
+            .filter { $0.date >= cutoff }
+
+        build(from: adapters)
     }
     
     // MARK: - Private Helpers
@@ -199,7 +259,28 @@ public final class SuggestionEngine {
         }
     }
     
-    private func frequencyMapKey(title: String, categoryIdentifier: String?) -> String {
-        "\(title.lowercased())|\(categoryIdentifier ?? "")"
+    private static func mergeByNormalizedTitle(_ items: [SuggestionItem]) -> [SuggestionItem] {
+        var merged: [String: SuggestionItem] = [:]
+        for item in items {
+            let key = normalize(item.title)
+            guard !key.isEmpty else { continue }
+            if let existing = merged[key] {
+                let combinedFrequency = existing.frequency + item.frequency
+                let latest = existing.lastUsed >= item.lastUsed ? existing : item
+                merged[key] = SuggestionItem(
+                    title: latest.title,
+                    categoryIdentifier: latest.categoryIdentifier,
+                    frequency: combinedFrequency,
+                    lastUsed: latest.lastUsed
+                )
+            } else {
+                merged[key] = item
+            }
+        }
+        return Array(merged.values)
+    }
+
+    private func frequencyMapKey(title: String) -> String {
+        Self.normalize(title)
     }
 }
