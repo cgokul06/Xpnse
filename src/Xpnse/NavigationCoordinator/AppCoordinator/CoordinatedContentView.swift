@@ -27,6 +27,8 @@ struct CoordinatedContentView: View {
                 .ignoresSafeArea()
 //            case .authentication:
 //                CoordinatedHomeView()
+            case .currencySetup:
+                CurrencySelectionView()
             case .home:
                 CoordinatedHomeView()
             }

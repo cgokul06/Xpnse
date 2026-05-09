@@ -10,9 +10,10 @@ import Combine
 
 @MainActor
 class AppCoordinator: ObservableObject {
-    @Published var currentRoute: AppRoute = .home
+    @Published var currentRoute: AppRoute
     
     init() {
+        self.currentRoute = CurrencyManager.shared.hasStoredSelection ? .home : .currencySetup
         FirebaseTransactionManager.shared.processRecurringTransactions()
     }
 }
@@ -23,6 +24,10 @@ class AppCoordinator: ObservableObject {
 extension AppCoordinator {
     func navigateToAuthentication() {
         currentRoute = .home
+    }
+
+    func navigateToCurrencySetup() {
+        currentRoute = .currencySetup
     }
 
     func navigateToHome() {

@@ -28,6 +28,10 @@ final class CurrencyManager: ObservableObject {
         self.selectedCurrency = CurrencyManager.resolveInitialCurrency(from: loadedCurrencies, defaultCode: "USD")
     }
 
+    var hasStoredSelection: Bool {
+        UserDefaultsHelper.shared.string(forKey: .selectedCurrencyCode) != nil
+    }
+
     /// Lookup helper
     func currency(for code: String) -> CurrencyOption? {
         currencies.first { $0.code == code }

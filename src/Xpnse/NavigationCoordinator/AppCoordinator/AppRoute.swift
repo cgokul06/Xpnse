@@ -10,5 +10,6 @@ import Foundation
 enum AppRoute {
     case splash
 //    case authentication
+    case currencySetup
     case home
 }

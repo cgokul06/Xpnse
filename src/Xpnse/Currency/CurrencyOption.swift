@@ -16,6 +16,6 @@ struct CurrencyOption: Identifiable, Codable, Hashable {
     let symbol: String
     
     var displayName: String {
-        "\(symbol) \(code)"
+        "\(code)"
     }
 }

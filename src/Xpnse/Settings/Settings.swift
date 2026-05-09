@@ -31,29 +31,29 @@ struct Settings: View {
                         .font(.system(size: 20, weight: .bold))
                         .foregroundColor(.white)
 
-                    HStack(alignment: .center, spacing: 0) {
-                        Text("Currency")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.white)
-
-                        Spacer()
-
-                        Picker("Currency", selection: $selectedCurrency) {
-                            ForEach(CurrencyManager.shared.currencies) { currency in
-                                Text(currency.displayName)
-                                    .font(.system(size: 20, weight: .bold))
-                                    .tag(currency.code)
-                            }
+                    NavigationLink {
+                        CurrencyListView(selectedCurrencyCode: selectedCurrency) { selected in
+                            selectedCurrency = selected.code
+                            CurrencyManager.shared.selectedCurrency = selected
                         }
-                        .font(.system(size: 20, weight: .bold))
-                        .pickerStyle(.menu)
-                        .onChange(of: selectedCurrency, { oldValue, newValue in
-                            if let selected = CurrencyManager.shared.currency(for: newValue) {
-                                CurrencyManager.shared.selectedCurrency = selected
-                            }
-                        })
+                    } label: {
+                        HStack(spacing: 10) {
+                            Text("Currency")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.white)
+                            Spacer()
+                            Text("\(CurrencyManager.shared.selectedCurrency.symbol) \(CurrencyManager.shared.selectedCurrency.code)")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(.white.opacity(0.9))
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.white.opacity(0.8))
+                        }
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 12)
+                        .background(.white.opacity(0.1))
+                        .xpnseRoundedCorner()
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
