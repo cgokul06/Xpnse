@@ -128,13 +128,25 @@ struct AddTransactionView: View {
                     }
                 }
                 .onChange(of: description) { _, newValue in
+                    let shouldShowSuggestions: Bool = {
+                        guard isEditing else {
+                            return true
+                        }
+
+                        return newValue != self.transaction?.title
+                    }()
+                    
+                    guard shouldShowSuggestions else {
+                        return
+                    }
+
                     guard !self.isDescriptionChangeBecauseOfSelection  else {
                         self.showSuggestions = false
                         return
                     }
 
                     if newValue.count > 2 {
-                        suggestionEngine.queryDebounced(newValue, limit: 6) { results in
+                        suggestionEngine.queryDebounced(newValue, limit: 2) { results in
                             self.suggestions = results
                             self.showSuggestions = !results.isEmpty
                         }
