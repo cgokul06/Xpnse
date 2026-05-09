@@ -215,7 +215,7 @@ public final class SuggestionEngine {
     /// - Parameters:
     ///   - transactions: Source transactions.
     ///   - monthsBack: Number of months to look back from now.
-    public func rebuildFromRecentTransactions(_ transactions: [Transaction], monthsBack: Int = SuggestionEngine.importRebuildLookbackMonths) {
+    func rebuildFromRecentTransactions(_ transactions: [Transaction], monthsBack: Int) {
         let sanitizedMonths = max(1, monthsBack)
         let now = Date()
         let calendar = Calendar.current

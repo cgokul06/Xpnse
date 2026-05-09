@@ -38,6 +38,13 @@ swiftc -parse path/to/File.swift
 
 This validates Swift syntax on a per-file basis. It does **not** resolve imports or type-check against Apple frameworks (SwiftUI, SwiftData, Vision, FoundationModels are unavailable on Linux).
 
+### Post-change verification (mandatory)
+
+After **every code change**, always run a build/error check before considering the task complete:
+
+- On macOS/Xcode: run a project build in Xcode (or `xcodebuild`) and fix any new errors.
+- On Linux Cloud Agent: run `swiftc -parse` for changed Swift files, and run `swiftlint lint` when relevant.
+
 ### What you cannot do on this VM
 
 - `xcodebuild` / full project compilation — requires macOS + Xcode 26
