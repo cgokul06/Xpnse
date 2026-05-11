@@ -27,6 +27,9 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
         case nextOccurrence
         case lastTransactionAddedOn
         case state
+        case notificationReminderEnabled
+        case notificationReminderTime
+        case notificationScheduledForOccurrenceDate
         case metadata
     }
     /// Unique identifier.
@@ -51,6 +54,12 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
     public var lastTransactionAddedOn: Date?
     /// Operational state of recurring transaction lifecycle.
     public var state: RecurringTransactionState
+    /// When true, user wants a local notification before upcoming occurrences.
+    public var notificationReminderEnabled: Bool
+    /// Wall-clock time used for reminders (date portion ignored when scheduling).
+    public var notificationReminderTime: Date?
+    /// Start-of-day of the occurrence for which a pending notification was scheduled (nil if none).
+    public var notificationScheduledForOccurrenceDate: Date?
     /// Optional additional metadata.
     public var metadata: [String: String]?
 
@@ -67,6 +76,9 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
         nextOccurrence: Date?,
         lastTransactionAddedOn: Date? = nil,
         state: RecurringTransactionState = .active,
+        notificationReminderEnabled: Bool = false,
+        notificationReminderTime: Date? = nil,
+        notificationScheduledForOccurrenceDate: Date? = nil,
         metadata: [String: String]?
     ) {
         self.id = id
@@ -80,6 +92,9 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
         self.nextOccurrence = nextOccurrence
         self.lastTransactionAddedOn = lastTransactionAddedOn
         self.state = state
+        self.notificationReminderEnabled = notificationReminderEnabled
+        self.notificationReminderTime = notificationReminderTime
+        self.notificationScheduledForOccurrenceDate = notificationScheduledForOccurrenceDate
         self.metadata = metadata
     }
 
@@ -94,6 +109,9 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
         recurrence: RecurrenceFrequency,
         lastTransactionAddedOn: Date? = nil,
         state: RecurringTransactionState = .active,
+        notificationReminderEnabled: Bool = false,
+        notificationReminderTime: Date? = nil,
+        notificationScheduledForOccurrenceDate: Date? = nil,
         metadata: [String: String]? = nil,
         calendar: Calendar = .current
     ) {
@@ -107,6 +125,9 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
         self.recurrence = recurrence
         self.lastTransactionAddedOn = lastTransactionAddedOn
         self.state = state
+        self.notificationReminderEnabled = notificationReminderEnabled
+        self.notificationReminderTime = notificationReminderTime
+        self.notificationScheduledForOccurrenceDate = notificationScheduledForOccurrenceDate
         self.metadata = metadata
         self.nextOccurrence = recurrence.firstOccurrence(onOrAfter: startDate, calendar: calendar)
     }
@@ -124,6 +145,28 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
         self.nextOccurrence = try container.decodeIfPresent(Date.self, forKey: .nextOccurrence)
         self.lastTransactionAddedOn = try container.decodeIfPresent(Date.self, forKey: .lastTransactionAddedOn)
         self.state = try container.decodeIfPresent(RecurringTransactionState.self, forKey: .state) ?? .active
+        self.notificationReminderEnabled = try container.decodeIfPresent(Bool.self, forKey: .notificationReminderEnabled) ?? false
+        self.notificationReminderTime = try container.decodeIfPresent(Date.self, forKey: .notificationReminderTime)
+        self.notificationScheduledForOccurrenceDate = try container.decodeIfPresent(Date.self, forKey: .notificationScheduledForOccurrenceDate)
         self.metadata = try container.decodeIfPresent([String: String].self, forKey: .metadata)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(title, forKey: .title)
+        try container.encode(type, forKey: .type)
+        try container.encodeIfPresent(categoryIdentifier, forKey: .categoryIdentifier)
+        try container.encode(amount, forKey: .amount)
+        try container.encode(startDate, forKey: .startDate)
+        try container.encodeIfPresent(endDate, forKey: .endDate)
+        try container.encode(recurrence, forKey: .recurrence)
+        try container.encodeIfPresent(nextOccurrence, forKey: .nextOccurrence)
+        try container.encodeIfPresent(lastTransactionAddedOn, forKey: .lastTransactionAddedOn)
+        try container.encode(state, forKey: .state)
+        try container.encode(notificationReminderEnabled, forKey: .notificationReminderEnabled)
+        try container.encodeIfPresent(notificationReminderTime, forKey: .notificationReminderTime)
+        try container.encodeIfPresent(notificationScheduledForOccurrenceDate, forKey: .notificationScheduledForOccurrenceDate)
+        try container.encodeIfPresent(metadata, forKey: .metadata)
     }
 }

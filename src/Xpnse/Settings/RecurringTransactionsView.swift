@@ -92,6 +92,10 @@ private struct EditRecurringTransactionView: View {
     @State private var recurrence: RecurrenceFrequency
     @State private var hasRecurringEndDate: Bool
     @State private var recurringEndDate: Date
+    @State private var remindRecurring: Bool
+    @State private var reminderTime: Date
+    @State private var showReminderBlockedBySettingsAlert: Bool = false
+    @State private var dismissSheetWhenReminderBlockedAlertCloses: Bool = false
 
     private let original: RecurringTransaction
     private let onSaved: () -> Void
@@ -125,7 +129,13 @@ private struct EditRecurringTransactionView: View {
         self._recurrence = State(initialValue: item.recurrence)
         self._hasRecurringEndDate = State(initialValue: item.endDate != nil)
         self._recurringEndDate = State(initialValue: item.endDate ?? item.startDate)
+        self._remindRecurring = State(initialValue: item.notificationReminderEnabled)
+        self._reminderTime = State(initialValue: item.notificationReminderTime ?? Self.defaultReminderTime())
         self.onSaved = onSaved
+    }
+
+    private static func defaultReminderTime() -> Date {
+        Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: Date()) ?? Date()
     }
 
     var body: some View {
@@ -141,6 +151,7 @@ private struct EditRecurringTransactionView: View {
                         amountInputSection
                         categorySelectionSection
                         recurrenceSection
+                        reminderSection
                         deleteRecurringButton
                         Spacer()
                     }
@@ -162,6 +173,18 @@ private struct EditRecurringTransactionView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         Task {
+                            let userWantedRemind = remindRecurring
+                            var effectiveRemind = remindRecurring
+                            if effectiveRemind {
+                                let permission = await resolveNotificationPermissionForReminders()
+                                if permission != .granted {
+                                    effectiveRemind = false
+                                    await MainActor.run {
+                                        remindRecurring = false
+                                    }
+                                }
+                            }
+
                             let computedEndDate = hasRecurringEndDate ? recurringEndDate : nil
                             let updated = RecurringTransaction(
                                 id: original.id,
@@ -177,14 +200,35 @@ private struct EditRecurringTransactionView: View {
                                     : nil,
                                 lastTransactionAddedOn: original.lastTransactionAddedOn,
                                 state: original.state,
+                                notificationReminderEnabled: effectiveRemind,
+                                notificationReminderTime: effectiveRemind ? reminderTime : nil,
+                                notificationScheduledForOccurrenceDate: nil,
                                 metadata: original.metadata
                             )
                             await transactionManager.updateRecurringTransaction(updated)
-                            onSaved()
-                            dismiss()
+                            await MainActor.run { onSaved() }
+
+                            let strippedOnlyBecausePermission = userWantedRemind && !effectiveRemind
+                            await MainActor.run {
+                                if strippedOnlyBecausePermission {
+                                    dismissSheetWhenReminderBlockedAlertCloses = true
+                                    showReminderBlockedBySettingsAlert = true
+                                } else {
+                                    dismiss()
+                                }
+                            }
                         }
                     }
                     .disabled(!isDateRangeValid || amount.isEmpty || description.isEmpty)
+                }
+            }
+            .task {
+                guard original.notificationReminderEnabled else { return }
+                let status = await RecurringReminderScheduler.shared.authorizationStatus()
+                guard status == .denied else { return }
+                await MainActor.run {
+                    dismissSheetWhenReminderBlockedAlertCloses = false
+                    showReminderBlockedBySettingsAlert = true
                 }
             }
             .onChange(of: recurringStartDate) { _, newValue in
@@ -193,6 +237,66 @@ private struct EditRecurringTransactionView: View {
                 if hasRecurringEndDate, recurringEndDate < newValue {
                     recurringEndDate = newValue
                 }
+            }
+            .alert("Reminders unavailable", isPresented: $showReminderBlockedBySettingsAlert) {
+                Button("Open Settings") {
+                    RecurringReminderScheduler.shared.openAppSettings()
+                    if dismissSheetWhenReminderBlockedAlertCloses {
+                        dismissSheetWhenReminderBlockedAlertCloses = false
+                        dismiss()
+                    }
+                }
+                Button("OK", role: .cancel) {
+                    if dismissSheetWhenReminderBlockedAlertCloses {
+                        dismissSheetWhenReminderBlockedAlertCloses = false
+                        dismiss()
+                    }
+                }
+            } message: {
+                Text("Reminders can't be shown because notifications are turned off for Xpnse in Settings. Open Settings to allow notifications, then you can turn reminders on again.")
+            }
+        }
+    }
+
+    private enum ReminderPermissionOutcome {
+        case granted
+        case denied
+    }
+
+    private func resolveNotificationPermissionForReminders() async -> ReminderPermissionOutcome {
+        let status = await RecurringReminderScheduler.shared.authorizationStatus()
+        switch status {
+        case .notDetermined:
+            let granted = await RecurringReminderScheduler.shared.requestAuthorization()
+            return granted ? .granted : .denied
+        case .authorized, .provisional, .ephemeral:
+            return .granted
+        case .denied:
+            return .denied
+        @unknown default:
+            return .denied
+        }
+    }
+
+    private var reminderSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Toggle(isOn: $remindRecurring) {
+                Text("Remind me")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.white)
+            }
+            .toggleStyle(.switch)
+            .tint(XpnseColorKey.secondaryButtonBGColor.color)
+
+            if remindRecurring {
+                DatePicker(
+                    "Reminder time",
+                    selection: $reminderTime,
+                    displayedComponents: .hourAndMinute
+                )
+                .datePickerStyle(.compact)
+                .colorScheme(.dark)
+                .foregroundColor(.white)
             }
         }
     }

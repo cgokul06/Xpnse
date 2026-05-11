@@ -165,6 +165,7 @@ final class RecurringTransactionManager {
         guard let index = items.firstIndex(where: { $0.id == id }) else { return }
         items[index].state = .paused
         items[index].nextOccurrence = nil
+        items[index].notificationScheduledForOccurrenceDate = nil
         try? await repository.upsert(items[index])
     }
 
@@ -182,6 +183,9 @@ final class RecurringTransactionManager {
         guard let index = items.firstIndex(where: { $0.id == id }) else { return }
         items[index].state = .deleted
         items[index].nextOccurrence = nil
+        items[index].notificationReminderEnabled = false
+        items[index].notificationReminderTime = nil
+        items[index].notificationScheduledForOccurrenceDate = nil
         try? await repository.upsert(items[index])
     }
 }

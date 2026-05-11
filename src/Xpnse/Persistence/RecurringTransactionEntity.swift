@@ -21,6 +21,9 @@ final class RecurringTransactionEntity {
     var nextOccurrence: Date?
     var lastTransactionAddedOn: Date?
     var stateRaw: String?
+    var notificationReminderEnabled: Bool?
+    var notificationReminderTime: Date?
+    var notificationScheduledForOccurrenceDate: Date?
     var metadataData: Data?
     var updatedAt: Date
 
@@ -36,6 +39,9 @@ final class RecurringTransactionEntity {
         self.nextOccurrence = recurringTransaction.nextOccurrence
         self.lastTransactionAddedOn = recurringTransaction.lastTransactionAddedOn
         self.stateRaw = recurringTransaction.state.rawValue
+        self.notificationReminderEnabled = recurringTransaction.notificationReminderEnabled
+        self.notificationReminderTime = recurringTransaction.notificationReminderTime
+        self.notificationScheduledForOccurrenceDate = recurringTransaction.notificationScheduledForOccurrenceDate
         self.metadataData = try? JSONEncoder().encode(recurringTransaction.metadata ?? [:])
         self.updatedAt = Date()
     }
@@ -51,6 +57,9 @@ final class RecurringTransactionEntity {
         self.nextOccurrence = recurringTransaction.nextOccurrence
         self.lastTransactionAddedOn = recurringTransaction.lastTransactionAddedOn
         self.stateRaw = recurringTransaction.state.rawValue
+        self.notificationReminderEnabled = recurringTransaction.notificationReminderEnabled
+        self.notificationReminderTime = recurringTransaction.notificationReminderTime
+        self.notificationScheduledForOccurrenceDate = recurringTransaction.notificationScheduledForOccurrenceDate
         self.metadataData = try? JSONEncoder().encode(recurringTransaction.metadata ?? [:])
         self.updatedAt = Date()
     }
@@ -63,6 +72,7 @@ final class RecurringTransactionEntity {
         let metadata = metadataData.flatMap { try? JSONDecoder().decode([String: String].self, from: $0) }
         let amount = Decimal(string: amountString) ?? 0
         let state = RecurringTransactionState(rawValue: stateRaw ?? "") ?? .active
+        let reminderEnabled = notificationReminderEnabled ?? false
 
         return RecurringTransaction(
             id: id,
@@ -76,6 +86,9 @@ final class RecurringTransactionEntity {
             nextOccurrence: nextOccurrence,
             lastTransactionAddedOn: lastTransactionAddedOn,
             state: state,
+            notificationReminderEnabled: reminderEnabled,
+            notificationReminderTime: notificationReminderTime,
+            notificationScheduledForOccurrenceDate: notificationScheduledForOccurrenceDate,
             metadata: metadata
         )
     }

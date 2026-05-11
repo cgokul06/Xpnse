@@ -7,6 +7,7 @@
 
 import Foundation
 import Combine
+import UserNotifications
 
 struct CustomError {
     let code: Int
@@ -35,8 +36,9 @@ final class FirebaseTransactionManager {
     }
 
     func processRecurringTransactions() {
-        Task {
+        Task { @MainActor in
             await self.recurringTransactionManager.loadAndProcess(sink: self)
+            await RecurringReminderScheduler.shared.reconcileAllPendingReminders()
         }
     }
 
@@ -122,6 +124,7 @@ final class FirebaseTransactionManager {
         do {
             try await transactionRepository.clearAll()
             try await SwiftDataRecurringRepository.shared.clearAll()
+            UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
         } catch {
             print("Failed to clear local data: \(error.localizedDescription)")
         }
@@ -129,22 +132,30 @@ final class FirebaseTransactionManager {
 
     func createRecurringTransaction(_ recurring: RecurringTransaction) async {
         await recurringTransactionManager.create(recurring)
+        await RecurringReminderScheduler.shared.handleRecurringSaved(recurring)
     }
 
     func updateRecurringTransaction(_ recurring: RecurringTransaction) async {
         await recurringTransactionManager.update(recurring)
+        await RecurringReminderScheduler.shared.handleRecurringSaved(recurring)
     }
 
     func cancelRecurringTransaction(id: UUID) async {
         await recurringTransactionManager.cancel(id: id)
+        await RecurringReminderScheduler.shared.cancelReminder(for: id)
     }
 
     func skipRecurringTransaction(id: UUID) async {
         await recurringTransactionManager.skipNextOccurrence(id: id)
+        let all = await recurringTransactionManager.fetchAll()
+        if let updated = all.first(where: { $0.id == id }) {
+            await RecurringReminderScheduler.shared.handleRecurringSaved(updated)
+        }
     }
 
     func deleteRecurringTransaction(id: UUID) async {
         await recurringTransactionManager.markDeleted(id: id)
+        await RecurringReminderScheduler.shared.cancelReminder(for: id)
     }
 
     func fetchRecurringTransactions() async -> [RecurringTransaction] {

@@ -13,7 +13,8 @@ enum ExportImportError: Error {
 }
 
 struct ExportImportService {
-    private static let currentSchemaVersion = 3
+    /// 4: recurring backup always includes notification reminder fields (`notificationReminderEnabled`, times) via explicit `RecurringTransaction` encoding.
+    private static let currentSchemaVersion = 4
 
     private let transactionRepository: TransactionRepository
     private let recurringRepository: RecurringRepository
@@ -78,6 +79,7 @@ struct ExportImportService {
         }
 
         scheduleSuggestionRebuildAfterImport()
+        await RecurringReminderScheduler.shared.reconcileAllPendingReminders()
     }
 
     private func mergeTransactionsOneByOne(_ imported: [Transaction], payload: BackupPayload) async throws {
@@ -164,6 +166,9 @@ struct ExportImportService {
                     nextOccurrence: recurring.nextOccurrence,
                     lastTransactionAddedOn: recurring.lastTransactionAddedOn,
                     state: recurring.state,
+                    notificationReminderEnabled: recurring.notificationReminderEnabled,
+                    notificationReminderTime: recurring.notificationReminderTime,
+                    notificationScheduledForOccurrenceDate: recurring.notificationScheduledForOccurrenceDate,
                     metadata: recurring.metadata
                 )
                 try await recurringRepository.upsert(merged)
@@ -242,6 +247,9 @@ struct ExportImportService {
             recurrenceRaw,
             recurring.nextOccurrence.map { ISO8601DateFormatter().string(from: $0) } ?? "",
             recurring.state.rawValue,
+            "\(recurring.notificationReminderEnabled)",
+            recurring.notificationReminderTime.map { ISO8601DateFormatter().string(from: $0) } ?? "",
+            recurring.notificationScheduledForOccurrenceDate.map { ISO8601DateFormatter().string(from: $0) } ?? "",
             metadata
         ].joined(separator: "||")
     }
