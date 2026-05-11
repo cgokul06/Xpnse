@@ -94,8 +94,7 @@ private struct EditRecurringTransactionView: View {
     @State private var recurringEndDate: Date
     @State private var remindRecurring: Bool
     @State private var reminderTime: Date
-    @State private var showReminderBlockedBySettingsAlert: Bool = false
-    @State private var dismissSheetWhenReminderBlockedAlertCloses: Bool = false
+    @State private var showReminderPermissionAlert: Bool = false
 
     private let original: RecurringTransaction
     private let onSaved: () -> Void
@@ -173,18 +172,6 @@ private struct EditRecurringTransactionView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         Task {
-                            let userWantedRemind = remindRecurring
-                            var effectiveRemind = remindRecurring
-                            if effectiveRemind {
-                                let permission = await resolveNotificationPermissionForReminders()
-                                if permission != .granted {
-                                    effectiveRemind = false
-                                    await MainActor.run {
-                                        remindRecurring = false
-                                    }
-                                }
-                            }
-
                             let computedEndDate = hasRecurringEndDate ? recurringEndDate : nil
                             let updated = RecurringTransaction(
                                 id: original.id,
@@ -200,35 +187,36 @@ private struct EditRecurringTransactionView: View {
                                     : nil,
                                 lastTransactionAddedOn: original.lastTransactionAddedOn,
                                 state: original.state,
-                                notificationReminderEnabled: effectiveRemind,
-                                notificationReminderTime: effectiveRemind ? reminderTime : nil,
+                                notificationReminderEnabled: remindRecurring,
+                                notificationReminderTime: remindRecurring ? reminderTime : nil,
                                 notificationScheduledForOccurrenceDate: nil,
                                 metadata: original.metadata
                             )
                             await transactionManager.updateRecurringTransaction(updated)
-                            await MainActor.run { onSaved() }
-
-                            let strippedOnlyBecausePermission = userWantedRemind && !effectiveRemind
                             await MainActor.run {
-                                if strippedOnlyBecausePermission {
-                                    dismissSheetWhenReminderBlockedAlertCloses = true
-                                    showReminderBlockedBySettingsAlert = true
-                                } else {
-                                    dismiss()
-                                }
+                                onSaved()
+                                dismiss()
                             }
                         }
                     }
                     .disabled(!isDateRangeValid || amount.isEmpty || description.isEmpty)
                 }
             }
-            .task {
-                guard original.notificationReminderEnabled else { return }
-                let status = await RecurringReminderScheduler.shared.authorizationStatus()
-                guard status == .denied else { return }
-                await MainActor.run {
-                    dismissSheetWhenReminderBlockedAlertCloses = false
-                    showReminderBlockedBySettingsAlert = true
+            .alert("Notifications", isPresented: $showReminderPermissionAlert) {
+                Button("Open Settings") {
+                    RecurringReminderScheduler.shared.openAppSettings()
+                }
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Turn on notifications for Xpnse in Settings to get reminders for this recurring transaction.")
+            }
+            .onChange(of: remindRecurring) { _, newValue in
+                guard newValue else { return }
+                Task {
+                    let allowed = await RecurringReminderScheduler.shared.validateWhenTurningRemindMeOn()
+                    if !allowed {
+                        await MainActor.run { showReminderPermissionAlert = true }
+                    }
                 }
             }
             .onChange(of: recurringStartDate) { _, newValue in
@@ -238,43 +226,6 @@ private struct EditRecurringTransactionView: View {
                     recurringEndDate = newValue
                 }
             }
-            .alert("Reminders unavailable", isPresented: $showReminderBlockedBySettingsAlert) {
-                Button("Open Settings") {
-                    RecurringReminderScheduler.shared.openAppSettings()
-                    if dismissSheetWhenReminderBlockedAlertCloses {
-                        dismissSheetWhenReminderBlockedAlertCloses = false
-                        dismiss()
-                    }
-                }
-                Button("OK", role: .cancel) {
-                    if dismissSheetWhenReminderBlockedAlertCloses {
-                        dismissSheetWhenReminderBlockedAlertCloses = false
-                        dismiss()
-                    }
-                }
-            } message: {
-                Text("Reminders can't be shown because notifications are turned off for Xpnse in Settings. Open Settings to allow notifications, then you can turn reminders on again.")
-            }
-        }
-    }
-
-    private enum ReminderPermissionOutcome {
-        case granted
-        case denied
-    }
-
-    private func resolveNotificationPermissionForReminders() async -> ReminderPermissionOutcome {
-        let status = await RecurringReminderScheduler.shared.authorizationStatus()
-        switch status {
-        case .notDetermined:
-            let granted = await RecurringReminderScheduler.shared.requestAuthorization()
-            return granted ? .granted : .denied
-        case .authorized, .provisional, .ephemeral:
-            return .granted
-        case .denied:
-            return .denied
-        @unknown default:
-            return .denied
         }
     }
 

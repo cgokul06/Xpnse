@@ -42,6 +42,22 @@ final class RecurringReminderScheduler: NSObject {
         }
     }
 
+    /// Call once when the user turns **Remind me** on. Requests the system prompt only if status is `.notDetermined`.
+    /// - Returns: `true` if notifications are allowed for scheduling; `false` if the user should be pointed to Settings.
+    func validateWhenTurningRemindMeOn() async -> Bool {
+        let status = await authorizationStatus()
+        switch status {
+        case .authorized, .provisional, .ephemeral:
+            return true
+        case .notDetermined:
+            return await requestAuthorization()
+        case .denied:
+            return false
+        @unknown default:
+            return false
+        }
+    }
+
     func openAppSettings() {
         guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
         UIApplication.shared.open(url)
@@ -78,11 +94,6 @@ final class RecurringReminderScheduler: NSObject {
         }
         guard let next = recurring.nextOccurrence else {
             await cancelReminder(for: recurring.id)
-            return
-        }
-
-        let status = await authorizationStatus()
-        guard status == .authorized || status == .provisional || status == .ephemeral else {
             return
         }
 
@@ -177,6 +188,9 @@ final class RecurringReminderScheduler: NSObject {
 
     private func schedule(recurring: RecurringTransaction, occurrenceDate: Date) async {
         guard let reminderTime = recurring.notificationReminderTime else { return }
+
+        let auth = await authorizationStatus()
+        guard auth == .authorized || auth == .provisional || auth == .ephemeral else { return }
 
         var occurrenceForFire = occurrenceDate
         var fireDate = mergedFireDate(occurrenceDay: occurrenceForFire, reminderTime: reminderTime)

@@ -40,6 +40,7 @@ struct AddTransactionView: View {
     @State private var recurringEndDate: Date = Date()
     @State private var remindRecurring: Bool = false
     @State private var reminderTime: Date = AddTransactionView.defaultReminderTime()
+    @State private var showReminderPermissionAlert: Bool = false
     private let transactionManager: FirebaseTransactionManager = .shared
     private var transaction: Transaction?
     private let isEditing: Bool
@@ -228,6 +229,23 @@ struct AddTransactionView: View {
                         self.showDeleteAlert = false
                     })
                 )
+            }
+            .alert("Notifications", isPresented: $showReminderPermissionAlert) {
+                Button("Open Settings") {
+                    RecurringReminderScheduler.shared.openAppSettings()
+                }
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Turn on notifications for Xpnse in Settings to get reminders for this recurring transaction.")
+            }
+            .onChange(of: remindRecurring) { _, newValue in
+                guard newValue, isRecurring else { return }
+                Task {
+                    let allowed = await RecurringReminderScheduler.shared.validateWhenTurningRemindMeOn()
+                    if !allowed {
+                        await MainActor.run { showReminderPermissionAlert = true }
+                    }
+                }
             }
         }
         .navigationBarBackButtonHidden()
@@ -557,17 +575,6 @@ struct AddTransactionView: View {
 
         Task {
             if isRecurring && !isEditing {
-                var saveWithReminders = remindRecurring
-                if saveWithReminders {
-                    let permission = await resolveNotificationPermissionForReminders()
-                    if permission != .granted {
-                        await MainActor.run {
-                            remindRecurring = false
-                            saveWithReminders = false
-                        }
-                    }
-                }
-
                 suggestionEngine.upsert(
                     from: TransactionAdapter(
                         title: transaction.title,
@@ -584,8 +591,8 @@ struct AddTransactionView: View {
                     startDate: selectedDate,
                     endDate: computedEndDate,
                     recurrence: mappedRecurrenceFrequency(),
-                    notificationReminderEnabled: saveWithReminders,
-                    notificationReminderTime: saveWithReminders ? reminderTime : nil,
+                    notificationReminderEnabled: remindRecurring,
+                    notificationReminderTime: remindRecurring ? reminderTime : nil,
                     notificationScheduledForOccurrenceDate: nil,
                     metadata: [
                         "createdFrom": "AddTransactionView"
@@ -627,26 +634,6 @@ struct AddTransactionView: View {
 
     private func mappedRecurrenceFrequency() -> RecurrenceFrequency {
         recurrenceFrequency.aligned(to: selectedDate)
-    }
-
-    private enum ReminderPermissionOutcome {
-        case granted
-        case denied
-    }
-
-    private func resolveNotificationPermissionForReminders() async -> ReminderPermissionOutcome {
-        let status = await RecurringReminderScheduler.shared.authorizationStatus()
-        switch status {
-        case .notDetermined:
-            let granted = await RecurringReminderScheduler.shared.requestAuthorization()
-            return granted ? .granted : .denied
-        case .authorized, .provisional, .ephemeral:
-            return .granted
-        case .denied:
-            return .denied
-        @unknown default:
-            return .denied
-        }
     }
 
 }
