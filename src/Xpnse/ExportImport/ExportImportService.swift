@@ -13,8 +13,8 @@ enum ExportImportError: Error {
 }
 
 struct ExportImportService {
-    /// 4: recurring backup always includes notification reminder fields (`notificationReminderEnabled`, times) via explicit `RecurringTransaction` encoding.
-    private static let currentSchemaVersion = 4
+    /// 5: recurring reminders store `notificationReminderOffsetFromEndOfDay` (seconds before end of occurrence day).
+    private static let currentSchemaVersion = 5
 
     private let transactionRepository: TransactionRepository
     private let recurringRepository: RecurringRepository
@@ -167,7 +167,7 @@ struct ExportImportService {
                     lastTransactionAddedOn: recurring.lastTransactionAddedOn,
                     state: recurring.state,
                     notificationReminderEnabled: recurring.notificationReminderEnabled,
-                    notificationReminderTime: recurring.notificationReminderTime,
+                    notificationReminderOffsetFromEndOfDay: recurring.notificationReminderOffsetFromEndOfDay,
                     notificationScheduledForOccurrenceDate: recurring.notificationScheduledForOccurrenceDate,
                     metadata: recurring.metadata
                 )
@@ -248,7 +248,7 @@ struct ExportImportService {
             recurring.nextOccurrence.map { ISO8601DateFormatter().string(from: $0) } ?? "",
             recurring.state.rawValue,
             "\(recurring.notificationReminderEnabled)",
-            recurring.notificationReminderTime.map { ISO8601DateFormatter().string(from: $0) } ?? "",
+            recurring.notificationReminderOffsetFromEndOfDay.map { String($0) } ?? "",
             recurring.notificationScheduledForOccurrenceDate.map { ISO8601DateFormatter().string(from: $0) } ?? "",
             metadata
         ].joined(separator: "||")

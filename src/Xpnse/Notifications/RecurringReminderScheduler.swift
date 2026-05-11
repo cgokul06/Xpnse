@@ -88,7 +88,7 @@ final class RecurringReminderScheduler: NSObject {
             await cancelReminder(for: recurring.id)
             return
         }
-        guard recurring.notificationReminderTime != nil else {
+        guard recurring.notificationReminderOffsetFromEndOfDay != nil else {
             await cancelReminder(for: recurring.id)
             return
         }
@@ -108,7 +108,7 @@ final class RecurringReminderScheduler: NSObject {
 
             for recurring in all where recurring.state == .active
                 && recurring.notificationReminderEnabled
-                && recurring.notificationReminderTime != nil {
+                && recurring.notificationReminderOffsetFromEndOfDay != nil {
 
                 guard let next = recurring.nextOccurrence else {
                     if byId[recurring.id.uuidString] != nil {
@@ -117,10 +117,14 @@ final class RecurringReminderScheduler: NSObject {
                     continue
                 }
 
-                guard let reminderTime = recurring.notificationReminderTime else { continue }
+                guard let offset = recurring.notificationReminderOffsetFromEndOfDay else { continue }
 
                 let expectedOccurrenceStart = calendar.startOfDay(for: next)
-                let expectedFire = mergedFireDate(occurrenceDay: next, reminderTime: reminderTime)
+                let expectedFire = RecurringReminderScheduleMath.fireDateForOccurrence(
+                    occurrenceDay: next,
+                    offsetFromEndOfTransactionDay: offset,
+                    calendar: calendar
+                )
 
                 if let existing = byId[recurring.id.uuidString],
                    let scheduledFor = recurring.notificationScheduledForOccurrenceDate,
@@ -145,7 +149,7 @@ final class RecurringReminderScheduler: NSObject {
             guard let recurring = all.first(where: { $0.id == recurringId }) else { return }
             guard recurring.notificationReminderEnabled,
                   recurring.state == .active,
-                  recurring.notificationReminderTime != nil else {
+                  recurring.notificationReminderOffsetFromEndOfDay != nil else {
                 await cancelReminder(for: recurringId)
                 return
             }
@@ -175,25 +179,18 @@ final class RecurringReminderScheduler: NSObject {
         }
     }
 
-    private func mergedFireDate(occurrenceDay: Date, reminderTime: Date) -> Date {
-        let dayStart = calendar.startOfDay(for: occurrenceDay)
-        let timeParts = calendar.dateComponents([.hour, .minute, .second], from: reminderTime)
-        return calendar.date(
-            bySettingHour: timeParts.hour ?? 9,
-            minute: timeParts.minute ?? 0,
-            second: timeParts.second ?? 0,
-            of: dayStart
-        ) ?? dayStart
-    }
-
     private func schedule(recurring: RecurringTransaction, occurrenceDate: Date) async {
-        guard let reminderTime = recurring.notificationReminderTime else { return }
+        guard let offset = recurring.notificationReminderOffsetFromEndOfDay, offset >= 0 else { return }
 
         let auth = await authorizationStatus()
         guard auth == .authorized || auth == .provisional || auth == .ephemeral else { return }
 
         var occurrenceForFire = occurrenceDate
-        var fireDate = mergedFireDate(occurrenceDay: occurrenceForFire, reminderTime: reminderTime)
+        var fireDate = RecurringReminderScheduleMath.fireDateForOccurrence(
+            occurrenceDay: occurrenceForFire,
+            offsetFromEndOfTransactionDay: offset,
+            calendar: calendar
+        )
         let now = Date()
 
         if fireDate < now {
@@ -207,7 +204,11 @@ final class RecurringReminderScheduler: NSObject {
                 return
             }
             occurrenceForFire = nextDay
-            fireDate = mergedFireDate(occurrenceDay: nextDay, reminderTime: reminderTime)
+            fireDate = RecurringReminderScheduleMath.fireDateForOccurrence(
+                occurrenceDay: nextDay,
+                offsetFromEndOfTransactionDay: offset,
+                calendar: calendar
+            )
         }
 
         if fireDate < now {

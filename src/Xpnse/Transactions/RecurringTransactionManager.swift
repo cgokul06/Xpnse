@@ -184,7 +184,7 @@ final class RecurringTransactionManager {
         items[index].state = .deleted
         items[index].nextOccurrence = nil
         items[index].notificationReminderEnabled = false
-        items[index].notificationReminderTime = nil
+        items[index].notificationReminderOffsetFromEndOfDay = nil
         items[index].notificationScheduledForOccurrenceDate = nil
         try? await repository.upsert(items[index])
     }

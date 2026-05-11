@@ -39,7 +39,7 @@ struct AddTransactionView: View {
     @State private var hasRecurringEndDate: Bool = false
     @State private var recurringEndDate: Date = Date()
     @State private var remindRecurring: Bool = false
-    @State private var reminderTime: Date = AddTransactionView.defaultReminderTime()
+    @State private var reminderDateTime: Date = AddTransactionView.defaultReminderDateTime(for: Date())
     @State private var showReminderPermissionAlert: Bool = false
     private let transactionManager: FirebaseTransactionManager = .shared
     private var transaction: Transaction?
@@ -57,6 +57,14 @@ struct AddTransactionView: View {
         guard isRecurring else { return true }
         guard hasRecurringEndDate else { return true }
         return recurringEndDate >= selectedDate
+    }
+
+    private var isRecurringReminderScheduleValid: Bool {
+        guard isRecurring, remindRecurring else { return true }
+        return RecurringReminderScheduleMath.isValidReminder(
+            transactionDay: selectedDate,
+            reminderDateTime: reminderDateTime
+        )
     }
 
     private var recurrenceOptions: [RecurrenceFrequency] {
@@ -164,6 +172,7 @@ struct AddTransactionView: View {
                 }
                 .onChange(of: selectedDate) { _, newValue in
                     recurrenceFrequency = recurrenceFrequency.aligned(to: newValue)
+                    clampReminderDateTimeToTransactionDay(newValue)
                 }
 
                 if isDeleting {
@@ -251,8 +260,34 @@ struct AddTransactionView: View {
         .navigationBarBackButtonHidden()
     }
 
-    private static func defaultReminderTime() -> Date {
-        Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: Date()) ?? Date()
+    private static func defaultReminderDateTime(for transactionDay: Date) -> Date {
+        let cal = Calendar.current
+        guard let latest = RecurringReminderScheduleMath.endOfDayBeforeTransactionDay(
+            containing: transactionDay,
+            calendar: cal
+        ) else {
+            return transactionDay
+        }
+        let txStart = cal.startOfDay(for: transactionDay)
+        guard let prevStart = cal.date(byAdding: .day, value: -1, to: txStart) else { return latest }
+        let candidate = cal.date(bySettingHour: 21, minute: 0, second: 0, of: prevStart) ?? prevStart
+        return min(candidate, latest)
+    }
+
+    private func clampReminderDateTimeToTransactionDay(_ transactionDay: Date) {
+        let cal = Calendar.current
+        guard let latest = RecurringReminderScheduleMath.endOfDayBeforeTransactionDay(
+            containing: transactionDay,
+            calendar: cal
+        ) else { return }
+        var next = reminderDateTime
+        let txStart = cal.startOfDay(for: transactionDay)
+        if next > latest || cal.startOfDay(for: next) >= txStart {
+            next = min(Self.defaultReminderDateTime(for: transactionDay), latest)
+        }
+        if next != reminderDateTime {
+            reminderDateTime = next
+        }
     }
 
     // MARK: - Transaction Type Selector
@@ -401,13 +436,19 @@ struct AddTransactionView: View {
 
                 if remindRecurring {
                     DatePicker(
-                        "Reminder time",
-                        selection: $reminderTime,
-                        displayedComponents: .hourAndMinute
+                        "Reminder date and time",
+                        selection: $reminderDateTime,
+                        displayedComponents: [.date, .hourAndMinute]
                     )
                     .datePickerStyle(.compact)
                     .colorScheme(.dark)
                     .foregroundColor(.white)
+
+                    if !isRecurringReminderScheduleValid {
+                        Text("Reminder must be before the transaction date, at latest the end of the previous day (e.g. transaction 11 May → reminder on or before 10 May, 11:59 p.m.).")
+                            .font(.system(size: 12, weight: .medium))
+                            .foregroundColor(.red)
+                    }
                 }
             }
         }
@@ -533,7 +574,10 @@ struct AddTransactionView: View {
                 .opacity(isFormValid ? 1.0 : 0.7)
                 .xpnseRoundedCorner()
             }
-            .disabled(!isFormValid || isLoading || !recurringDateRangeValid)
+            .disabled(
+                !isFormValid || isLoading || !recurringDateRangeValid
+                    || (isRecurring && remindRecurring && !isRecurringReminderScheduleValid)
+            )
 
             if !self.isEditing {
                 // Scan Bill Button
@@ -583,6 +627,13 @@ struct AddTransactionView: View {
                     )
                 )
                 let computedEndDate = hasRecurringEndDate ? recurringEndDate : nil
+                let reminderOffset: TimeInterval? = {
+                    guard remindRecurring else { return nil }
+                    return RecurringReminderScheduleMath.offsetFromEndOfTransactionDay(
+                        transactionDay: selectedDate,
+                        reminderDateTime: reminderDateTime
+                    )
+                }()
                 let recurring = RecurringTransaction(
                     title: description,
                     type: transactionType.rawValue,
@@ -592,7 +643,7 @@ struct AddTransactionView: View {
                     endDate: computedEndDate,
                     recurrence: mappedRecurrenceFrequency(),
                     notificationReminderEnabled: remindRecurring,
-                    notificationReminderTime: remindRecurring ? reminderTime : nil,
+                    notificationReminderOffsetFromEndOfDay: reminderOffset,
                     notificationScheduledForOccurrenceDate: nil,
                     metadata: [
                         "createdFrom": "AddTransactionView"

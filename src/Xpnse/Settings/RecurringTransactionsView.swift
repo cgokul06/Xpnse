@@ -93,7 +93,7 @@ private struct EditRecurringTransactionView: View {
     @State private var hasRecurringEndDate: Bool
     @State private var recurringEndDate: Date
     @State private var remindRecurring: Bool
-    @State private var reminderTime: Date
+    @State private var reminderDateTime: Date
     @State private var showReminderPermissionAlert: Bool = false
 
     private let original: RecurringTransaction
@@ -116,6 +116,14 @@ private struct EditRecurringTransactionView: View {
         !hasRecurringEndDate || recurringEndDate >= recurringStartDate
     }
 
+    private var isReminderScheduleValid: Bool {
+        guard remindRecurring else { return true }
+        return RecurringReminderScheduleMath.isValidReminder(
+            transactionDay: recurringStartDate,
+            reminderDateTime: reminderDateTime
+        )
+    }
+
     init(item: RecurringTransaction, onSaved: @escaping () -> Void) {
         self.original = item
         let type = TransactionType(rawValue: item.type) ?? .expense
@@ -129,12 +137,52 @@ private struct EditRecurringTransactionView: View {
         self._hasRecurringEndDate = State(initialValue: item.endDate != nil)
         self._recurringEndDate = State(initialValue: item.endDate ?? item.startDate)
         self._remindRecurring = State(initialValue: item.notificationReminderEnabled)
-        self._reminderTime = State(initialValue: item.notificationReminderTime ?? Self.defaultReminderTime())
+        self._reminderDateTime = State(initialValue: Self.initialReminderDateTime(for: item))
         self.onSaved = onSaved
     }
 
-    private static func defaultReminderTime() -> Date {
-        Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: Date()) ?? Date()
+    private static func initialReminderDateTime(for item: RecurringTransaction) -> Date {
+        if let offset = item.notificationReminderOffsetFromEndOfDay {
+            let end = RecurringReminderScheduleMath.endOfCalendarDay(containing: item.startDate)
+            let candidate = end.addingTimeInterval(-offset)
+            if RecurringReminderScheduleMath.isValidReminder(
+                transactionDay: item.startDate,
+                reminderDateTime: candidate
+            ) {
+                return candidate
+            }
+        }
+        return defaultReminderDateTime(for: item.startDate)
+    }
+
+    private static func defaultReminderDateTime(for transactionDay: Date) -> Date {
+        let cal = Calendar.current
+        guard let latest = RecurringReminderScheduleMath.endOfDayBeforeTransactionDay(
+            containing: transactionDay,
+            calendar: cal
+        ) else {
+            return transactionDay
+        }
+        let txStart = cal.startOfDay(for: transactionDay)
+        guard let prevStart = cal.date(byAdding: .day, value: -1, to: txStart) else { return latest }
+        let candidate = cal.date(bySettingHour: 21, minute: 0, second: 0, of: prevStart) ?? prevStart
+        return min(candidate, latest)
+    }
+
+    private func clampReminderDateTimeToTransactionDay(_ transactionDay: Date) {
+        let cal = Calendar.current
+        guard let latest = RecurringReminderScheduleMath.endOfDayBeforeTransactionDay(
+            containing: transactionDay,
+            calendar: cal
+        ) else { return }
+        var next = reminderDateTime
+        let txStart = cal.startOfDay(for: transactionDay)
+        if next > latest || cal.startOfDay(for: next) >= txStart {
+            next = min(Self.defaultReminderDateTime(for: transactionDay), latest)
+        }
+        if next != reminderDateTime {
+            reminderDateTime = next
+        }
     }
 
     var body: some View {
@@ -173,6 +221,13 @@ private struct EditRecurringTransactionView: View {
                     Button("Save") {
                         Task {
                             let computedEndDate = hasRecurringEndDate ? recurringEndDate : nil
+                            let reminderOffset: TimeInterval? = {
+                                guard remindRecurring else { return nil }
+                                return RecurringReminderScheduleMath.offsetFromEndOfTransactionDay(
+                                    transactionDay: recurringStartDate,
+                                    reminderDateTime: reminderDateTime
+                                )
+                            }()
                             let updated = RecurringTransaction(
                                 id: original.id,
                                 title: description,
@@ -188,7 +243,7 @@ private struct EditRecurringTransactionView: View {
                                 lastTransactionAddedOn: original.lastTransactionAddedOn,
                                 state: original.state,
                                 notificationReminderEnabled: remindRecurring,
-                                notificationReminderTime: remindRecurring ? reminderTime : nil,
+                                notificationReminderOffsetFromEndOfDay: reminderOffset,
                                 notificationScheduledForOccurrenceDate: nil,
                                 metadata: original.metadata
                             )
@@ -199,7 +254,10 @@ private struct EditRecurringTransactionView: View {
                             }
                         }
                     }
-                    .disabled(!isDateRangeValid || amount.isEmpty || description.isEmpty)
+                    .disabled(
+                        !isDateRangeValid || amount.isEmpty || description.isEmpty
+                            || (remindRecurring && !isReminderScheduleValid)
+                    )
                 }
             }
             .alert("Notifications", isPresented: $showReminderPermissionAlert) {
@@ -225,6 +283,7 @@ private struct EditRecurringTransactionView: View {
                 if hasRecurringEndDate, recurringEndDate < newValue {
                     recurringEndDate = newValue
                 }
+                clampReminderDateTimeToTransactionDay(newValue)
             }
         }
     }
@@ -241,13 +300,19 @@ private struct EditRecurringTransactionView: View {
 
             if remindRecurring {
                 DatePicker(
-                    "Reminder time",
-                    selection: $reminderTime,
-                    displayedComponents: .hourAndMinute
+                    "Reminder date and time",
+                    selection: $reminderDateTime,
+                    displayedComponents: [.date, .hourAndMinute]
                 )
                 .datePickerStyle(.compact)
                 .colorScheme(.dark)
                 .foregroundColor(.white)
+
+                if !isReminderScheduleValid {
+                    Text("Reminder must be before the start date, at latest the end of the previous day (e.g. start 11 May → reminder on or before 10 May, 11:59 p.m.).")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(.red)
+                }
             }
         }
     }

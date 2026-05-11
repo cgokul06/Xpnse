@@ -22,6 +22,8 @@ final class RecurringTransactionEntity {
     var lastTransactionAddedOn: Date?
     var stateRaw: String?
     var notificationReminderEnabled: Bool?
+    /// Persisted offset in seconds; preferred over legacy `notificationReminderTime`.
+    var notificationReminderOffsetSeconds: Double?
     var notificationReminderTime: Date?
     var notificationScheduledForOccurrenceDate: Date?
     var metadataData: Data?
@@ -40,7 +42,8 @@ final class RecurringTransactionEntity {
         self.lastTransactionAddedOn = recurringTransaction.lastTransactionAddedOn
         self.stateRaw = recurringTransaction.state.rawValue
         self.notificationReminderEnabled = recurringTransaction.notificationReminderEnabled
-        self.notificationReminderTime = recurringTransaction.notificationReminderTime
+        self.notificationReminderOffsetSeconds = recurringTransaction.notificationReminderOffsetFromEndOfDay
+        self.notificationReminderTime = nil
         self.notificationScheduledForOccurrenceDate = recurringTransaction.notificationScheduledForOccurrenceDate
         self.metadataData = try? JSONEncoder().encode(recurringTransaction.metadata ?? [:])
         self.updatedAt = Date()
@@ -58,7 +61,8 @@ final class RecurringTransactionEntity {
         self.lastTransactionAddedOn = recurringTransaction.lastTransactionAddedOn
         self.stateRaw = recurringTransaction.state.rawValue
         self.notificationReminderEnabled = recurringTransaction.notificationReminderEnabled
-        self.notificationReminderTime = recurringTransaction.notificationReminderTime
+        self.notificationReminderOffsetSeconds = recurringTransaction.notificationReminderOffsetFromEndOfDay
+        self.notificationReminderTime = nil
         self.notificationScheduledForOccurrenceDate = recurringTransaction.notificationScheduledForOccurrenceDate
         self.metadataData = try? JSONEncoder().encode(recurringTransaction.metadata ?? [:])
         self.updatedAt = Date()
@@ -73,6 +77,19 @@ final class RecurringTransactionEntity {
         let amount = Decimal(string: amountString) ?? 0
         let state = RecurringTransactionState(rawValue: stateRaw ?? "") ?? .active
         let reminderEnabled = notificationReminderEnabled ?? false
+        let reminderOffset: TimeInterval? = {
+            if let seconds = notificationReminderOffsetSeconds {
+                return seconds
+            }
+            if let legacy = notificationReminderTime {
+                return RecurringReminderScheduleMath.offsetFromLegacyNotificationTime(
+                    legacy,
+                    transactionStartDay: startDate,
+                    calendar: .current
+                )
+            }
+            return nil
+        }()
 
         return RecurringTransaction(
             id: id,
@@ -87,7 +104,7 @@ final class RecurringTransactionEntity {
             lastTransactionAddedOn: lastTransactionAddedOn,
             state: state,
             notificationReminderEnabled: reminderEnabled,
-            notificationReminderTime: notificationReminderTime,
+            notificationReminderOffsetFromEndOfDay: reminderOffset,
             notificationScheduledForOccurrenceDate: notificationScheduledForOccurrenceDate,
             metadata: metadata
         )

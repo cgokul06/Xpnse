@@ -28,6 +28,7 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
         case lastTransactionAddedOn
         case state
         case notificationReminderEnabled
+        case notificationReminderOffsetFromEndOfDay
         case notificationReminderTime
         case notificationScheduledForOccurrenceDate
         case metadata
@@ -56,8 +57,8 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
     public var state: RecurringTransactionState
     /// When true, user wants a local notification before upcoming occurrences.
     public var notificationReminderEnabled: Bool
-    /// Wall-clock time used for reminders (date portion ignored when scheduling).
-    public var notificationReminderTime: Date?
+    /// Seconds before end-of-calendar-day of each occurrence when the reminder should fire (derived from the chosen reminder date/time vs transaction day).
+    public var notificationReminderOffsetFromEndOfDay: TimeInterval?
     /// Start-of-day of the occurrence for which a pending notification was scheduled (nil if none).
     public var notificationScheduledForOccurrenceDate: Date?
     /// Optional additional metadata.
@@ -77,7 +78,7 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
         lastTransactionAddedOn: Date? = nil,
         state: RecurringTransactionState = .active,
         notificationReminderEnabled: Bool = false,
-        notificationReminderTime: Date? = nil,
+        notificationReminderOffsetFromEndOfDay: TimeInterval? = nil,
         notificationScheduledForOccurrenceDate: Date? = nil,
         metadata: [String: String]?
     ) {
@@ -93,7 +94,7 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
         self.lastTransactionAddedOn = lastTransactionAddedOn
         self.state = state
         self.notificationReminderEnabled = notificationReminderEnabled
-        self.notificationReminderTime = notificationReminderTime
+        self.notificationReminderOffsetFromEndOfDay = notificationReminderOffsetFromEndOfDay
         self.notificationScheduledForOccurrenceDate = notificationScheduledForOccurrenceDate
         self.metadata = metadata
     }
@@ -110,7 +111,7 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
         lastTransactionAddedOn: Date? = nil,
         state: RecurringTransactionState = .active,
         notificationReminderEnabled: Bool = false,
-        notificationReminderTime: Date? = nil,
+        notificationReminderOffsetFromEndOfDay: TimeInterval? = nil,
         notificationScheduledForOccurrenceDate: Date? = nil,
         metadata: [String: String]? = nil,
         calendar: Calendar = .current
@@ -126,7 +127,7 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
         self.lastTransactionAddedOn = lastTransactionAddedOn
         self.state = state
         self.notificationReminderEnabled = notificationReminderEnabled
-        self.notificationReminderTime = notificationReminderTime
+        self.notificationReminderOffsetFromEndOfDay = notificationReminderOffsetFromEndOfDay
         self.notificationScheduledForOccurrenceDate = notificationScheduledForOccurrenceDate
         self.metadata = metadata
         self.nextOccurrence = recurrence.firstOccurrence(onOrAfter: startDate, calendar: calendar)
@@ -146,7 +147,17 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
         self.lastTransactionAddedOn = try container.decodeIfPresent(Date.self, forKey: .lastTransactionAddedOn)
         self.state = try container.decodeIfPresent(RecurringTransactionState.self, forKey: .state) ?? .active
         self.notificationReminderEnabled = try container.decodeIfPresent(Bool.self, forKey: .notificationReminderEnabled) ?? false
-        self.notificationReminderTime = try container.decodeIfPresent(Date.self, forKey: .notificationReminderTime)
+        if let offset = try container.decodeIfPresent(TimeInterval.self, forKey: .notificationReminderOffsetFromEndOfDay) {
+            self.notificationReminderOffsetFromEndOfDay = offset
+        } else if let legacy = try container.decodeIfPresent(Date.self, forKey: .notificationReminderTime) {
+            self.notificationReminderOffsetFromEndOfDay = RecurringReminderScheduleMath.offsetFromLegacyNotificationTime(
+                legacy,
+                transactionStartDay: startDate,
+                calendar: .current
+            )
+        } else {
+            self.notificationReminderOffsetFromEndOfDay = nil
+        }
         self.notificationScheduledForOccurrenceDate = try container.decodeIfPresent(Date.self, forKey: .notificationScheduledForOccurrenceDate)
         self.metadata = try container.decodeIfPresent([String: String].self, forKey: .metadata)
     }
@@ -165,7 +176,10 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
         try container.encodeIfPresent(lastTransactionAddedOn, forKey: .lastTransactionAddedOn)
         try container.encode(state, forKey: .state)
         try container.encode(notificationReminderEnabled, forKey: .notificationReminderEnabled)
-        try container.encodeIfPresent(notificationReminderTime, forKey: .notificationReminderTime)
+        try container.encodeIfPresent(
+            notificationReminderOffsetFromEndOfDay,
+            forKey: .notificationReminderOffsetFromEndOfDay
+        )
         try container.encodeIfPresent(notificationScheduledForOccurrenceDate, forKey: .notificationScheduledForOccurrenceDate)
         try container.encodeIfPresent(metadata, forKey: .metadata)
     }
