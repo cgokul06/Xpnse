@@ -11,63 +11,128 @@ struct RecurringTransactionsView: View {
     @State private var recurringItems: [RecurringTransaction] = []
     @State private var isLoading = true
     @State private var selectedForEdit: RecurringTransaction?
+    @State private var categoryStore = CategoryStore.shared
 
     private let transactionManager = FirebaseTransactionManager.shared
 
+    private var activeItems: [RecurringTransaction] {
+        recurringItems.filter { $0.state == .active }
+    }
+
+    private var pausedItems: [RecurringTransaction] {
+        recurringItems.filter { $0.state == .paused }
+    }
+
     var body: some View {
-        List {
-            if recurringItems.isEmpty && !isLoading {
-                Text("No recurring transactions found.")
-                    .foregroundStyle(.secondary)
-            }
-
-            ForEach(recurringItems, id: \.id) { item in
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(item.title)
-                        .font(.headline)
-                    Text("Next: \(item.nextOccurrence?.formatted(date: .abbreviated, time: .omitted) ?? "—")")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    Text("Amount: \(CurrencyManager.shared.selectedCurrency.symbol)\(NSDecimalNumber(decimal: item.amount).stringValue)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    Button("Skip") {
-                        Task {
-                            await transactionManager.skipRecurringTransaction(id: item.id)
-                            await reload()
-                        }
-                    }
-                    .tint(.orange)
-
-                    Button("Pause") {
-                        Task {
-                            await transactionManager.cancelRecurringTransaction(id: item.id)
-                            await reload()
-                        }
-                    }
-                    .tint(.gray)
-                }
-                .onTapGesture {
-                    selectedForEdit = item
-                }
-            }
-        }
-        .overlay {
+        ZStack {
             if isLoading {
                 ProgressView()
+                    .tint(.white)
+            } else if recurringItems.isEmpty {
+                emptyState
+            } else {
+                listContent
             }
         }
-        .navigationTitle("Recurring Transactions")
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .gradientNavigationBackground()
+        .navigationTitle("Recurring")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarColorScheme(.dark, for: .navigationBar)
         .sheet(item: $selectedForEdit) { item in
             EditRecurringTransactionView(item: item) {
                 Task { await reload() }
             }
         }
         .task {
+            await categoryStore.load()
             await reload()
+        }
+    }
+
+    private var listContent: some View {
+        List {
+            if !activeItems.isEmpty {
+                Section {
+                    ForEach(activeItems, id: \.id) { item in
+                        recurringRow(item)
+                    }
+                } header: {
+                    sectionHeader("Active")
+                }
+            }
+
+            if !pausedItems.isEmpty {
+                Section {
+                    ForEach(pausedItems, id: \.id) { item in
+                        recurringRow(item)
+                    }
+                } header: {
+                    sectionHeader("Paused")
+                }
+            }
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+    }
+
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(XpnseColorKey.white.color.opacity(0.9))
+            .textCase(nil)
+    }
+
+    @ViewBuilder
+    private func recurringRow(_ item: RecurringTransaction) -> some View {
+        RecurringTransactionRowView(item: item)
+            .listRowBackground(Color.clear)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+            .contentShape(Rectangle())
+            .onTapGesture {
+                selectedForEdit = item
+            }
+            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                if item.state == .active {
+                    Button {
+                        Task {
+                            await transactionManager.skipRecurringTransaction(id: item.id)
+                            await reload()
+                        }
+                    } label: {
+                        Label("Skip", systemImage: "forward.fill")
+                    }
+                    .tint(.orange)
+
+                    Button {
+                        Task {
+                            await transactionManager.cancelRecurringTransaction(id: item.id)
+                            await reload()
+                        }
+                    } label: {
+                        Label("Pause", systemImage: "pause.fill")
+                    }
+                    .tint(.gray)
+                }
+            }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "arrow.triangle.2.circlepath")
+                .font(.system(size: 40))
+                .foregroundStyle(XpnseColorKey.white.color.opacity(0.6))
+
+            Text("No recurring transactions")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(XpnseColorKey.white.color)
+
+            Text("Create one when adding a transaction and enabling Recurring.")
+                .font(.system(size: 14, weight: .regular))
+                .foregroundStyle(XpnseColorKey.white.color.opacity(0.75))
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
         }
     }
 
@@ -213,6 +278,7 @@ private struct EditRecurringTransactionView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
+                        .foregroundColor(.white)
                 }
                 ToolbarItem(placement: .principal) {
                     Text("Update Recurring")
@@ -222,45 +288,13 @@ private struct EditRecurringTransactionView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        Task {
-                            let computedEndDate = hasRecurringEndDate ? recurringEndDate : nil
-                            let reminderOffset: TimeInterval? = {
-                                guard remindRecurring else { return nil }
-                                return RecurringReminderScheduleMath.offsetFromEndOfTransactionDay(
-                                    transactionDay: recurringStartDate,
-                                    reminderDateTime: reminderDateTime
-                                )
-                            }()
-                            let updated = RecurringTransaction(
-                                id: original.id,
-                                title: description,
-                                type: transactionType.rawValue,
-                                categoryIdentifier: selectedCategoryId,
-                                amount: Decimal(string: amount) ?? original.amount,
-                                startDate: recurringStartDate,
-                                endDate: computedEndDate,
-                                recurrence: recurrence,
-                                nextOccurrence: original.state == .active
-                                    ? recurrence.firstOccurrence(onOrAfter: recurringStartDate)
-                                    : nil,
-                                lastTransactionAddedOn: original.lastTransactionAddedOn,
-                                state: original.state,
-                                notificationReminderEnabled: remindRecurring,
-                                notificationReminderOffsetFromEndOfDay: reminderOffset,
-                                notificationScheduledForOccurrenceDate: nil,
-                                metadata: original.metadata
-                            )
-                            await transactionManager.updateRecurringTransaction(updated)
-                            await MainActor.run {
-                                onSaved()
-                                dismiss()
-                            }
-                        }
+                        Task { await save() }
                     }
                     .disabled(
                         !isDateRangeValid || amount.isEmpty || description.isEmpty
                             || (remindRecurring && !isReminderScheduleValid)
                     )
+                    .foregroundColor(.white)
                 }
             }
             .alert("Notifications", isPresented: $showReminderPermissionAlert) {
@@ -296,6 +330,41 @@ private struct EditRecurringTransactionView: View {
                     selectedCategoryId = BuiltinCategories.otherCategoryId
                 }
             }
+        }
+    }
+
+    private func save() async {
+        let computedEndDate = hasRecurringEndDate ? recurringEndDate : nil
+        let reminderOffset: TimeInterval? = {
+            guard remindRecurring else { return nil }
+            return RecurringReminderScheduleMath.offsetFromEndOfTransactionDay(
+                transactionDay: recurringStartDate,
+                reminderDateTime: reminderDateTime
+            )
+        }()
+        let updated = RecurringTransaction(
+            id: original.id,
+            title: description,
+            type: transactionType.rawValue,
+            categoryIdentifier: selectedCategoryId,
+            amount: Decimal(string: amount) ?? original.amount,
+            startDate: recurringStartDate,
+            endDate: computedEndDate,
+            recurrence: recurrence,
+            nextOccurrence: original.state == .active
+                ? recurrence.firstOccurrence(onOrAfter: recurringStartDate)
+                : nil,
+            lastTransactionAddedOn: original.lastTransactionAddedOn,
+            state: original.state,
+            notificationReminderEnabled: remindRecurring,
+            notificationReminderOffsetFromEndOfDay: reminderOffset,
+            notificationScheduledForOccurrenceDate: nil,
+            metadata: original.metadata
+        )
+        await transactionManager.updateRecurringTransaction(updated)
+        await MainActor.run {
+            onSaved()
+            dismiss()
         }
     }
 
@@ -438,6 +507,7 @@ private struct EditRecurringTransactionView: View {
                     }
                 }
                 .pickerStyle(.menu)
+                .tint(.white)
             }
 
             HStack {
