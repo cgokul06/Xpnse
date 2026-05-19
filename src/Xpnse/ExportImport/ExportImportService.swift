@@ -13,23 +13,31 @@ enum ExportImportError: Error {
 }
 
 struct ExportImportService {
-    /// 5: recurring reminders store `notificationReminderOffsetFromEndOfDay` (seconds before end of occurrence day).
-    private static let currentSchemaVersion = 5
+    /// 6: includes user-editable category catalog in backup (`colorHex` as `#RRGGBB`).
+    private static let currentSchemaVersion = 6
 
     private let transactionRepository: TransactionRepository
     private let recurringRepository: RecurringRepository
+    private let categoryRepository: CategoryRepository
 
     init(
         transactionRepository: TransactionRepository = SwiftDataTransactionRepository.shared,
-        recurringRepository: RecurringRepository = SwiftDataRecurringRepository.shared
+        recurringRepository: RecurringRepository = SwiftDataRecurringRepository.shared,
+        categoryRepository: CategoryRepository = SwiftDataCategoryRepository.shared
     ) {
         self.transactionRepository = transactionRepository
         self.recurringRepository = recurringRepository
+        self.categoryRepository = categoryRepository
     }
 
     func exportAllData() async throws -> String {
         let transactions = try await transactionRepository.fetchAll()
         let recurringTransactions = try await recurringRepository.fetchAll()
+        let categories = try await categoryRepository.fetchAll()
+        let categoryUpdatedAt = try await categoryRepository.updatedAtById()
+        let categoryUpdatedAtById = Dictionary(
+            uniqueKeysWithValues: categoryUpdatedAt.map { ($0.key, $0.value) }
+        )
         let recurringUpdatedAt = try await recurringRepository.updatedAtById()
         let recurringUpdatedAtById = Dictionary(
             uniqueKeysWithValues: recurringUpdatedAt.map { ($0.key.uuidString, $0.value) }
@@ -41,8 +49,10 @@ struct ExportImportService {
             settings: BackupSettings(
                 selectedCurrencyCode: CurrencyManager.shared.selectedCurrency.code
             ),
+            categoryUpdatedAtById: categoryUpdatedAtById,
             transactionUpdatedAtById: try await transactionRepository.updatedAtById(),
             recurringUpdatedAtById: recurringUpdatedAtById,
+            categories: categories,
             transactions: transactions,
             recurringTransactions: recurringTransactions
         )
@@ -70,6 +80,12 @@ struct ExportImportService {
             throw ExportImportError.unsupportedSchemaVersion(payload.schemaVersion)
         }
 
+        if let importedCategories = payload.categories, !importedCategories.isEmpty {
+            try await mergeCategoriesOneByOne(importedCategories, payload: payload)
+        } else {
+            await CategoryStore.shared.load()
+        }
+
         try await mergeTransactionsOneByOne(payload.transactions, payload: payload)
         try await mergeRecurringOneByOne(payload.recurringTransactions, payload: payload)
 
@@ -80,6 +96,30 @@ struct ExportImportService {
 
         scheduleSuggestionRebuildAfterImport()
         await RecurringReminderScheduler.shared.reconcileAllPendingReminders()
+    }
+
+    private func mergeCategoriesOneByOne(_ imported: [CategoryDefinition], payload: BackupPayload) async throws {
+        var existing = try await categoryRepository.fetchAll()
+        let existingUpdatedAtById = try await categoryRepository.updatedAtById()
+        var seenImportedIds = Set<String>()
+
+        for category in imported where !seenImportedIds.contains(category.id) {
+            seenImportedIds.insert(category.id)
+            let importedUpdatedAt = payload.categoryUpdatedAtById?[category.id] ?? payload.exportedAt
+
+            if existing.contains(where: { $0.id == category.id }) {
+                let existingUpdatedAt = existingUpdatedAtById[category.id] ?? .distantPast
+                if importedUpdatedAt >= existingUpdatedAt {
+                    try await categoryRepository.upsert(category)
+                }
+            } else {
+                try await categoryRepository.upsert(category)
+            }
+
+            existing = try await categoryRepository.fetchAll()
+        }
+
+        await CategoryStore.shared.load()
     }
 
     private func mergeTransactionsOneByOne(_ imported: [Transaction], payload: BackupPayload) async throws {
@@ -95,11 +135,10 @@ struct ExportImportService {
             if let sameId = existing.first(where: { $0.id == transaction.id }) {
                 let existingUpdatedAt = existingUpdatedAtById[sameId.id] ?? .distantPast
                 if importedUpdatedAt >= existingUpdatedAt {
-                    var merged = transaction
-                    merged = Transaction(
+                    let merged = Transaction(
                         id: sameId.id,
                         type: transaction.type,
-                        category: transaction.category,
+                        categoryId: transaction.categoryId,
                         amount: transaction.amount,
                         date: transaction.date,
                         title: transaction.title,
@@ -112,11 +151,10 @@ struct ExportImportService {
                     try await transactionRepository.update(merged)
                 }
             } else if let copy = existing.first(where: { transactionMergeSignature($0) == signature }) {
-                // Same transaction content with different id -> merge into existing and avoid creating copy.
                 let merged = Transaction(
                     id: copy.id,
                     type: transaction.type,
-                    category: transaction.category,
+                    categoryId: transaction.categoryId,
                     amount: transaction.amount,
                     date: transaction.date,
                     title: transaction.title,
@@ -153,7 +191,6 @@ struct ExportImportService {
                     try await recurringRepository.upsert(recurring)
                 }
             } else if let copy = existing.first(where: { recurringMergeSignature($0) == signature }) {
-                // Same recurring rule with different id -> keep existing id and update values.
                 let merged = RecurringTransaction(
                     id: copy.id,
                     title: recurring.title,
@@ -213,7 +250,7 @@ struct ExportImportService {
         let tags = transaction.tags.sorted().joined(separator: "|")
         return [
             transaction.type.rawValue,
-            transaction.category.rawValue,
+            transaction.categoryId,
             "\(transaction.amount)",
             "\(transaction.date)",
             transaction.title,
@@ -276,8 +313,10 @@ private struct BackupPayload: Codable {
     let schemaVersion: Int
     let exportedAt: Date
     let settings: BackupSettings?
+    let categoryUpdatedAtById: [String: Date]?
     let transactionUpdatedAtById: [String: Date]?
     let recurringUpdatedAtById: [String: Date]?
+    let categories: [CategoryDefinition]?
     let transactions: [Transaction]
     let recurringTransactions: [RecurringTransaction]
 }

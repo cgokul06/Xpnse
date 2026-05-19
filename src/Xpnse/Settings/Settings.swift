@@ -75,6 +75,18 @@ struct Settings: View {
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
+                    Text("Categories")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(.white)
+
+                    NavigationLink {
+                        ManageCategoriesView()
+                    } label: {
+                        self.actionLabel(text: "Manage Categories")
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 10) {
                     Text("Recurring")
                         .font(.system(size: 20, weight: .bold))
                         .foregroundColor(.white)

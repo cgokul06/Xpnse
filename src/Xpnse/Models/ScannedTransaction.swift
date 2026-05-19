@@ -11,7 +11,8 @@ import FoundationModels
 @Generable
 struct ScannedTransaction: Codable, Equatable {
     var type: TransactionType
-    var category: TransactionCategory
+    @Guide(description: "Category id from the allowed list in the prompt.")
+    var categoryId: String
     @Guide(description: "The total transaction amount")
     var amount: Double
     @Guide(description: "The date string on which the transaction has happened")
@@ -30,14 +31,12 @@ struct ScannedTransaction: Codable, Equatable {
     var formattedDate: Date {
         let formatter = DateFormatter()
         formatter.dateFormat = dateFormat
-        formatter.locale = Locale(identifier: "en_US_POSIX") // ensures consistent parsing
+        formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = TimeZone.current
 
-        // Try parsing the string
         if let parsedDate = formatter.date(from: date) {
             return parsedDate
         } else {
-            // fallback: return current date if parsing fails
             print("⚠️ Failed to parse date '\(date)' with format '\(dateFormat)'")
             return Date()
         }

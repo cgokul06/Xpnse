@@ -40,12 +40,12 @@ struct TransactionSummary {
     }
 
     // Category-wise breakdown
-    func expensesByCategory() -> [TransactionCategory: Double] {
+    func expensesByCategory() -> [String: Double] {
         let expenseTransactions = allTransactions.filter { $0.type == .expense }
-        var categoryTotals: [TransactionCategory: Double] = [:]
+        var categoryTotals: [String: Double] = [:]
 
         for transaction in expenseTransactions {
-            categoryTotals[transaction.category, default: 0] += transaction.totalAmount
+            categoryTotals[transaction.categoryId, default: 0] += transaction.totalAmount
         }
 
         return categoryTotals

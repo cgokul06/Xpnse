@@ -85,7 +85,8 @@ private struct EditRecurringTransactionView: View {
 
     @State private var transactionType: TransactionType
     @State private var amount: String
-    @State private var selectedCategory: TransactionCategory
+    @State private var categoryStore = CategoryStore.shared
+    @State private var selectedCategoryId: String
     @State private var description: String
     @State private var initialTransactionDate: Date
     @State private var recurringStartDate: Date
@@ -100,8 +101,8 @@ private struct EditRecurringTransactionView: View {
     private let onSaved: () -> Void
     private let transactionManager = FirebaseTransactionManager.shared
 
-    private var categories: [TransactionCategory] {
-        TransactionCategory.categories(for: transactionType)
+    private var categories: [CategoryDefinition] {
+        categoryStore.categories(for: transactionType)
     }
 
     private var recurrenceOptions: [RecurrenceFrequency] {
@@ -129,7 +130,9 @@ private struct EditRecurringTransactionView: View {
         let type = TransactionType(rawValue: item.type) ?? .expense
         self._transactionType = State(initialValue: type)
         self._amount = State(initialValue: NSDecimalNumber(decimal: item.amount).stringValue)
-        self._selectedCategory = State(initialValue: TransactionCategory(rawValue: item.categoryIdentifier ?? "") ?? .other)
+        self._selectedCategoryId = State(
+            initialValue: item.categoryIdentifier ?? BuiltinCategories.otherCategoryId
+        )
         self._description = State(initialValue: item.title)
         self._initialTransactionDate = State(initialValue: item.startDate)
         self._recurringStartDate = State(initialValue: item.startDate)
@@ -232,7 +235,7 @@ private struct EditRecurringTransactionView: View {
                                 id: original.id,
                                 title: description,
                                 type: transactionType.rawValue,
-                                categoryIdentifier: selectedCategory.rawValue,
+                                categoryIdentifier: selectedCategoryId,
                                 amount: Decimal(string: amount) ?? original.amount,
                                 startDate: recurringStartDate,
                                 endDate: computedEndDate,
@@ -285,6 +288,14 @@ private struct EditRecurringTransactionView: View {
                 }
                 clampReminderDateTimeToTransactionDay(newValue)
             }
+            .task {
+                await categoryStore.load()
+            }
+            .onChange(of: transactionType) { _, _ in
+                if !categories.contains(where: { $0.id == selectedCategoryId }) {
+                    selectedCategoryId = BuiltinCategories.otherCategoryId
+                }
+            }
         }
     }
 
@@ -321,7 +332,7 @@ private struct EditRecurringTransactionView: View {
         HStack(spacing: 12) {
             Button {
                 transactionType = .expense
-                selectedCategory = .other
+                selectedCategoryId = BuiltinCategories.otherCategoryId
             } label: {
                 Text("Expense")
                     .font(.system(size: 16, weight: .semibold))
@@ -334,7 +345,7 @@ private struct EditRecurringTransactionView: View {
 
             Button {
                 transactionType = .income
-                selectedCategory = .other
+                selectedCategoryId = BuiltinCategories.otherCategoryId
             } label: {
                 Text("Income")
                     .font(.system(size: 16, weight: .semibold))
@@ -406,7 +417,7 @@ private struct EditRecurringTransactionView: View {
                 options: categories,
                 menuWdith: 250,
                 maxItemDisplayed: 6,
-                selectedCategory: $selectedCategory,
+                selectedCategoryId: $selectedCategoryId,
                 showDropdown: .constant(false)
             )
         }

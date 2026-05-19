@@ -12,6 +12,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
         RecurringReminderScheduler.shared.configureNotificationCenterDelegate()
+        Task { @MainActor in
+            await CategoryStore.shared.load()
+        }
         return true
     }
 

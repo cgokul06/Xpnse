@@ -8,24 +8,28 @@
 import SwiftUI
 
 struct DropDownMenu: View {
-    let options: [TransactionCategory]
+    let options: [CategoryDefinition]
 
     var menuWdith: CGFloat = 250
     private let buttonHeight: CGFloat = 40
     var maxItemDisplayed: Int = 3
 
-    @Binding var selectedCategory: TransactionCategory
+    @Binding var selectedCategoryId: String
     @Binding var showDropdown: Bool
-    @State private var scrollPosition: TransactionCategory?
+    @State private var scrollPosition: String?
 
-    var body: some  View {
+    private var selectedCategory: CategoryDefinition {
+        options.first(where: { $0.id == selectedCategoryId })
+            ?? CategoryStore.shared.resolve(id: selectedCategoryId)
+    }
+
+    var body: some View {
         VStack {
             VStack(spacing: 0) {
-                // selected item
                 Button(action: {
                     withAnimation(.easeInOut) {
                         self.hideKeyboard()
-                        
+
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                             showDropdown.toggle()
                         }
@@ -33,12 +37,13 @@ struct DropDownMenu: View {
                 }, label: {
                     HStack(spacing: nil) {
                         HStack(spacing: 8) {
-                            Image(systemName: selectedCategory.icon)
-                                .resizable()
-                                .aspectRatio(contentMode: .fill)
-                                .frame(width: 20, height: 20)
+                            CategoryIconBadge(
+                                symbolName: selectedCategory.symbolName,
+                                colorHex: selectedCategory.colorHex,
+                                size: 28
+                            )
 
-                            Text(selectedCategory.displayName)
+                            Text(selectedCategory.name)
                                 .font(.system(size: 20, weight: .bold))
                         }
 
@@ -52,31 +57,34 @@ struct DropDownMenu: View {
                 .padding(.vertical, 12)
                 .frame(width: menuWdith, alignment: .leading)
 
-                // selection menu
-                if (showDropdown) {
-                    let scrollViewHeight: CGFloat  = options.count > maxItemDisplayed ? (buttonHeight*CGFloat(maxItemDisplayed)) : (buttonHeight*CGFloat(options.count))
+                if showDropdown {
+                    let scrollViewHeight: CGFloat = options.count > maxItemDisplayed
+                        ? (buttonHeight * CGFloat(maxItemDisplayed))
+                        : (buttonHeight * CGFloat(options.count))
                     ScrollView {
                         LazyVStack(spacing: 0) {
-                            ForEach(options, id: \.self) { option in
+                            ForEach(options) { option in
                                 Button(action: {
-                                    withAnimation(.easeInOut) {                                        selectedCategory = option
+                                    withAnimation(.easeInOut) {
+                                        selectedCategoryId = option.id
                                         showDropdown.toggle()
                                     }
                                 }, label: {
                                     HStack {
                                         HStack(spacing: 8) {
-                                            Image(systemName: option.icon)
-                                                .resizable()
-                                                .aspectRatio(contentMode: .fill)
-                                                .frame(width: 18, height: 18)
+                                            CategoryIconBadge(
+                                                symbolName: option.symbolName,
+                                                colorHex: option.colorHex,
+                                                size: 24
+                                            )
 
-                                            Text(option.displayName)
+                                            Text(option.name)
                                                 .font(.system(size: 18, weight: .semibold))
                                         }
 
                                         Spacer()
 
-                                        if (option == selectedCategory) {
+                                        if option.id == selectedCategoryId {
                                             Image(systemName: "checkmark.circle.fill")
                                         }
                                     }
@@ -88,10 +96,10 @@ struct DropDownMenu: View {
                         .scrollTargetLayout()
                     }
                     .scrollPosition(id: $scrollPosition)
-                    .scrollDisabled(options.count <=  3)
+                    .scrollDisabled(options.count <= 3)
                     .frame(height: scrollViewHeight)
                     .onAppear {
-                        scrollPosition = selectedCategory
+                        scrollPosition = selectedCategoryId
                     }
                 }
             }

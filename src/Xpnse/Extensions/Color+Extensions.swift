@@ -33,3 +33,9 @@ extension Color {
         )
     }
 }
+
+extension CategoryDefinition {
+    var color: Color {
+        Color(hex: CategoryColorPalette.normalizedHex(colorHex))
+    }
+}

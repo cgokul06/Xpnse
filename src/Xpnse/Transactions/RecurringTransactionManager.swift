@@ -127,7 +127,7 @@ final class RecurringTransactionManager {
                     Transaction(
                         id: UUID().uuidString,
                         type: TransactionType(rawValue: items[i].type) ?? .expense,
-                        category: TransactionCategory(rawValue: items[i].categoryIdentifier ?? "") ?? .other,
+                        categoryId: items[i].categoryIdentifier ?? BuiltinCategories.otherCategoryId,
                         amount: Double(truncating: items[i].amount as NSNumber),
                         date: next.timeIntervalSince1970,
                         title: items[i].title,

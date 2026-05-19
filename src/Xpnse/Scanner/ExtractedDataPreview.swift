@@ -24,7 +24,7 @@ struct ExtractedDataPreview: View {
 
                     DataRow(label: "Date", value: data.formattedDate)
 
-                    DataRow(label: "Category", value: data.category.displayName)
+                    DataRow(label: "Category", value: data.categoryDisplayName)
 
                     ForEach(data.items, id: \.id) { item in
                         DataRow(

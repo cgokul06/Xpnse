@@ -23,7 +23,8 @@ struct AddTransactionView: View {
     @FocusState fileprivate var focussedField: AddTransactionViewFocusField?
     @State private var transactionType: TransactionType = .expense
     @State private var amount: String = ""
-    @State private var selectedCategory: TransactionCategory = .other
+    @State private var categoryStore = CategoryStore.shared
+    @State private var selectedCategoryId: String = BuiltinCategories.otherCategoryId
     @State private var description: String = ""
     @State private var selectedDate = Date()
     @State private var isLoading = false
@@ -45,8 +46,8 @@ struct AddTransactionView: View {
     private var transaction: Transaction?
     private let isEditing: Bool
 
-    private var categories: [TransactionCategory] {
-        TransactionCategory.categories(for: transactionType)
+    private var categories: [CategoryDefinition] {
+        categoryStore.categories(for: transactionType)
     }
 
     private var isFormValid: Bool {
@@ -89,7 +90,8 @@ struct AddTransactionView: View {
         self.amount = "\(txn.amount)"
         self.selectedDate = Date(timeIntervalSince1970: txn.date)
         self.description = txn.title
-        self.selectedCategory = txn.category
+        self.selectedCategoryId = txn.categoryId
+        self.transactionType = txn.type
     }
 
     var body: some View {
@@ -134,7 +136,8 @@ struct AddTransactionView: View {
                         // Auto-fill the form with extracted data
                         self.amount = String(format: "%.2f", data.amount)
                         self.description = data.title
-                        self.selectedCategory = data.category
+                        self.transactionType = data.type
+                        self.selectedCategoryId = data.categoryId
                         self.selectedDate = data.formattedDate
                     }
                 }
@@ -219,8 +222,15 @@ struct AddTransactionView: View {
             }
             .onAppear {
                 self.mapEditableDatas()
-                // Load persisted suggestions and seed from manager if empty
                 suggestionEngine.load()
+            }
+            .task {
+                await categoryStore.load()
+            }
+            .onChange(of: transactionType) { _, _ in
+                if !categories.contains(where: { $0.id == selectedCategoryId }) {
+                    selectedCategoryId = BuiltinCategories.otherCategoryId
+                }
             }
             .alert(isPresented: $showDeleteAlert) {
                 Alert(
@@ -295,7 +305,7 @@ struct AddTransactionView: View {
         HStack(spacing: 12) {
             Button(action: {
                 transactionType = .expense
-                selectedCategory = .other
+                selectedCategoryId = BuiltinCategories.otherCategoryId
                 showSuggestions = false
             }) {
                 HStack(spacing: 8) {
@@ -313,7 +323,7 @@ struct AddTransactionView: View {
 
             Button(action: {
                 transactionType = .income
-                selectedCategory = .other
+                selectedCategoryId = BuiltinCategories.otherCategoryId
                 showSuggestions = false
             }) {
                 HStack(spacing: 8) {
@@ -367,7 +377,7 @@ struct AddTransactionView: View {
                 options: categories,
                 menuWdith: 250,
                 maxItemDisplayed: 6,
-                selectedCategory: self.$selectedCategory,
+                selectedCategoryId: self.$selectedCategoryId,
                 showDropdown: self.$showDropdownForCategory
             )
             .focused(self.$focussedField, equals: .category)
@@ -480,8 +490,8 @@ struct AddTransactionView: View {
                             ForEach(Array(suggestions.enumerated()), id: \.offset) { idx, item in
                                 Button {
                                     self.description = item.title
-                                    if let cat = item.categoryIdentifier, let mapped = TransactionCategory(rawValue: cat) {
-                                        self.selectedCategory = mapped
+                                    if let cat = item.categoryIdentifier {
+                                        self.selectedCategoryId = cat
                                     }
                                     self.showSuggestions = false
                                     self.isDescriptionChangeBecauseOfSelection = true
@@ -491,8 +501,8 @@ struct AddTransactionView: View {
                                             .foregroundColor(XpnseColorKey.white.color)
                                             .font(.system(size: 16, weight: .medium))
                                         Spacer()
-                                        if let cat = item.categoryIdentifier, let mapped = TransactionCategory(rawValue: cat) {
-                                            Text(mapped.displayName)
+                                        if let cat = item.categoryIdentifier {
+                                            Text(categoryStore.categoryDisplayName(for: cat))
                                                 .foregroundColor(.white.opacity(0.7))
                                                 .font(.system(size: 14))
                                         }
@@ -611,7 +621,7 @@ struct AddTransactionView: View {
         let transaction = Transaction(
             id: isEditing ? (self.transaction?.id ?? UUID().uuidString) : UUID().uuidString,
             type: transactionType,
-            category: self.selectedCategory,
+            categoryId: self.selectedCategoryId,
             amount: Double(amount) ?? 0.0,
             date: selectedDate.timeIntervalSince1970,
             title: description
@@ -622,7 +632,7 @@ struct AddTransactionView: View {
                 suggestionEngine.upsert(
                     from: TransactionAdapter(
                         title: transaction.title,
-                        categoryIdentifier: transaction.category.rawValue,
+                        categoryIdentifier: transaction.categoryId,
                         date: Date(timeIntervalSince1970: transaction.date)
                     )
                 )
@@ -637,7 +647,7 @@ struct AddTransactionView: View {
                 let recurring = RecurringTransaction(
                     title: description,
                     type: transactionType.rawValue,
-                    categoryIdentifier: selectedCategory.rawValue,
+                    categoryIdentifier: selectedCategoryId,
                     amount: Decimal(Double(amount) ?? 0.0),
                     startDate: selectedDate,
                     endDate: computedEndDate,
@@ -657,7 +667,7 @@ struct AddTransactionView: View {
                 suggestionEngine.upsert(
                     from: TransactionAdapter(
                         title: transaction.title,
-                        categoryIdentifier: transaction.category.rawValue,
+                        categoryIdentifier: transaction.categoryId,
                         date: Date(timeIntervalSince1970: transaction.date)
                     )
                 )

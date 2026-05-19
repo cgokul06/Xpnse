@@ -10,7 +10,7 @@ import Foundation
 // MARK: - Transaction Filters
 struct TransactionFilters {
     var type: TransactionType?
-    var category: TransactionCategory?
+    var categoryId: String?
     var dateRange: ClosedRange<Date>?
     var minAmount: Double?
     var maxAmount: Double?
@@ -25,7 +25,7 @@ struct TransactionFilters {
             }
 
             // Category filter
-            if let category = category, transaction.category != category {
+            if let categoryId = categoryId, transaction.categoryId != categoryId {
                 return false
             }
 

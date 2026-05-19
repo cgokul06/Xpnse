@@ -12,7 +12,8 @@ enum SwiftDataStack {
     static let sharedContainer: ModelContainer = {
         let schema = Schema([
             TransactionEntity.self,
-            RecurringTransactionEntity.self
+            RecurringTransactionEntity.self,
+            CategoryEntity.self
         ])
 
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)

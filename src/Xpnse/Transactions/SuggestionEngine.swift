@@ -225,7 +225,7 @@ public final class SuggestionEngine {
             .map {
                 TransactionAdapter(
                     title: $0.title,
-                    categoryIdentifier: $0.category.rawValue,
+                    categoryIdentifier: $0.categoryId,
                     date: Date(timeIntervalSince1970: $0.date)
                 )
             }

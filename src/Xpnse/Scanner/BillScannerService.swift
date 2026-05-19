@@ -54,8 +54,12 @@ class BillScannerService: ObservableObject {
     // MARK: - LanguageModelSession Parsing
 
     private func parseTransactionWithLanguageModel(_ extractedText: String) async throws -> ScannedTransaction {
+        await CategoryStore.shared.load()
+        let expenseGuide = CategoryStore.shared.categoryGuideDescription(for: .expense)
+        let incomeGuide = CategoryStore.shared.categoryGuideDescription(for: .income)
         let prompt = """
-        Analyze this receipt text and extract transaction information. The date might be in different formats. Find the eact date format used here and map it to 'dateFormat' property.
+        Analyze this receipt text and extract transaction information. The date might be in different formats. Find the exact date format used here and map it to 'dateFormat' property.
+        For categoryId: use expense categories (\(expenseGuide)) for expenses, or income categories (\(incomeGuide)) for income.
         \(extractedText).
         """
 
@@ -78,9 +82,13 @@ class BillScannerService: ObservableObject {
             }
             print(text)
         }
-        let c = try await session.respond(to: prompt, generating: ScannedTransaction.self)
-
-        return c.content
+        let response = try await session.respond(to: prompt, generating: ScannedTransaction.self)
+        var scanned = response.content
+        scanned.categoryId = CategoryStore.shared.mapScannedCategoryId(
+            scanned.categoryId,
+            transactionType: scanned.type
+        )
+        return scanned
     }
 
     // MARK: - Error Handling

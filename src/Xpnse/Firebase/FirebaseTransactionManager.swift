@@ -124,6 +124,8 @@ final class FirebaseTransactionManager {
         do {
             try await transactionRepository.clearAll()
             try await SwiftDataRecurringRepository.shared.clearAll()
+            try await SwiftDataCategoryRepository.shared.clearAll()
+            await CategoryStore.shared.load()
             UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
         } catch {
             print("Failed to clear local data: \(error.localizedDescription)")

@@ -9,9 +9,26 @@ import Foundation
 
 // MARK: - Transaction
 struct Transaction: Identifiable, Codable, Equatable, Hashable {
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case type
+        case categoryId
+        case category
+        case amount
+        case date
+        case title
+        case notes
+        case items
+        case location
+        case tags
+        case currency
+        case recurringSeriesId
+        case recurringOccurrenceDate
+    }
+
     let id: String
     var type: TransactionType
-    var category: TransactionCategory
+    var categoryId: String
     var amount: Double
     var date: Double
     var title: String
@@ -25,6 +42,18 @@ struct Transaction: Identifiable, Codable, Equatable, Hashable {
 
     var isRecurringGenerated: Bool {
         recurringSeriesId != nil
+    }
+
+    var categoryDisplayName: String {
+        CategoryStore.shared.categoryDisplayName(for: categoryId)
+    }
+
+    var categorySymbolName: String {
+        CategoryStore.shared.categorySymbolName(for: categoryId)
+    }
+
+    var categoryColorHex: String {
+        CategoryStore.shared.categoryColorHex(for: categoryId)
     }
 
     // Computed properties
@@ -50,7 +79,7 @@ struct Transaction: Identifiable, Codable, Equatable, Hashable {
     init(
         id: String,
         type: TransactionType,
-        category: TransactionCategory,
+        categoryId: String,
         amount: Double,
         date: Double = Date().timeIntervalSince1970,
         title: String,
@@ -64,7 +93,7 @@ struct Transaction: Identifiable, Codable, Equatable, Hashable {
     ) {
         self.id = id
         self.type = type
-        self.category = category
+        self.categoryId = categoryId
         self.amount = amount
         self.date = date
         self.title = title
@@ -77,13 +106,53 @@ struct Transaction: Identifiable, Codable, Equatable, Hashable {
         self.recurringOccurrenceDate = recurringOccurrenceDate
     }
 
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        type = try container.decode(TransactionType.self, forKey: .type)
+        if let decodedId = try container.decodeIfPresent(String.self, forKey: .categoryId) {
+            categoryId = decodedId
+        } else if let legacy = try container.decodeIfPresent(String.self, forKey: .category) {
+            categoryId = legacy
+        } else {
+            categoryId = BuiltinCategories.otherCategoryId
+        }
+        amount = try container.decode(Double.self, forKey: .amount)
+        date = try container.decode(Double.self, forKey: .date)
+        title = try container.decode(String.self, forKey: .title)
+        notes = try container.decodeIfPresent(String.self, forKey: .notes)
+        items = try container.decodeIfPresent([TransactionItem].self, forKey: .items) ?? []
+        location = try container.decodeIfPresent(String.self, forKey: .location)
+        tags = try container.decodeIfPresent([String].self, forKey: .tags) ?? []
+        currency = try container.decodeIfPresent(CurrencyOption.self, forKey: .currency) ?? CurrencyManager.shared.selectedCurrency
+        recurringSeriesId = try container.decodeIfPresent(String.self, forKey: .recurringSeriesId)
+        recurringOccurrenceDate = try container.decodeIfPresent(Double.self, forKey: .recurringOccurrenceDate)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(type, forKey: .type)
+        try container.encode(categoryId, forKey: .categoryId)
+        try container.encode(amount, forKey: .amount)
+        try container.encode(date, forKey: .date)
+        try container.encode(title, forKey: .title)
+        try container.encodeIfPresent(notes, forKey: .notes)
+        try container.encode(items, forKey: .items)
+        try container.encodeIfPresent(location, forKey: .location)
+        try container.encode(tags, forKey: .tags)
+        try container.encode(currency, forKey: .currency)
+        try container.encodeIfPresent(recurringSeriesId, forKey: .recurringSeriesId)
+        try container.encodeIfPresent(recurringOccurrenceDate, forKey: .recurringOccurrenceDate)
+    }
+
     // MARK: - Firebase Conversion
 
     func toFirestoreData() -> [String: Any] {
         var data: [String: Any] = [
             "id": id,
             "type": type.rawValue,
-            "category": category.rawValue,
+            "category": categoryId,
             "amount": amount,
             "date": Int(date),
             "title": title,
@@ -114,18 +183,16 @@ struct Transaction: Identifiable, Codable, Equatable, Hashable {
 
     static func fromFirestoreData(_ data: [String: Any]) -> Transaction? {
         guard let idString = data["id"] as? String,
-              let id = UUID(uuidString: idString),
+              UUID(uuidString: idString) != nil,
               let typeString = data["type"] as? String,
               let type = TransactionType(rawValue: typeString),
               let categoryString = data["category"] as? String,
-              let category = TransactionCategory(rawValue: categoryString),
               let title = data["title"] as? String,
               let amount = data["amount"] as? Double,
               let currencyId = data["currency_id"] as? Int else {
             return nil
         }
 
-        // Parse date
         let date: Date
         if let timestamp = data["date"] as? Date {
             date = timestamp
@@ -133,7 +200,6 @@ struct Transaction: Identifiable, Codable, Equatable, Hashable {
             date = Date()
         }
 
-        // Parse items
         let items: [TransactionItem] = (data["items"] as? [[String: Any]])?.compactMap { itemData in
             guard let name = itemData["name"] as? String,
                   let quantity = itemData["quantity"] as? Double,
@@ -146,7 +212,7 @@ struct Transaction: Identifiable, Codable, Equatable, Hashable {
         return Transaction(
             id: idString,
             type: type,
-            category: category,
+            categoryId: categoryString,
             amount: amount,
             date: date.timeIntervalSince1970,
             title: title,
@@ -158,7 +224,6 @@ struct Transaction: Identifiable, Codable, Equatable, Hashable {
         )
     }
 
-    // MARK: - Hashable
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }

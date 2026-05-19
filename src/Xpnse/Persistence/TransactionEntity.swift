@@ -32,7 +32,7 @@ final class TransactionEntity {
     init(from transaction: Transaction) {
         self.id = transaction.id
         self.typeRawValue = transaction.type.rawValue
-        self.categoryRawValue = transaction.category.rawValue
+        self.categoryRawValue = transaction.categoryId
         self.amount = transaction.amount
         self.date = transaction.date
         self.title = transaction.title
@@ -52,7 +52,7 @@ final class TransactionEntity {
 
     func update(from transaction: Transaction) {
         self.typeRawValue = transaction.type.rawValue
-        self.categoryRawValue = transaction.category.rawValue
+        self.categoryRawValue = transaction.categoryId
         self.amount = transaction.amount
         self.date = transaction.date
         self.title = transaction.title
@@ -71,7 +71,7 @@ final class TransactionEntity {
 
     func toDomain() -> Transaction {
         let type = TransactionType(rawValue: typeRawValue) ?? .expense
-        let category = TransactionCategory(rawValue: categoryRawValue) ?? .other
+        let categoryId = categoryRawValue.isEmpty ? BuiltinCategories.otherCategoryId : categoryRawValue
         let items = (try? JSONDecoder().decode([TransactionItem].self, from: itemsData)) ?? []
         let tags = (try? JSONDecoder().decode([String].self, from: tagsData)) ?? []
         let currency = CurrencyOption(
@@ -84,7 +84,7 @@ final class TransactionEntity {
         return Transaction(
             id: id,
             type: type,
-            category: category,
+            categoryId: categoryId,
             amount: amount,
             date: date,
             title: title,
