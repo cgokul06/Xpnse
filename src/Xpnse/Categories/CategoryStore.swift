@@ -15,13 +15,16 @@ final class CategoryStore {
 
     private let repository: CategoryRepository
     private let transactionRepository: TransactionRepository
+    private let recurringRepository: RecurringRepository
 
     init(
         repository: CategoryRepository = SwiftDataCategoryRepository.shared,
-        transactionRepository: TransactionRepository = SwiftDataTransactionRepository.shared
+        transactionRepository: TransactionRepository = SwiftDataTransactionRepository.shared,
+        recurringRepository: RecurringRepository = SwiftDataRecurringRepository.shared
     ) {
         self.repository = repository
         self.transactionRepository = transactionRepository
+        self.recurringRepository = recurringRepository
     }
 
     func load() async {
@@ -34,8 +37,45 @@ final class CategoryStore {
                 loaded = try await repository.fetchAll()
             }
             categories = try await migrateMissingColorsIfNeeded(loaded)
+            try await migrateOrphanedTransactionCategoryIdsIfNeeded()
         } catch {
             categories = BuiltinCategories.seedDefinitions()
+        }
+    }
+
+    /// Single id used for grouping, persistence, and display (merges legacy/unknown ids into `other`).
+    func canonicalCategoryId(for rawId: String) -> String {
+        let trimmed = rawId.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            return BuiltinCategories.otherCategoryId
+        }
+        if trimmed.lowercased() == BuiltinCategories.otherCategoryId {
+            return BuiltinCategories.otherCategoryId
+        }
+        if categories.contains(where: { $0.id == trimmed }) {
+            return trimmed
+        }
+        return BuiltinCategories.otherCategoryId
+    }
+
+    private func migrateOrphanedTransactionCategoryIdsIfNeeded() async throws {
+        let transactions = try await transactionRepository.fetchAll()
+        for transaction in transactions {
+            let canonical = canonicalCategoryId(for: transaction.categoryId)
+            guard transaction.categoryId != canonical else { continue }
+            var updated = transaction
+            updated.categoryId = canonical
+            try await transactionRepository.update(updated)
+        }
+
+        let recurringItems = try await recurringRepository.fetchAll()
+        for item in recurringItems {
+            guard let categoryId = item.categoryIdentifier else { continue }
+            let canonical = canonicalCategoryId(for: categoryId)
+            guard categoryId != canonical else { continue }
+            var updated = item
+            updated.categoryIdentifier = canonical
+            try await recurringRepository.upsert(updated)
         }
     }
 
@@ -86,14 +126,12 @@ final class CategoryStore {
     }
 
     func resolve(id: String) -> CategoryDefinition {
-        if let match = categories.first(where: { $0.id == id }) {
+        let canonicalId = canonicalCategoryId(for: id)
+        if let match = categories.first(where: { $0.id == canonicalId }) {
             return match
         }
-        if let other = categories.first(where: { $0.id == BuiltinCategories.otherCategoryId }) {
-            return other
-        }
         return CategoryDefinition(
-            id: id,
+            id: canonicalId,
             name: "Unknown",
             symbolName: "questionmark.circle",
             colorHex: CategoryColorPalette.defaultHex,

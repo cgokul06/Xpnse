@@ -7,11 +7,16 @@
 
 import SwiftUI
 
+enum TransactionItemSubtitle {
+    case date
+    case category
+}
+
 struct TransactionItemView: View {
     @EnvironmentObject var homeCoordinator: NavigationCoordinator<HomeRoute>
     @State private var isTapped = false
-
     var transaction: Transaction
+    var subtitle: TransactionItemSubtitle = .date
 
     var body: some View {
         HStack(spacing: 12) {
@@ -25,8 +30,21 @@ struct TransactionItemView: View {
                     .font(.system(size: 16, weight: .medium))
 
                 HStack(spacing: 12) {
-                    Text(transaction.formattedDate)
-                        .font(.system(size: 12, weight: .light))
+                    switch subtitle {
+                    case .date:
+                        Text(transaction.formattedDate)
+                            .font(.system(size: 12, weight: .light))
+                    case .category:
+                        HStack(spacing: 6) {
+                            CategoryIconBadge(
+                                symbolName: transaction.categorySymbolName,
+                                colorHex: transaction.categoryColorHex,
+                                size: 18
+                            )
+                            Text(transaction.categoryDisplayName)
+                                .font(.system(size: 12, weight: .light))
+                        }
+                    }
 
                     if transaction.isRecurringGenerated {
                         Text("Recurring")
