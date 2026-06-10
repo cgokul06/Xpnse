@@ -63,25 +63,14 @@ class BillScannerService: ObservableObject {
         \(extractedText).
         """
 
-        let session = LanguageModelSession()
-
-        switch SystemLanguageModel.default.availability {
-        case .available:
-            // Show chat UI
-            print("available")
-        case .unavailable(let reason):
-            let text = switch reason {
-            case .appleIntelligenceNotEnabled:
-                "Apple Intelligence is not enabled. Please enable it in Settings."
-            case .deviceNotEligible:
-                "This device is not eligible for Apple Intelligence. Please use a compatible device."
-            case .modelNotReady:
-                "The language model is not ready yet. Please try again later."
-            @unknown default:
-                "The language model is unavailable for an unknown reason."
-            }
-            print(text)
+        guard FoundationModelsAvailability.isAvailable else {
+            throw BillScannerError.modelUnavailable(
+                FoundationModelsAvailability.unavailabilityMessage
+                    ?? "The language model is unavailable."
+            )
         }
+
+        let session = LanguageModelSession()
         let response = try await session.respond(to: prompt, generating: ScannedTransaction.self)
         var scanned = response.content
         scanned.categoryId = CategoryStore.shared.mapScannedCategoryId(
@@ -96,6 +85,7 @@ class BillScannerService: ObservableObject {
         case invalidImage
         case noTextFound
         case extractionFailed
+        case modelUnavailable(String)
 
         var errorDescription: String? {
             switch self {
@@ -105,6 +95,8 @@ class BillScannerService: ObservableObject {
                 return "No text found in the image"
             case .extractionFailed:
                 return "Failed to extract data from image"
+            case .modelUnavailable(let message):
+                return message
             }
         }
     }

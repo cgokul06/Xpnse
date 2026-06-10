@@ -15,6 +15,7 @@ extension View {
 
     func summaryCardShadow() -> some View {
         compositingGroup()
-            .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 8)
+            .shadow(color: .black.opacity(0.14), radius: 2, x: 0, y: 2)
+            .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 6)
     }
 }

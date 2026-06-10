@@ -26,6 +26,11 @@ struct Home: View {
     @StateObject private var homeViewModel: HomeScreenViewModel = HomeScreenViewModel()
     @State private var monthDragOffset: CGFloat = 0
     @State private var monthDragAxis: MonthDragAxis?
+    @State private var monthScrollAnchors: [Int: TransactionListPersistedAnchor] = [:]
+
+    private var isMonthDragActive: Bool {
+        monthDragOffset != 0 || monthDragAxis == .horizontal
+    }
 
     var body: some View {
         ZStack {
@@ -51,6 +56,7 @@ struct Home: View {
         GeometryReader { geometry in
             let pageWidth = geometry.size.width
             let swipeThreshold = pageWidth * 0.15
+            let currentSummary = homeViewModel.transactionSummaryDict[homeViewModel.currentKey]
 
             VStack(spacing: 16) {
                 topView
@@ -58,10 +64,27 @@ struct Home: View {
                 VStack(spacing: 16) {
                     dateSwitchBar(pageWidth: pageWidth)
 
-                    monthPagerStrip(pageWidth: pageWidth, swipeThreshold: swipeThreshold)
+                    summaryCardPagerStrip(pageWidth: pageWidth)
+
+                    TransactionListView(
+                        monthKey: homeViewModel.currentKey,
+                        dateTransactions: currentSummary?.transactions ?? [:],
+                        savedScrollAnchor: monthScrollAnchors[homeViewModel.currentKey],
+                        onScrollAnchorChange: { anchor in
+                            monthScrollAnchors[homeViewModel.currentKey] = anchor
+                        },
+                        isScrollDisabled: isMonthDragActive
+                    )
+                    .padding(.horizontal, 16)
+                    .overlay(alignment: .bottom) {
+                        DividerGradient()
+                            .frame(height: 12)
+                            .allowsHitTesting(false)
+                    }
+                    .frame(maxHeight: .infinity)
                 }
                 .simultaneousGesture(monthDragGesture(pageWidth: pageWidth, swipeThreshold: swipeThreshold))
-                .padding(.bottom, XpnseBottomBarMetrics.buttonHeight + 8)
+                .padding(.bottom, XpnseBottomBarMetrics.buttonHeight + 16)
             }
             .topSpacingIfNoSafeArea()
         }
@@ -86,22 +109,23 @@ struct Home: View {
                         .frame(maxWidth: .infinity)
                         .frame(height: XpnseBottomBarMetrics.buttonHeight)
 
-                        Button {
-                            self.homeCoordinator.push(.billScanner)
-                        } label: {
-                            Image(systemName: "doc.text.viewfinder")
-                        }
-                        .buttonStyle(
-                            XpnseSquareIconButtonStyle.defaultButton(
-                                bgColor: XpnseColorKey.secondaryButtonBGColor,
-                                isDisabled: .constant(false),
-                                isLoading: .constant(false)
+                        if FoundationModelsAvailability.isAvailable {
+                            Button {
+                                self.homeCoordinator.push(.billScanner)
+                            } label: {
+                                Image(systemName: "doc.text.viewfinder")
+                            }
+                            .buttonStyle(
+                                XpnseSquareIconButtonStyle.defaultButton(
+                                    bgColor: XpnseColorKey.secondaryButtonBGColor,
+                                    isDisabled: .constant(false),
+                                    isLoading: .constant(false)
+                                )
                             )
-                        )
-                        .accessibilityLabel("Scan bill")
+                            .accessibilityLabel("Scan bill")
+                        }
                     }
                     .padding(.horizontal, 16)
-                    .padding(.top, 12)
                 }
                 .bottomSpacingIfNoSafeArea(8)
             })
@@ -123,16 +147,6 @@ struct Home: View {
             Spacer()
 
             HStack(spacing: 12) {
-                //                        Button {
-                //
-                //                        } label: {
-                //                            Image(systemName: "bell.fill")
-                //                                .resizable()
-                //                                .renderingMode(.template)
-                //                                .frame(width: 18, height: 18)
-                //                                .foregroundStyle(XpnseColorKey.white.color)
-                //                        }
-
                 Button {
                     homeCoordinator.push(.settings)
                 } label: {
@@ -147,16 +161,16 @@ struct Home: View {
         .padding([.horizontal], 16)
     }
 
-    private func monthPagerStrip(pageWidth: CGFloat, swipeThreshold: CGFloat) -> some View {
+    private func summaryCardPagerStrip(pageWidth: CGFloat) -> some View {
         HStack(spacing: 0) {
-            monthPanel(for: homeViewModel.currentKey - 1, pageWidth: pageWidth)
-            monthPanel(for: homeViewModel.currentKey, pageWidth: pageWidth)
-            monthPanel(for: homeViewModel.currentKey + 1, pageWidth: pageWidth)
+            summaryCardPanel(for: homeViewModel.currentKey - 1, pageWidth: pageWidth)
+            summaryCardPanel(for: homeViewModel.currentKey, pageWidth: pageWidth)
+            summaryCardPanel(for: homeViewModel.currentKey + 1, pageWidth: pageWidth)
         }
         .offset(x: -pageWidth + monthDragOffset)
-        .frame(width: pageWidth, alignment: .leading)
+        .frame(width: pageWidth, height: SummaryCardMetrics.height, alignment: .leading)
         .clipped()
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity)
         .contentShape(Rectangle())
     }
 
@@ -251,28 +265,14 @@ struct Home: View {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }
 
-    private func monthPanel(for key: Int, pageWidth: CGFloat) -> some View {
+    private func summaryCardPanel(for key: Int, pageWidth: CGFloat) -> some View {
         let txnSummary = homeViewModel.transactionSummaryDict[key]
 
-        return VStack(spacing: 16) {
-            FlippableSummaryCardView(
-                monthKey: key,
-                summary: txnSummary
-            )
-            .padding(.horizontal, 16)
-
-            TransactionListView(
-                dateTransactions: txnSummary?.transactions ?? [:]
-            )
-            .padding(.horizontal, 16)
-            .overlay(alignment: .bottom) {
-                DividerGradient()
-                    .frame(height: 12)
-                    .allowsHitTesting(false)
-            }
-
-            Spacer(minLength: 0)
-        }
+        return FlippableSummaryCardView(
+            monthKey: key,
+            summary: txnSummary
+        )
+        .padding(.horizontal, 16)
         .frame(width: pageWidth)
     }
 

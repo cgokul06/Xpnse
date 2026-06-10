@@ -24,7 +24,7 @@ final class CategoryClassificationService {
             guard trimmed.count >= 3 else { return nil }
             guard !Task.isCancelled else { return nil }
 
-            guard case .available = SystemLanguageModel.default.availability else {
+            guard FoundationModelsAvailability.isAvailable else {
                 return nil
             }
 

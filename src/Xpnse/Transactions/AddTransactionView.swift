@@ -614,8 +614,7 @@ struct AddTransactionView: View {
                     || (isRecurring && remindRecurring && !isRecurringReminderScheduleValid)
             )
 
-            if !self.isEditing {
-                // Scan Bill Button
+            if !self.isEditing, FoundationModelsAvailability.isAvailable {
                 Button(action: {
                     scanBill()
                 }) {

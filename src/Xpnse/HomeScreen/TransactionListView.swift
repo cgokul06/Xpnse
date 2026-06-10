@@ -8,13 +8,15 @@
 import SwiftUI
 import UIKit
 
+enum TransactionListPersistedAnchor: Hashable {
+    case top
+    case date(Date)
+    case category(String)
+}
+
 private enum TransactionListGrouping {
     case date
     case category
-}
-
-private enum TransactionListScrollAnchor: Hashable {
-    case top
 }
 
 private struct TransactionListScrollMetrics: Equatable {
@@ -29,20 +31,21 @@ private struct CategorySection: Identifiable {
 }
 
 struct TransactionListView: View {
+    let monthKey: Int
     var dateTransactions: [Date: [Transaction]]
-    var dates: [Date] = []
+    var savedScrollAnchor: TransactionListPersistedAnchor?
+    var onScrollAnchorChange: (TransactionListPersistedAnchor) -> Void
+    var isScrollDisabled: Bool = false
 
     @Environment(\.scenePhase) private var scenePhase
     @State private var grouping: TransactionListGrouping = .date
     @State private var categoryStore = CategoryStore.shared
     @State private var scrollMetrics = TransactionListScrollMetrics(offsetY: 0, visibleHeight: 0)
+    @State private var scrollAnchor: TransactionListPersistedAnchor? = .top
+    @State private var needsScrollRestore = false
 
-    init(dateTransactions: [Date: [Transaction]]) {
-        self.dateTransactions = dateTransactions
-        for (key, _) in dateTransactions {
-            self.dates.append(key)
-        }
-        self.dates.sort(by: { $0 > $1 })
+    private var dates: [Date] {
+        dateTransactions.keys.sorted(by: >)
     }
 
     private var allTransactions: [Transaction] {
@@ -146,58 +149,121 @@ struct TransactionListView: View {
             }
 
             if hasTransactions {
-                ScrollViewReader { proxy in
-                    ScrollView(showsIndicators: false) {
-                        LazyVStack(spacing: 12) {
-                            Color.clear
-                                .frame(height: 0)
-                                .id(TransactionListScrollAnchor.top)
+                ScrollView(showsIndicators: false) {
+                    LazyVStack(spacing: 12) {
+                        Color.clear
+                            .frame(height: 0)
+                            .id(TransactionListPersistedAnchor.top)
 
-                            switch grouping {
-                            case .date:
-                                ForEach(dates, id: \.self) { date in
-                                    dateSection(date: date, transactions: dateTransactions[date] ?? [])
-                                }
-                            case .category:
-                                ForEach(categorySections) { section in
-                                    categorySection(section)
-                                }
+                        switch grouping {
+                        case .date:
+                            ForEach(dates, id: \.self) { date in
+                                dateSection(date: date, transactions: dateTransactions[date] ?? [])
+                                    .id(TransactionListPersistedAnchor.date(date))
+                            }
+                        case .category:
+                            ForEach(categorySections) { section in
+                                categorySection(section)
+                                    .id(TransactionListPersistedAnchor.category(section.id))
                             }
                         }
-                        .padding(.bottom, 62)
                     }
-                    .onScrollGeometryChange(for: TransactionListScrollMetrics.self) { geometry in
-                        TransactionListScrollMetrics(
-                            offsetY: max(0, geometry.contentOffset.y),
-                            visibleHeight: geometry.visibleRect.height
-                        )
-                    } action: { _, metrics in
-                        scrollMetrics = metrics
-                    }
-                    .onChange(of: scenePhase) { oldPhase, newPhase in
-                        resetScrollIfNeeded(
-                            from: oldPhase,
-                            to: newPhase,
-                            scrollToTop: {
-                                scrollToTop(using: proxy)
-                            }
-                        )
-                    }
+                    .padding(.bottom, 62)
+                }
+                .id(monthKey)
+                .scrollPosition(id: $scrollAnchor, anchor: .top)
+                .scrollDisabled(isScrollDisabled)
+                .onScrollGeometryChange(for: TransactionListScrollMetrics.self) { geometry in
+                    TransactionListScrollMetrics(
+                        offsetY: max(0, geometry.contentOffset.y),
+                        visibleHeight: geometry.visibleRect.height
+                    )
+                } action: { _, metrics in
+                    scrollMetrics = metrics
+                }
+                .onChange(of: scenePhase) { oldPhase, newPhase in
+                    resetScrollIfNeeded(from: oldPhase, to: newPhase)
                 }
             } else {
                 noTransactionsFound
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear {
+            needsScrollRestore = true
+            scheduleScrollRestore()
+        }
+        .onChange(of: monthKey) { _, _ in
+            scrollAnchor = .top
+            needsScrollRestore = true
+            scheduleScrollRestore()
+        }
+        .onChange(of: dateTransactions) { _, _ in
+            guard needsScrollRestore else { return }
+            scheduleScrollRestore()
+        }
+        .onChange(of: scrollAnchor) { _, newValue in
+            guard let newValue, newValue != savedScrollAnchor else { return }
+            onScrollAnchorChange(newValue)
+        }
+        .onChange(of: grouping) { _, _ in
+            scrollAnchor = .top
+            onScrollAnchorChange(.top)
+        }
         .task {
             await categoryStore.load()
         }
     }
 
+    private func scheduleScrollRestore() {
+        DispatchQueue.main.async {
+            DispatchQueue.main.async {
+                applyValidatedSavedAnchor()
+            }
+        }
+    }
+
+    private func applyValidatedSavedAnchor() {
+        guard needsScrollRestore else { return }
+
+        if let saved = savedScrollAnchor, saved != .top, !hasTransactions {
+            scheduleScrollRestore()
+            return
+        }
+
+        needsScrollRestore = false
+        let target = validatedScrollAnchor(savedScrollAnchor)
+        guard target != scrollAnchor else { return }
+
+        var transaction = SwiftUI.Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            scrollAnchor = target
+        }
+    }
+
+    private func validatedScrollAnchor(
+        _ anchor: TransactionListPersistedAnchor?
+    ) -> TransactionListPersistedAnchor {
+        guard let anchor else { return .top }
+
+        switch anchor {
+        case .top:
+            return .top
+        case .date(let date):
+            guard grouping == .date, dates.contains(date) else { return .top }
+            return anchor
+        case .category(let categoryId):
+            guard grouping == .category,
+                  categorySections.contains(where: { $0.id == categoryId })
+            else { return .top }
+            return anchor
+        }
+    }
+
     private func resetScrollIfNeeded(
         from oldPhase: ScenePhase,
-        to newPhase: ScenePhase,
-        scrollToTop: () -> Void
+        to newPhase: ScenePhase
     ) {
         guard isPartiallyScrolled else { return }
 
@@ -211,13 +277,14 @@ struct TransactionListView: View {
         }
     }
 
-    private func scrollToTop(using proxy: ScrollViewProxy) {
+    private func scrollToTop() {
         var transaction = SwiftUI.Transaction(animation: nil)
         transaction.disablesAnimations = true
         withTransaction(transaction) {
-            proxy.scrollTo(TransactionListScrollAnchor.top, anchor: .top)
+            scrollAnchor = .top
         }
         scrollMetrics = TransactionListScrollMetrics(offsetY: 0, visibleHeight: scrollMetrics.visibleHeight)
+        onScrollAnchorChange(.top)
     }
 
     private func dateSection(date: Date, transactions: [Transaction]) -> some View {
