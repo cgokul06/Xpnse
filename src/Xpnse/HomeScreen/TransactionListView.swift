@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 private enum TransactionListGrouping {
     case date
@@ -129,6 +130,7 @@ struct TransactionListView: View {
                 Spacer(minLength: 0)
 
                 Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     withAnimation(.easeInOut(duration: 0.2)) {
                         grouping = grouping == .date ? .category : .date
                     }

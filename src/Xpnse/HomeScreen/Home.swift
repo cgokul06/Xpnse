@@ -263,6 +263,11 @@ struct Home: View {
                 dateTransactions: txnSummary?.transactions ?? [:]
             )
             .padding(.horizontal, 16)
+            .overlay(alignment: .bottom) {
+                DividerGradient()
+                    .frame(height: 12)
+                    .allowsHitTesting(false)
+            }
 
             Spacer(minLength: 0)
         }
