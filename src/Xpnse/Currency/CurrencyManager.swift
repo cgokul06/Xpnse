@@ -14,6 +14,7 @@ final class CurrencyManager: ObservableObject {
     @Published var selectedCurrency: CurrencyOption {
         didSet {
             UserDefaultsHelper.shared.set(selectedCurrency.code, forKey: .selectedCurrencyCode)
+            Task { await WidgetRefreshCoordinator.shared.refresh() }
         }
     }
 

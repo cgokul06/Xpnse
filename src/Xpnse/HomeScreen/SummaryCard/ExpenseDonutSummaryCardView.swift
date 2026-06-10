@@ -30,32 +30,21 @@ struct ExpenseDonutSummaryCardView: View {
     }
 
     private var chartSlices: [ExpenseDonutSlice] {
-        guard !legendSlices.isEmpty else { return slices.filter(\.isRemainder) }
-
-        if income <= 0 {
-            return legendSlices
-        }
-
-        let expenseSum = legendSlices.reduce(0) { $0 + $1.amount }
-        guard expenseSum > income else { return slices }
-
-        let scale = income / expenseSum
-        return legendSlices.map { slice in
-            ExpenseDonutSlice(
-                id: slice.id,
-                name: slice.name,
-                amount: slice.amount * scale,
-                colorHex: slice.colorHex
-            )
-        }
+        let widgetLegend = legendSlices.map(WidgetDonutSlice.init(expenseSlice:))
+        let widgetAll = slices.map(WidgetDonutSlice.init(expenseSlice:))
+        return DonutChartSliceBuilder.chartSlices(
+            legendSlices: widgetLegend,
+            allSlices: widgetAll,
+            income: income
+        ).map(ExpenseDonutSlice.init(widgetSlice:))
     }
 
     private var donutCenterTitle: String {
-        income > 0 ? "Income" : "Expenses"
+        DonutChartSliceBuilder.centerTitle(income: income)
     }
 
     private var donutCenterAmount: Double {
-        income > 0 ? income : expenses
+        DonutChartSliceBuilder.centerAmount(income: income, expenses: expenses)
     }
 
     private var formattedDonutCenterAmount: String {

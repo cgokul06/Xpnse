@@ -14,7 +14,11 @@ class AppCoordinator: ObservableObject {
     
     init() {
         self.currentRoute = CurrencyManager.shared.hasStoredSelection ? .home : .currencySetup
-        FirebaseTransactionManager.shared.processRecurringTransactions()
+        WidgetRefreshCoordinator.shared.start()
+        Task {
+            await FirebaseTransactionManager.shared.processRecurringTransactionsAsync()
+            await WidgetRefreshCoordinator.shared.refresh()
+        }
     }
 }
 

@@ -13,7 +13,10 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {}
 
     func sceneDidBecomeActive(_ scene: UIScene) {
-        FirebaseTransactionManager.shared.processRecurringTransactions()
+        Task {
+            await FirebaseTransactionManager.shared.processRecurringTransactionsAsync()
+            await WidgetRefreshCoordinator.shared.refresh()
+        }
     }
 
     func sceneWillEnterForeground(_ scene: UIScene) {

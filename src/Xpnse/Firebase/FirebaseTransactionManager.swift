@@ -36,10 +36,13 @@ final class FirebaseTransactionManager {
     }
 
     func processRecurringTransactions() {
-        Task { @MainActor in
-            await self.recurringTransactionManager.loadAndProcess(sink: self)
-            await RecurringReminderScheduler.shared.reconcileAllPendingReminders()
-        }
+        Task { await processRecurringTransactionsAsync() }
+    }
+
+    @MainActor
+    func processRecurringTransactionsAsync() async {
+        await recurringTransactionManager.loadAndProcess(sink: self)
+        await RecurringReminderScheduler.shared.reconcileAllPendingReminders()
     }
 
     private var listeners: Set<String> = []

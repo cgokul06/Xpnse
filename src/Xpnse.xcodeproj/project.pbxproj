@@ -12,10 +12,36 @@
 		5163E0832E3344F100CBAE96 /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = 5163E0822E3344F100CBAE96 /* FirebaseCrashlytics */; };
 		5163E0852E3344F100CBAE96 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 5163E0842E3344F100CBAE96 /* FirebaseFirestore */; };
 		5163E0A92E335C6300CBAE96 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 5163E0A82E335C6300CBAE96 /* GoogleSignInSwift */; };
+		51WGT00E2F30001A00000E /* XpnseWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 51WGT0012F30001A000001 /* XpnseWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		51WGT00B2F30001A00000B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 51B3C7652E191B9500B0C61E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 51WGT0042F30001A000004;
+			remoteInfo = XpnseWidgets;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		51WGT00D2F30001A00000D /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				51WGT00E2F30001A00000E /* XpnseWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		51B3C76D2E191B9500B0C61E /* Xpnse.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Xpnse.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		51WGT0012F30001A000001 /* XpnseWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = XpnseWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -26,6 +52,13 @@
 			);
 			target = 51B3C76C2E191B9500B0C61E /* Xpnse */;
 		};
+		51WGT00F2F30001A00000F /* Exceptions for "XpnseWidgets" folder in "XpnseWidgets" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 51WGT0042F30001A000004 /* XpnseWidgets */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -35,6 +68,19 @@
 				515BB6D92ECAC83100C77D01 /* Exceptions for "Xpnse" folder in "Xpnse" target */,
 			);
 			path = Xpnse;
+			sourceTree = "<group>";
+		};
+		51WGT0022F30001A000002 /* XpnseShared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = XpnseShared;
+			sourceTree = "<group>";
+		};
+		51WGT0032F30001A000003 /* XpnseWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				51WGT00F2F30001A00000F /* Exceptions for "XpnseWidgets" folder in "XpnseWidgets" target */,
+			);
+			path = XpnseWidgets;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -52,6 +98,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		51WGT0052F30001A000005 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -60,6 +113,8 @@
 			children = (
 				51B3C76E2E191B9500B0C61E /* Products */,
 				51B3C76F2E191B9500B0C61E /* Xpnse */,
+				51WGT0022F30001A000002 /* XpnseShared */,
+				51WGT0032F30001A000003 /* XpnseWidgets */,
 			);
 			sourceTree = "<group>";
 		};
@@ -67,6 +122,7 @@
 			isa = PBXGroup;
 			children = (
 				51B3C76D2E191B9500B0C61E /* Xpnse.app */,
+				51WGT0012F30001A000001 /* XpnseWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -81,13 +137,16 @@
 				51B3C7692E191B9500B0C61E /* Sources */,
 				51B3C76A2E191B9500B0C61E /* Frameworks */,
 				51B3C76B2E191B9500B0C61E /* Resources */,
+				51WGT00D2F30001A00000D /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				51WGT00C2F30001A00000C /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				51B3C76F2E191B9500B0C61E /* Xpnse */,
+				51WGT0022F30001A000002 /* XpnseShared */,
 			);
 			name = Xpnse;
 			packageProductDependencies = (
@@ -101,6 +160,27 @@
 			productReference = 51B3C76D2E191B9500B0C61E /* Xpnse.app */;
 			productType = "com.apple.product-type.application";
 		};
+		51WGT0042F30001A000004 /* XpnseWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 51WGT0082F30001A000008 /* Build configuration list for PBXNativeTarget "XpnseWidgets" */;
+			buildPhases = (
+				51WGT0072F30001A000007 /* Sources */,
+				51WGT0052F30001A000005 /* Frameworks */,
+				51WGT0062F30001A000006 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				51WGT0022F30001A000002 /* XpnseShared */,
+				51WGT0032F30001A000003 /* XpnseWidgets */,
+			);
+			name = XpnseWidgets;
+			productName = XpnseWidgets;
+			productReference = 51WGT0012F30001A000001 /* XpnseWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -112,6 +192,9 @@
 				LastUpgradeCheck = 2600;
 				TargetAttributes = {
 					51B3C76C2E191B9500B0C61E = {
+						CreatedOnToolsVersion = 26.0;
+					};
+					51WGT0042F30001A000004 = {
 						CreatedOnToolsVersion = 26.0;
 					};
 				};
@@ -135,12 +218,20 @@
 			projectRoot = "";
 			targets = (
 				51B3C76C2E191B9500B0C61E /* Xpnse */,
+				51WGT0042F30001A000004 /* XpnseWidgets */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		51B3C76B2E191B9500B0C61E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		51WGT0062F30001A000006 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -157,7 +248,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		51WGT0072F30001A000007 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		51WGT00C2F30001A00000C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 51WGT0042F30001A000004 /* XpnseWidgets */;
+			targetProxy = 51WGT00B2F30001A00000B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		51B3C7762E191B9800B0C61E /* Debug */ = {
@@ -281,6 +387,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Xpnse/Xpnse.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 99BB8PQ3VU;
@@ -331,6 +438,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Xpnse/Xpnse.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 99BB8PQ3VU;
@@ -376,6 +484,64 @@
 			};
 			name = Release;
 		};
+		51WGT0092F30001A000009 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = XpnseWidgets/XpnseWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 99BB8PQ3VU;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = XpnseWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = XpnseWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.gokulsHobby.Xpnse.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		51WGT00A2F30001A00000A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = XpnseWidgets/XpnseWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 99BB8PQ3VU;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = XpnseWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = XpnseWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.gokulsHobby.Xpnse.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -393,6 +559,15 @@
 			buildConfigurations = (
 				51B3C7792E191B9800B0C61E /* Debug */,
 				51B3C77A2E191B9800B0C61E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		51WGT0082F30001A000008 /* Build configuration list for PBXNativeTarget "XpnseWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				51WGT0092F30001A000009 /* Debug */,
+				51WGT00A2F30001A00000A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

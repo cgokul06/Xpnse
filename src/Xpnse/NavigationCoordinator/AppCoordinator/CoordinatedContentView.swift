@@ -10,7 +10,8 @@ import SwiftUI
 struct CoordinatedContentView: View {
     @StateObject private var appCoordinator = AppCoordinator()
     @StateObject private var homeCoordinator = NavigationCoordinator<HomeRoute>()
-    
+    @ObservedObject private var deepLinkRouter = AppDeepLinkRouter.shared
+
     var body: some View {
         Group {
             switch appCoordinator.currentRoute {
@@ -36,6 +37,26 @@ struct CoordinatedContentView: View {
         .environmentObject(appCoordinator)
         .environmentObject(homeCoordinator)
         .animation(.easeInOut(duration: 0.3), value: appCoordinator.currentRoute)
+        .onOpenURL { url in
+            deepLinkRouter.handle(url)
+            deepLinkRouter.consumePendingLink(
+                appCoordinator: appCoordinator,
+                homeCoordinator: homeCoordinator
+            )
+        }
+        .onChange(of: appCoordinator.currentRoute) { _, newRoute in
+            guard newRoute == .home else { return }
+            deepLinkRouter.consumePendingLink(
+                appCoordinator: appCoordinator,
+                homeCoordinator: homeCoordinator
+            )
+        }
+        .onAppear {
+            deepLinkRouter.consumePendingLink(
+                appCoordinator: appCoordinator,
+                homeCoordinator: homeCoordinator
+            )
+        }
     }
 }
 

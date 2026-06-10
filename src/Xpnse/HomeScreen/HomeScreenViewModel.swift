@@ -8,12 +8,6 @@
 import Combine
 import Foundation
 
-enum CalendarComparison: Int {
-//    case fortnightly = 1 // once in two weeks
-    case monthly = 2
-    case yearly = 3
-}
-
 @MainActor
 final class HomeScreenViewModel: ObservableObject {
     @Published var currentCalendarComparator: CalendarComparison
@@ -116,31 +110,11 @@ final class HomeScreenViewModel: ObservableObject {
 
     // MARK: - Compute Date Range for a Key
     private func computeDateRange(forOffset offset: Int) -> (Date, Date) {
-        let today = Date()
-
-        switch currentCalendarComparator {
-        case .monthly:
-            guard let monthDate = calendar.date(byAdding: .month, value: offset, to: today),
-                  let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: monthDate)),
-                  let startOfNextMonth = calendar.date(byAdding: .month, value: 1, to: startOfMonth),
-                  let endOfMonth = calendar.date(byAdding: .second, value: -1, to: startOfNextMonth)
-            else { return (today, today) }
-            return (startOfMonth, endOfMonth)
-
-//        case .fortnightly:
-//            let daysToSubtract = offset * 14
-//            guard let start = calendar.date(byAdding: .day, value: daysToSubtract, to: today),
-//                  let end = calendar.date(byAdding: .day, value: 13, to: start)
-//            else { return (today, today) }
-//            return (start, end)
-
-        case .yearly:
-            guard let yearDate = calendar.date(byAdding: .year, value: offset, to: today),
-                  let startOfYear = calendar.date(from: calendar.dateComponents([.year], from: yearDate)),
-                  let startOfNextYear = calendar.date(byAdding: .year, value: 1, to: startOfYear),
-                  let endOfYear = calendar.date(byAdding: .second, value: -1, to: startOfNextYear)
-            else { return (today, today) }
-            return (startOfYear, endOfYear)
-        }
+        let range = PeriodDateRangeCalculator.dateRange(
+            forOffset: offset,
+            comparison: currentCalendarComparator,
+            calendar: calendar
+        )
+        return (range.start, range.end)
     }
 }

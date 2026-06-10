@@ -13,6 +13,30 @@ struct ExpenseDonutSlice: Identifiable, Equatable {
     var isRemainder: Bool = false
 }
 
+extension WidgetDonutSlice {
+    init(expenseSlice: ExpenseDonutSlice) {
+        self.init(
+            id: expenseSlice.id,
+            name: expenseSlice.name,
+            amount: expenseSlice.amount,
+            colorHex: expenseSlice.colorHex,
+            isRemainder: expenseSlice.isRemainder
+        )
+    }
+}
+
+extension ExpenseDonutSlice {
+    init(widgetSlice: WidgetDonutSlice) {
+        self.init(
+            id: widgetSlice.id,
+            name: widgetSlice.name,
+            amount: widgetSlice.amount,
+            colorHex: widgetSlice.colorHex,
+            isRemainder: widgetSlice.isRemainder
+        )
+    }
+}
+
 extension TransactionSummary {
     @MainActor
     func expenseDonutSlices(categoryStore: CategoryStore = .shared) -> [ExpenseDonutSlice] {
