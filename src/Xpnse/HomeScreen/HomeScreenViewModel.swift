@@ -122,8 +122,8 @@ final class HomeScreenViewModel: ObservableObject {
         case .monthly:
             guard let monthDate = calendar.date(byAdding: .month, value: offset, to: today),
                   let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: monthDate)),
-                  let range = calendar.range(of: .day, in: .month, for: monthDate),
-                  let endOfMonth = calendar.date(bySetting: .day, value: range.count, of: startOfMonth)
+                  let startOfNextMonth = calendar.date(byAdding: .month, value: 1, to: startOfMonth),
+                  let endOfMonth = calendar.date(byAdding: .second, value: -1, to: startOfNextMonth)
             else { return (today, today) }
             return (startOfMonth, endOfMonth)
 
@@ -137,7 +137,8 @@ final class HomeScreenViewModel: ObservableObject {
         case .yearly:
             guard let yearDate = calendar.date(byAdding: .year, value: offset, to: today),
                   let startOfYear = calendar.date(from: calendar.dateComponents([.year], from: yearDate)),
-                  let endOfYear = calendar.date(byAdding: DateComponents(year: 1, day: -1), to: startOfYear)
+                  let startOfNextYear = calendar.date(byAdding: .year, value: 1, to: startOfYear),
+                  let endOfYear = calendar.date(byAdding: .second, value: -1, to: startOfNextYear)
             else { return (today, today) }
             return (startOfYear, endOfYear)
         }
