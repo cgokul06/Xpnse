@@ -30,7 +30,11 @@ struct ExpenseDonutSummaryCardView: View {
     }
 
     private var chartSlices: [ExpenseDonutSlice] {
-        guard income > 0 else { return [] }
+        guard !legendSlices.isEmpty else { return slices.filter(\.isRemainder) }
+
+        if income <= 0 {
+            return legendSlices
+        }
 
         let expenseSum = legendSlices.reduce(0) { $0 + $1.amount }
         guard expenseSum > income else { return slices }
@@ -46,10 +50,18 @@ struct ExpenseDonutSummaryCardView: View {
         }
     }
 
-    private var formattedDonutIncome: String {
+    private var donutCenterTitle: String {
+        income > 0 ? "Income" : "Expenses"
+    }
+
+    private var donutCenterAmount: Double {
+        income > 0 ? income : expenses
+    }
+
+    private var formattedDonutCenterAmount: String {
         let symbol = currencyManager.selectedCurrency.symbol
-        let fullAmount = String(format: "%.0f", income)
-        let amountText = fullAmount.count > 3 ? income.abbreviatedFloor() : fullAmount
+        let fullAmount = String(format: "%.0f", donutCenterAmount)
+        let amountText = fullAmount.count > 3 ? donutCenterAmount.abbreviatedFloor() : fullAmount
         return "\(symbol)\(amountText)"
     }
 
@@ -62,8 +74,8 @@ struct ExpenseDonutSummaryCardView: View {
             )
 
             Group {
-                if income <= 0 {
-                    emptyState(message: "No income this period")
+                if expenses <= 0, income <= 0 {
+                    emptyState(message: "No expenses yet")
                 } else {
                     HStack(alignment: .center, spacing: 12) {
                         donutChart
@@ -108,17 +120,17 @@ struct ExpenseDonutSummaryCardView: View {
             }
 
             VStack(spacing: 2) {
-                Text("Income")
+                Text(donutCenterTitle)
                     .font(.system(size: 10, weight: .medium))
                     .foregroundColor(.gray)
 
-                Text(formattedDonutIncome)
+                Text(formattedDonutCenterAmount)
                     .font(.system(size: 14, weight: .bold))
                     .foregroundColor(.white)
                     .minimumScaleFactor(0.7)
                     .lineLimit(1)
 
-                if expenses == 0 {
+                if expenses == 0, income > 0 {
                     Text("No expenses yet")
                         .font(.system(size: 9, weight: .medium))
                         .foregroundColor(.gray)

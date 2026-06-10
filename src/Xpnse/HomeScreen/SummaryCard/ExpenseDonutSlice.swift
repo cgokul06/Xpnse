@@ -16,8 +16,6 @@ struct ExpenseDonutSlice: Identifiable, Equatable {
 extension TransactionSummary {
     @MainActor
     func expenseDonutSlices(categoryStore: CategoryStore = .shared) -> [ExpenseDonutSlice] {
-        guard totalIncome > 0 else { return [] }
-
         var categoryTotals: [String: Double] = [:]
         for transaction in allTransactions where transaction.type == .expense {
             let canonicalId = categoryStore.canonicalCategoryId(for: transaction.categoryId)
@@ -35,17 +33,19 @@ extension TransactionSummary {
         }
         .sorted { $0.amount > $1.amount }
 
-        let remainder = max(0, totalIncome - totalExpenses)
-        if remainder > 0 {
-            slices.append(
-                ExpenseDonutSlice(
-                    id: "__remainder__",
-                    name: "Remaining",
-                    amount: remainder,
-                    colorHex: "FFFFFF",
-                    isRemainder: true
+        if totalIncome > 0 {
+            let remainder = max(0, totalIncome - totalExpenses)
+            if remainder > 0 {
+                slices.append(
+                    ExpenseDonutSlice(
+                        id: "__remainder__",
+                        name: "Remaining",
+                        amount: remainder,
+                        colorHex: "FFFFFF",
+                        isRemainder: true
+                    )
                 )
-            )
+            }
         }
 
         return slices
