@@ -42,7 +42,10 @@ struct AddTransactionView: View {
     @State private var remindRecurring: Bool = false
     @State private var reminderDateTime: Date = AddTransactionView.defaultReminderDateTime(for: Date())
     @State private var showReminderPermissionAlert: Bool = false
+    @State private var didManuallySelectCategory = false
+    @State private var lastNormalizedDescription = ""
     private let transactionManager: FirebaseTransactionManager = .shared
+    private let categoryClassifier = CategoryClassificationService()
     private var transaction: Transaction?
     private let isEditing: Bool
 
@@ -70,6 +73,16 @@ struct AddTransactionView: View {
 
     private var recurrenceOptions: [RecurrenceFrequency] {
         RecurrenceFrequency.uiOptions(for: selectedDate)
+    }
+
+    private var categorySelectionBinding: Binding<String> {
+        Binding(
+            get: { selectedCategoryId },
+            set: { newValue in
+                selectedCategoryId = newValue
+                didManuallySelectCategory = true
+            }
+        )
     }
 
     init(
@@ -137,6 +150,13 @@ struct AddTransactionView: View {
                     }
                 }
                 .onChange(of: description) { _, newValue in
+                    let normalized = SuggestionEngine.normalize(newValue)
+                    if normalized != lastNormalizedDescription {
+                        didManuallySelectCategory = false
+                        isDescriptionChangeBecauseOfSelection = false
+                        lastNormalizedDescription = normalized
+                    }
+
                     let shouldShowSuggestions: Bool = {
                         guard isEditing else {
                             return true
@@ -218,7 +238,11 @@ struct AddTransactionView: View {
             .onAppear {
                 self.mapEditableDatas()
                 self.applyExtractedTransactionIfNeeded()
+                lastNormalizedDescription = SuggestionEngine.normalize(description)
                 suggestionEngine.load()
+            }
+            .onDisappear {
+                categoryClassifier.cancel()
             }
             .task {
                 await categoryStore.load()
@@ -302,6 +326,7 @@ struct AddTransactionView: View {
             Button(action: {
                 transactionType = .expense
                 selectedCategoryId = BuiltinCategories.otherCategoryId
+                didManuallySelectCategory = false
                 showSuggestions = false
             }) {
                 HStack(spacing: 8) {
@@ -320,6 +345,7 @@ struct AddTransactionView: View {
             Button(action: {
                 transactionType = .income
                 selectedCategoryId = BuiltinCategories.otherCategoryId
+                didManuallySelectCategory = false
                 showSuggestions = false
             }) {
                 HStack(spacing: 8) {
@@ -373,7 +399,7 @@ struct AddTransactionView: View {
                 options: categories,
                 menuWdith: 250,
                 maxItemDisplayed: 6,
-                selectedCategoryId: self.$selectedCategoryId,
+                selectedCategoryId: categorySelectionBinding,
                 showDropdown: self.$showDropdownForCategory
             )
             .focused(self.$focussedField, equals: .category)
@@ -522,9 +548,12 @@ struct AddTransactionView: View {
                 }
             }
         }
-        .onChange(of: self.focussedField) { _, newVal in
+        .onChange(of: self.focussedField) { oldVal, newVal in
             if newVal != .description {
                 self.showSuggestions = false
+            }
+            if oldVal == .description, newVal != .description {
+                classifyCategoryAfterDescriptionBlur()
             }
             if newVal != nil {
                 self.showDropdownForCategory = false
@@ -673,6 +702,35 @@ struct AddTransactionView: View {
             await MainActor.run {
                 isLoading = false
                 self.dismiss()
+            }
+        }
+    }
+
+    private func classifyCategoryAfterDescriptionBlur() {
+        guard !isEditing else { return }
+
+        let trimmed = description.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 3 else { return }
+
+        if let knownCategory = suggestionEngine.categoryForExactTitle(description) {
+            selectedCategoryId = knownCategory
+            isDescriptionChangeBecauseOfSelection = false
+            return
+        }
+
+        if isDescriptionChangeBecauseOfSelection {
+            isDescriptionChangeBecauseOfSelection = false
+            return
+        }
+
+        guard !didManuallySelectCategory else { return }
+
+        Task {
+            if let categoryId = await categoryClassifier.classify(
+                description: description,
+                transactionType: transactionType
+            ) {
+                selectedCategoryId = categoryId
             }
         }
     }

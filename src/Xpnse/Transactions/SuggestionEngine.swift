@@ -155,6 +155,15 @@ public final class SuggestionEngine {
         }
         return Array(sorted.prefix(limit))
     }
+
+    /// Returns the stored category for an exact title match, if one exists.
+    public func categoryForExactTitle(_ title: String) -> String? {
+        let normalized = Self.normalize(title)
+        guard !normalized.isEmpty else { return nil }
+        guard let match = suggestions.first(where: { $0.normalized == normalized }) else { return nil }
+        guard let categoryId = match.categoryIdentifier, !categoryId.isEmpty else { return nil }
+        return categoryId
+    }
     
     /// Queries the suggestion engine with a debounce delay (~150ms) before invoking the handler.
     /// Only the latest query is processed.
