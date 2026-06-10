@@ -12,6 +12,15 @@ private enum TransactionListGrouping {
     case category
 }
 
+private enum TransactionListScrollAnchor: Hashable {
+    case top
+}
+
+private struct TransactionListScrollMetrics: Equatable {
+    let offsetY: CGFloat
+    let visibleHeight: CGFloat
+}
+
 private struct CategorySection: Identifiable {
     let id: String
     let category: CategoryDefinition
@@ -22,8 +31,10 @@ struct TransactionListView: View {
     var dateTransactions: [Date: [Transaction]]
     var dates: [Date] = []
 
+    @Environment(\.scenePhase) private var scenePhase
     @State private var grouping: TransactionListGrouping = .date
     @State private var categoryStore = CategoryStore.shared
+    @State private var scrollMetrics = TransactionListScrollMetrics(offsetY: 0, visibleHeight: 0)
 
     init(dateTransactions: [Date: [Transaction]]) {
         self.dateTransactions = dateTransactions
@@ -101,6 +112,13 @@ struct TransactionListView: View {
         }
     }
 
+    private var isPartiallyScrolled: Bool {
+        guard scrollMetrics.visibleHeight > 0 else {
+            return scrollMetrics.offsetY > 24
+        }
+        return scrollMetrics.offsetY > scrollMetrics.visibleHeight * 0.5
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -126,20 +144,43 @@ struct TransactionListView: View {
             }
 
             if hasTransactions {
-                ScrollView(showsIndicators: false) {
-                    LazyVStack(spacing: 12) {
-                        switch grouping {
-                        case .date:
-                            ForEach(dates, id: \.self) { date in
-                                dateSection(date: date, transactions: dateTransactions[date] ?? [])
-                            }
-                        case .category:
-                            ForEach(categorySections) { section in
-                                categorySection(section)
+                ScrollViewReader { proxy in
+                    ScrollView(showsIndicators: false) {
+                        LazyVStack(spacing: 12) {
+                            Color.clear
+                                .frame(height: 0)
+                                .id(TransactionListScrollAnchor.top)
+
+                            switch grouping {
+                            case .date:
+                                ForEach(dates, id: \.self) { date in
+                                    dateSection(date: date, transactions: dateTransactions[date] ?? [])
+                                }
+                            case .category:
+                                ForEach(categorySections) { section in
+                                    categorySection(section)
+                                }
                             }
                         }
+                        .padding(.bottom, 62)
                     }
-                    .padding(.bottom, 62)
+                    .onScrollGeometryChange(for: TransactionListScrollMetrics.self) { geometry in
+                        TransactionListScrollMetrics(
+                            offsetY: max(0, geometry.contentOffset.y),
+                            visibleHeight: geometry.visibleRect.height
+                        )
+                    } action: { _, metrics in
+                        scrollMetrics = metrics
+                    }
+                    .onChange(of: scenePhase) { oldPhase, newPhase in
+                        resetScrollIfNeeded(
+                            from: oldPhase,
+                            to: newPhase,
+                            scrollToTop: {
+                                scrollToTop(using: proxy)
+                            }
+                        )
+                    }
                 }
             } else {
                 noTransactionsFound
@@ -149,6 +190,32 @@ struct TransactionListView: View {
         .task {
             await categoryStore.load()
         }
+    }
+
+    private func resetScrollIfNeeded(
+        from oldPhase: ScenePhase,
+        to newPhase: ScenePhase,
+        scrollToTop: () -> Void
+    ) {
+        guard isPartiallyScrolled else { return }
+
+        switch newPhase {
+        case .background, .inactive:
+            scrollToTop()
+        case .active where oldPhase == .background || oldPhase == .inactive:
+            scrollToTop()
+        default:
+            break
+        }
+    }
+
+    private func scrollToTop(using proxy: ScrollViewProxy) {
+        var transaction = SwiftUI.Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            proxy.scrollTo(TransactionListScrollAnchor.top, anchor: .top)
+        }
+        scrollMetrics = TransactionListScrollMetrics(offsetY: 0, visibleHeight: scrollMetrics.visibleHeight)
     }
 
     private func dateSection(date: Date, transactions: [Transaction]) -> some View {
