@@ -253,10 +253,9 @@ struct Home: View {
         return VStack(spacing: 16) {
             dateSwitchBar(for: key)
 
-            SummaryCardView(
-                totalBalance: txnSummary?.totalBalance ?? 0,
-                income: txnSummary?.totalIncome ?? 0,
-                expenses: txnSummary?.totalExpenses ?? 0
+            FlippableSummaryCardView(
+                monthKey: key,
+                summary: txnSummary
             )
             .padding(.horizontal, 16)
 

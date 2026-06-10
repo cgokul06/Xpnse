@@ -1,0 +1,185 @@
+//
+//  ExpenseDonutSummaryCardView.swift
+//  Xpnse
+//
+
+import Charts
+import SwiftUI
+
+struct ExpenseDonutSummaryCardView: View {
+    @ObservedObject private var currencyManager = CurrencyManager.shared
+    @State private var categoryStore = CategoryStore.shared
+
+    let summary: TransactionSummary?
+    let onFlip: () -> Void
+
+    private var income: Double {
+        summary?.totalIncome ?? 0
+    }
+
+    private var expenses: Double {
+        summary?.totalExpenses ?? 0
+    }
+
+    private var slices: [ExpenseDonutSlice] {
+        summary?.expenseDonutSlices(categoryStore: categoryStore) ?? []
+    }
+
+    private var legendSlices: [ExpenseDonutSlice] {
+        slices.filter { !$0.isRemainder }
+    }
+
+    private var chartSlices: [ExpenseDonutSlice] {
+        guard income > 0 else { return [] }
+
+        let expenseSum = legendSlices.reduce(0) { $0 + $1.amount }
+        guard expenseSum > income else { return slices }
+
+        let scale = income / expenseSum
+        return legendSlices.map { slice in
+            ExpenseDonutSlice(
+                id: slice.id,
+                name: slice.name,
+                amount: slice.amount * scale,
+                colorHex: slice.colorHex
+            )
+        }
+    }
+
+    private var formattedDonutIncome: String {
+        let symbol = currencyManager.selectedCurrency.symbol
+        let fullAmount = String(format: "%.0f", income)
+        let amountText = fullAmount.count > 3 ? income.abbreviatedFloor() : fullAmount
+        return "\(symbol)\(amountText)"
+    }
+
+    var body: some View {
+        VStack(spacing: SummaryCardMetrics.sectionSpacing) {
+            SummaryCardHeaderBar(
+                title: "Expense Breakdown",
+                flipIconName: "dollarsign.circle.fill",
+                onFlip: onFlip
+            )
+
+            Group {
+                if income <= 0 {
+                    emptyState(message: "No income this period")
+                } else {
+                    HStack(alignment: .center, spacing: 12) {
+                        donutChart
+                            .frame(
+                                width: SummaryCardMetrics.donutSize,
+                                height: SummaryCardMetrics.donutSize
+                            )
+
+                        legendView
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                }
+            }
+            .frame(height: SummaryCardMetrics.contentAreaHeight)
+        }
+        .padding(.horizontal, SummaryCardMetrics.horizontalPadding)
+        .padding(.vertical, SummaryCardMetrics.verticalPadding)
+        .frame(height: SummaryCardMetrics.height)
+        .frame(maxWidth: .infinity)
+        .summaryCardFaceBackground()
+        .task {
+            await categoryStore.load()
+        }
+    }
+
+    @ViewBuilder
+    private var donutChart: some View {
+        ZStack {
+            if chartSlices.isEmpty {
+                Circle()
+                    .stroke(Color.white.opacity(0.2), lineWidth: 20)
+            } else {
+                Chart(chartSlices) { slice in
+                    SectorMark(
+                        angle: .value("Amount", slice.amount),
+                        innerRadius: .ratio(0.62),
+                        angularInset: 1.5
+                    )
+                    .foregroundStyle(sliceColor(for: slice))
+                }
+                .chartLegend(.hidden)
+            }
+
+            VStack(spacing: 2) {
+                Text("Income")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.gray)
+
+                Text(formattedDonutIncome)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(.white)
+                    .minimumScaleFactor(0.7)
+                    .lineLimit(1)
+
+                if expenses == 0 {
+                    Text("No expenses yet")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundColor(.gray)
+                        .multilineTextAlignment(.center)
+                }
+            }
+            .padding(.horizontal, 6)
+        }
+    }
+
+    @ViewBuilder
+    private var legendView: some View {
+        if legendSlices.isEmpty && expenses == 0 {
+            Text("No expenses yet")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.gray)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        } else if legendSlices.isEmpty {
+            emptyState(message: "No expenses yet")
+        } else {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(legendSlices) { slice in
+                        legendRow(for: slice)
+                    }
+                }
+            }
+            .frame(maxHeight: .infinity)
+        }
+    }
+
+    private func legendRow(for slice: ExpenseDonutSlice) -> some View {
+        HStack(spacing: 8) {
+            Circle()
+                .fill(Color(hex: slice.colorHex))
+                .frame(width: 10, height: 10)
+
+            Text(slice.name)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(.white)
+                .lineLimit(1)
+
+            Spacer(minLength: 4)
+
+            Text("\(currencyManager.selectedCurrency.symbol)\(slice.amount, specifier: "%.2f")")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(.white.opacity(0.85))
+        }
+    }
+
+    private func sliceColor(for slice: ExpenseDonutSlice) -> Color {
+        if slice.isRemainder {
+            return Color.white.opacity(0.2)
+        }
+        return Color(hex: slice.colorHex)
+    }
+
+    private func emptyState(message: String) -> some View {
+        Text(message)
+            .font(.system(size: 14, weight: .medium))
+            .foregroundColor(.gray)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+    }
+}
