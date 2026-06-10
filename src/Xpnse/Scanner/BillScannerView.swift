@@ -11,6 +11,7 @@ import VisionKit
 
 struct BillScannerView: View {
     @ObservedObject var billScannerService: BillScannerService
+    @EnvironmentObject private var homeCoordinator: NavigationCoordinator<HomeRoute>
     @Environment(\.dismiss) private var dismiss
     @State private var showingImagePicker = false
     @State private var showingCamera = false
@@ -101,8 +102,12 @@ struct BillScannerView: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .onChange(of: self.billScannerService.extractedTransaction, { _, newTxn in
-                if newTxn != nil {
-                    self.dismiss()
+                guard newTxn != nil else { return }
+
+                if homeCoordinator.path == [.billScanner] {
+                    homeCoordinator.path = [.transactions]
+                } else {
+                    dismiss()
                 }
             })
             .toolbar {

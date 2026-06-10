@@ -6,14 +6,26 @@
 //
 
 import SwiftUI
+import UIKit
 
 enum SwipeDirection {
     case left, right
 }
 
+private enum MonthDragAxis {
+    case horizontal
+    case vertical
+}
+
+private enum MonthPagerAnimation {
+    static let slide = Animation.easeOut(duration: 0.28)
+}
+
 struct Home: View {
     @EnvironmentObject var homeCoordinator: NavigationCoordinator<HomeRoute>
     @StateObject private var homeViewModel: HomeScreenViewModel = HomeScreenViewModel()
+    @State private var monthDragOffset: CGFloat = 0
+    @State private var monthDragAxis: MonthDragAxis?
 
     var body: some View {
         ZStack {
@@ -39,28 +51,48 @@ struct Home: View {
         VStack(spacing: 16) {
             topView
 
-            dateSwitchView
-
-            cardAndTransactionsList
+            monthSwipePager
+                .padding(.bottom, XpnseBottomBarMetrics.buttonHeight + 8)
         }
         .topSpacingIfNoSafeArea()
         .overlay(
             alignment: .bottom,
             content: {
-                Button {
-                    self.homeCoordinator.push(.transactions)
-                } label: {
-                    Text("Add transaction")
-                        .font(.system(size: 20, weight: .bold))
+                VStack(spacing: 0) {
+                    HStack(spacing: 12) {
+                        Button {
+                            self.homeCoordinator.push(.transactions)
+                        } label: {
+                            Text("Add transaction")
+                                .font(.system(size: 20, weight: .bold))
+                        }
+                        .buttonStyle(
+                            XpnsePrimaryButtonStyle.defaultButton(
+                                bgColor: XpnseColorKey.secondaryButtonBGColor,
+                                isDisabled: .constant(false),
+                                isLoading: .constant(false)
+                            )
+                        )
+                        .frame(maxWidth: .infinity)
+                        .frame(height: XpnseBottomBarMetrics.buttonHeight)
+
+                        Button {
+                            self.homeCoordinator.push(.billScanner)
+                        } label: {
+                            Image(systemName: "doc.text.viewfinder")
+                        }
+                        .buttonStyle(
+                            XpnseSquareIconButtonStyle.defaultButton(
+                                bgColor: XpnseColorKey.secondaryButtonBGColor,
+                                isDisabled: .constant(false),
+                                isLoading: .constant(false)
+                            )
+                        )
+                        .accessibilityLabel("Scan bill")
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
                 }
-                .buttonStyle(
-                    XpnsePrimaryButtonStyle.defaultButton(
-                        bgColor: XpnseColorKey.secondaryButtonBGColor,
-                        isDisabled: .constant(false),
-                        isLoading: .constant(false)
-                    )
-                )
-                .padding(.horizontal, 16)
                 .bottomSpacingIfNoSafeArea(8)
             })
     }
@@ -105,42 +137,142 @@ struct Home: View {
         .padding([.horizontal], 16)
     }
 
-    private var cardAndTransactionsList: some View {
-        let txnSummary = self.homeViewModel.transactionSummaryDict[self.homeViewModel.currentKey]
+    private var monthSwipePager: some View {
+        GeometryReader { geometry in
+            let width = geometry.size.width
+            let swipeThreshold = width * 0.15
+
+            HStack(spacing: 0) {
+                monthPanel(for: homeViewModel.currentKey - 1, pageWidth: width)
+                monthPanel(for: homeViewModel.currentKey, pageWidth: width)
+                monthPanel(for: homeViewModel.currentKey + 1, pageWidth: width)
+            }
+            .offset(x: -width + monthDragOffset)
+            .frame(width: width, alignment: .leading)
+            .clipped()
+            .contentShape(Rectangle())
+            .simultaneousGesture(monthDragGesture(pageWidth: width, swipeThreshold: swipeThreshold))
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func monthDragGesture(pageWidth: CGFloat, swipeThreshold: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 16, coordinateSpace: .local)
+            .onChanged { value in
+                let horizontal = value.translation.width
+                let vertical = value.translation.height
+
+                if monthDragAxis == nil {
+                    let absHorizontal = abs(horizontal)
+                    let absVertical = abs(vertical)
+                    guard max(absHorizontal, absVertical) > 12 else { return }
+
+                    if absHorizontal > absVertical * 1.25 {
+                        monthDragAxis = .horizontal
+                    } else {
+                        monthDragAxis = .vertical
+                        return
+                    }
+                }
+
+                guard monthDragAxis == .horizontal else { return }
+                monthDragOffset = rubberBandedOffset(horizontal, pageWidth: pageWidth)
+            }
+            .onEnded { value in
+                defer { monthDragAxis = nil }
+
+                guard monthDragAxis == .horizontal else {
+                    if monthDragOffset != 0 {
+                        snapMonthOffsetToZero()
+                    }
+                    return
+                }
+
+                handleMonthDragEnded(
+                    translation: value.translation.width,
+                    pageWidth: pageWidth,
+                    swipeThreshold: swipeThreshold
+                )
+            }
+    }
+
+    private func rubberBandedOffset(_ offset: CGFloat, pageWidth: CGFloat) -> CGFloat {
+        let canGoForward = homeViewModel.currentKey < homeViewModel.maxFuturisticRange
+        let canGoBackward = true
+
+        if offset < 0, !canGoForward {
+            return offset * 0.25
+        }
+        if offset > 0, !canGoBackward {
+            return offset * 0.25
+        }
+        return max(-pageWidth, min(pageWidth, offset))
+    }
+
+    private func handleMonthDragEnded(translation: CGFloat, pageWidth: CGFloat, swipeThreshold: CGFloat) {
+        let canGoForward = homeViewModel.currentKey < homeViewModel.maxFuturisticRange
+
+        if translation <= -swipeThreshold, canGoForward {
+            commitMonthChange(direction: 1, pageWidth: pageWidth)
+        } else if translation >= swipeThreshold {
+            commitMonthChange(direction: -1, pageWidth: pageWidth)
+        } else {
+            snapMonthOffsetToZero()
+        }
+    }
+
+    private func snapMonthOffsetToZero() {
+        withAnimation(MonthPagerAnimation.slide) {
+            monthDragOffset = 0
+        }
+    }
+
+    private func commitMonthChange(direction: Int, pageWidth: CGFloat) {
+        let targetOffset: CGFloat = direction > 0 ? -pageWidth : pageWidth
+
+        withAnimation(MonthPagerAnimation.slide) {
+            monthDragOffset = targetOffset
+        } completion: {
+            applyMonthChange(direction: direction)
+        }
+    }
+
+    private func applyMonthChange(direction: Int) {
+        var transaction = SwiftUI.Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            homeViewModel.currentKey += direction
+            monthDragOffset = 0
+        }
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+
+    private func monthPanel(for key: Int, pageWidth: CGFloat) -> some View {
+        let txnSummary = homeViewModel.transactionSummaryDict[key]
+
         return VStack(spacing: 16) {
+            dateSwitchBar(for: key)
+
             SummaryCardView(
                 totalBalance: txnSummary?.totalBalance ?? 0,
                 income: txnSummary?.totalIncome ?? 0,
                 expenses: txnSummary?.totalExpenses ?? 0
             )
-            .padding([.horizontal], 16)
+            .padding(.horizontal, 16)
 
             TransactionListView(
                 dateTransactions: txnSummary?.transactions ?? [:]
             )
-            .padding([.horizontal], 16)
+            .padding(.horizontal, 16)
 
             Spacer(minLength: 0)
         }
-        .contentShape(Rectangle())
-        .simultaneousGesture(
-            DragGesture()
-                .onEnded { gesture in
-                    let horizontalAmount = gesture.translation.width
-
-                    withAnimation(.spring()) {
-                        if horizontalAmount < -80 && self.homeViewModel.currentKey < self.homeViewModel.maxFuturisticRange {
-                            self.homeViewModel.currentKey += 1
-                        } else if horizontalAmount > 80 {
-                            self.homeViewModel.currentKey -= 1
-                        }
-                    }
-                }
-        )
+        .frame(width: pageWidth)
     }
 
-    private var dateSwitchView: some View {
-        let txnSummary = self.homeViewModel.transactionSummaryDict[self.homeViewModel.currentKey]
+    private func dateSwitchBar(for key: Int) -> some View {
+        let txnSummary = homeViewModel.transactionSummaryDict[key]
+        let canGoForward = key < homeViewModel.maxFuturisticRange
 
         return HStack(spacing: 12) {
             Image(systemName: "arrowtriangle.left.fill")
@@ -153,17 +285,19 @@ struct Home: View {
 
             Text(txnSummary?.dateRangeText ?? "")
                 .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(XpnseColorKey.black.color)
 
             Spacer(minLength: 0)
 
             Image(systemName: "arrowtriangle.right.fill")
                 .resizable()
                 .aspectRatio(contentMode: .fit)
-                .foregroundStyle(self.homeViewModel.currentKey < self.homeViewModel.maxFuturisticRange ? XpnseColorKey.black.color : XpnseColorKey.disabled.color)
+                .foregroundStyle(canGoForward ? XpnseColorKey.black.color : XpnseColorKey.disabled.color)
                 .frame(width: 12)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 6)
         .background(XpnseColorKey.secondaryButtonBGColor.color)
+        .padding(.horizontal, 16)
     }
 }

@@ -133,12 +133,7 @@ struct AddTransactionView: View {
                 }
                 .onChange(of: billScannerService.extractedTransaction) { _, extractedData in
                     if let data = extractedData {
-                        // Auto-fill the form with extracted data
-                        self.amount = String(format: "%.2f", data.amount)
-                        self.description = data.title
-                        self.transactionType = data.type
-                        self.selectedCategoryId = data.categoryId
-                        self.selectedDate = data.formattedDate
+                        applyExtractedTransaction(data)
                     }
                 }
                 .onChange(of: description) { _, newValue in
@@ -222,6 +217,7 @@ struct AddTransactionView: View {
             }
             .onAppear {
                 self.mapEditableDatas()
+                self.applyExtractedTransactionIfNeeded()
                 suggestionEngine.load()
             }
             .task {
@@ -681,8 +677,20 @@ struct AddTransactionView: View {
         }
     }
 
+    private func applyExtractedTransactionIfNeeded() {
+        guard !isEditing, let data = billScannerService.extractedTransaction else { return }
+        applyExtractedTransaction(data)
+    }
+
+    private func applyExtractedTransaction(_ data: ScannedTransaction) {
+        self.amount = String(format: "%.2f", data.amount)
+        self.description = data.title
+        self.transactionType = data.type
+        self.selectedCategoryId = data.categoryId
+        self.selectedDate = data.formattedDate
+    }
+
     private func scanBill() {
-        // Implement bill scanning functionality
         self.homeCoordinator.push(.billScanner)
     }
 
