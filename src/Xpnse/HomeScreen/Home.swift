@@ -48,13 +48,23 @@ struct Home: View {
     }
 
     private var contentView: some View {
-        VStack(spacing: 16) {
-            topView
+        GeometryReader { geometry in
+            let pageWidth = geometry.size.width
+            let swipeThreshold = pageWidth * 0.15
 
-            monthSwipePager
+            VStack(spacing: 16) {
+                topView
+
+                VStack(spacing: 16) {
+                    dateSwitchBar(pageWidth: pageWidth)
+
+                    monthPagerStrip(pageWidth: pageWidth, swipeThreshold: swipeThreshold)
+                }
+                .simultaneousGesture(monthDragGesture(pageWidth: pageWidth, swipeThreshold: swipeThreshold))
                 .padding(.bottom, XpnseBottomBarMetrics.buttonHeight + 8)
+            }
+            .topSpacingIfNoSafeArea()
         }
-        .topSpacingIfNoSafeArea()
         .overlay(
             alignment: .bottom,
             content: {
@@ -137,23 +147,17 @@ struct Home: View {
         .padding([.horizontal], 16)
     }
 
-    private var monthSwipePager: some View {
-        GeometryReader { geometry in
-            let width = geometry.size.width
-            let swipeThreshold = width * 0.15
-
-            HStack(spacing: 0) {
-                monthPanel(for: homeViewModel.currentKey - 1, pageWidth: width)
-                monthPanel(for: homeViewModel.currentKey, pageWidth: width)
-                monthPanel(for: homeViewModel.currentKey + 1, pageWidth: width)
-            }
-            .offset(x: -width + monthDragOffset)
-            .frame(width: width, alignment: .leading)
-            .clipped()
-            .contentShape(Rectangle())
-            .simultaneousGesture(monthDragGesture(pageWidth: width, swipeThreshold: swipeThreshold))
+    private func monthPagerStrip(pageWidth: CGFloat, swipeThreshold: CGFloat) -> some View {
+        HStack(spacing: 0) {
+            monthPanel(for: homeViewModel.currentKey - 1, pageWidth: pageWidth)
+            monthPanel(for: homeViewModel.currentKey, pageWidth: pageWidth)
+            monthPanel(for: homeViewModel.currentKey + 1, pageWidth: pageWidth)
         }
+        .offset(x: -pageWidth + monthDragOffset)
+        .frame(width: pageWidth, alignment: .leading)
+        .clipped()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .contentShape(Rectangle())
     }
 
     private func monthDragGesture(pageWidth: CGFloat, swipeThreshold: CGFloat) -> some Gesture {
@@ -251,8 +255,6 @@ struct Home: View {
         let txnSummary = homeViewModel.transactionSummaryDict[key]
 
         return VStack(spacing: 16) {
-            dateSwitchBar(for: key)
-
             FlippableSummaryCardView(
                 monthKey: key,
                 summary: txnSummary
@@ -274,9 +276,8 @@ struct Home: View {
         .frame(width: pageWidth)
     }
 
-    private func dateSwitchBar(for key: Int) -> some View {
-        let txnSummary = homeViewModel.transactionSummaryDict[key]
-        let canGoForward = key < homeViewModel.maxFuturisticRange
+    private func dateSwitchBar(pageWidth: CGFloat) -> some View {
+        let canGoForward = homeViewModel.currentKey < homeViewModel.maxFuturisticRange
 
         return HStack(spacing: 12) {
             Image(systemName: "arrowtriangle.left.fill")
@@ -285,13 +286,22 @@ struct Home: View {
                 .foregroundStyle(XpnseColorKey.black.color)
                 .frame(width: 12)
 
-            Spacer(minLength: 0)
+            GeometryReader { geometry in
+                let textWidth = geometry.size.width
+                let scaledOffset = pageWidth > 0
+                    ? -textWidth + monthDragOffset * (textWidth / pageWidth)
+                    : -textWidth
 
-            Text(txnSummary?.dateRangeText ?? "")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(XpnseColorKey.black.color)
-
-            Spacer(minLength: 0)
+                HStack(spacing: 0) {
+                    monthYearLabel(for: homeViewModel.currentKey - 1, width: textWidth)
+                    monthYearLabel(for: homeViewModel.currentKey, width: textWidth)
+                    monthYearLabel(for: homeViewModel.currentKey + 1, width: textWidth)
+                }
+                .offset(x: scaledOffset)
+                .frame(width: textWidth, alignment: .leading)
+                .clipped()
+            }
+            .frame(height: 20)
 
             Image(systemName: "arrowtriangle.right.fill")
                 .resizable()
@@ -302,6 +312,12 @@ struct Home: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 6)
         .background(XpnseColorKey.secondaryButtonBGColor.color)
-        .padding(.horizontal, 16)
+    }
+
+    private func monthYearLabel(for key: Int, width: CGFloat) -> some View {
+        Text(homeViewModel.transactionSummaryDict[key]?.dateRangeText ?? "")
+            .font(.system(size: 16, weight: .medium))
+            .foregroundStyle(XpnseColorKey.black.color)
+            .frame(width: width)
     }
 }
