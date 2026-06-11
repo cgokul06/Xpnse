@@ -57,7 +57,6 @@ struct Home: View {
         GeometryReader { geometry in
             let pageWidth = geometry.size.width
             let swipeThreshold = pageWidth * 0.15
-            let currentSummary = homeViewModel.transactionSummaryDict[homeViewModel.currentKey]
 
             VStack(spacing: 16) {
                 topView
@@ -67,22 +66,12 @@ struct Home: View {
 
                     summaryCardPagerStrip(pageWidth: pageWidth)
 
-                    TransactionListView(
-                        monthKey: homeViewModel.currentKey,
-                        dateTransactions: currentSummary?.transactions ?? [:],
-                        savedScrollAnchor: monthScrollAnchors[homeViewModel.currentKey],
-                        onScrollAnchorChange: { anchor in
-                            monthScrollAnchors[homeViewModel.currentKey] = anchor
-                        },
-                        isScrollDisabled: isMonthDragActive
-                    )
-                    .padding(.horizontal, 16)
-                    .overlay(alignment: .bottom) {
-                        DividerGradient()
-                            .frame(height: 12)
-                            .allowsHitTesting(false)
-                    }
-                    .frame(maxHeight: .infinity)
+                    transactionListPagerStrip(pageWidth: pageWidth)
+                        .overlay(alignment: .bottom) {
+                            DividerGradient()
+                                .frame(height: 12)
+                                .allowsHitTesting(false)
+                        }
                 }
                 .simultaneousGesture(monthDragGesture(pageWidth: pageWidth, swipeThreshold: swipeThreshold))
                 .padding(.bottom, XpnseBottomBarMetrics.buttonHeight + 16)
@@ -275,6 +264,34 @@ struct Home: View {
         )
         .padding(.horizontal, 16)
         .frame(width: pageWidth)
+    }
+
+    private func transactionListPagerStrip(pageWidth: CGFloat) -> some View {
+        HStack(spacing: 0) {
+            transactionListPanel(for: homeViewModel.currentKey - 1, pageWidth: pageWidth)
+            transactionListPanel(for: homeViewModel.currentKey, pageWidth: pageWidth)
+            transactionListPanel(for: homeViewModel.currentKey + 1, pageWidth: pageWidth)
+        }
+        .offset(x: -pageWidth + monthDragOffset)
+        .frame(width: pageWidth, alignment: .leading)
+        .clipped()
+        .frame(maxHeight: .infinity)
+    }
+
+    private func transactionListPanel(for key: Int, pageWidth: CGFloat) -> some View {
+        let txnSummary = homeViewModel.transactionSummaryDict[key]
+
+        return TransactionListView(
+            monthKey: key,
+            dateTransactions: txnSummary?.transactions ?? [:],
+            savedScrollAnchor: monthScrollAnchors[key],
+            onScrollAnchorChange: { anchor in
+                monthScrollAnchors[key] = anchor
+            },
+            isScrollDisabled: isMonthDragActive
+        )
+        .padding(.horizontal, 16)
+        .frame(width: pageWidth, alignment: .leading)
     }
 
     private func dateSwitchBar(pageWidth: CGFloat) -> some View {
