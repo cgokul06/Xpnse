@@ -6,7 +6,6 @@
 import SwiftUI
 
 struct FlippableSummaryCardView: View {
-    let monthKey: Int
     let summary: TransactionSummary?
     @Binding var isShowingDonut: Bool
 

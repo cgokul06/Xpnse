@@ -270,7 +270,6 @@ struct Home: View {
         let txnSummary = homeViewModel.transactionSummaryDict[key]
 
         return FlippableSummaryCardView(
-            monthKey: key,
             summary: txnSummary,
             isShowingDonut: $isSummaryCardShowingDonut
         )
