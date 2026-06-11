@@ -171,6 +171,11 @@ public final class SuggestionEngine {
     ///   - text: The text to query.
     ///   - limit: Maximum number of results to return. Default is 8.
     ///   - handler: Closure to be called on the main thread with the results.
+    public func cancelPendingQuery() {
+        debounceTask?.cancel()
+        debounceTask = nil
+    }
+
     public func queryDebounced(_ text: String, limit: Int = 8, handler: @escaping ([SuggestionItem]) -> Void) {
         debounceTask?.cancel()
         debounceTask = Task { [weak self] in

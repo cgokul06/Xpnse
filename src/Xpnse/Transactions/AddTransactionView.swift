@@ -150,10 +150,16 @@ struct AddTransactionView: View {
                     }
                 }
                 .onChange(of: description) { _, newValue in
+                    if isDescriptionChangeBecauseOfSelection {
+                        lastNormalizedDescription = SuggestionEngine.normalize(newValue)
+                        showSuggestions = false
+                        isDescriptionChangeBecauseOfSelection = false
+                        return
+                    }
+
                     let normalized = SuggestionEngine.normalize(newValue)
                     if normalized != lastNormalizedDescription {
                         didManuallySelectCategory = false
-                        isDescriptionChangeBecauseOfSelection = false
                         lastNormalizedDescription = normalized
                     }
 
@@ -164,13 +170,8 @@ struct AddTransactionView: View {
 
                         return newValue != self.transaction?.title
                     }()
-                    
-                    guard shouldShowSuggestions else {
-                        return
-                    }
 
-                    guard !self.isDescriptionChangeBecauseOfSelection  else {
-                        self.showSuggestions = false
+                    guard shouldShowSuggestions else {
                         return
                     }
 
@@ -511,12 +512,13 @@ struct AddTransactionView: View {
                         VStack(alignment: .leading, spacing: 0) {
                             ForEach(Array(suggestions.enumerated()), id: \.offset) { idx, item in
                                 Button {
-                                    self.description = item.title
+                                    suggestionEngine.cancelPendingQuery()
+                                    isDescriptionChangeBecauseOfSelection = true
+                                    description = item.title
                                     if let cat = item.categoryIdentifier {
-                                        self.selectedCategoryId = cat
+                                        selectedCategoryId = cat
                                     }
-                                    self.showSuggestions = false
-                                    self.isDescriptionChangeBecauseOfSelection = true
+                                    showSuggestions = false
                                 } label: {
                                     HStack {
                                         Text(item.title)
