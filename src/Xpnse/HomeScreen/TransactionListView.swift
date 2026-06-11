@@ -189,6 +189,7 @@ struct TransactionListView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .contentShape(Rectangle())
         .onAppear {
             needsScrollRestore = true
             scheduleScrollRestore()
@@ -348,5 +349,7 @@ struct TransactionListView: View {
 
             Spacer(minLength: 0)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .contentShape(Rectangle())
     }
 }

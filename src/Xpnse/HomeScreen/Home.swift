@@ -276,6 +276,7 @@ struct Home: View {
         .frame(width: pageWidth, alignment: .leading)
         .clipped()
         .frame(maxHeight: .infinity)
+        .contentShape(Rectangle())
     }
 
     private func transactionListPanel(for key: Int, pageWidth: CGFloat) -> some View {
@@ -291,7 +292,9 @@ struct Home: View {
             isScrollDisabled: isMonthDragActive
         )
         .padding(.horizontal, 16)
-        .frame(width: pageWidth, alignment: .leading)
+        .frame(width: pageWidth, alignment: .topLeading)
+        .frame(maxHeight: .infinity, alignment: .topLeading)
+        .contentShape(Rectangle())
     }
 
     private func dateSwitchBar(pageWidth: CGFloat) -> some View {
