@@ -27,6 +27,7 @@ struct Home: View {
     @State private var monthDragOffset: CGFloat = 0
     @State private var monthDragAxis: MonthDragAxis?
     @State private var monthScrollAnchors: [Int: TransactionListPersistedAnchor] = [:]
+    @State private var isSummaryCardShowingDonut = false
 
     private var isMonthDragActive: Bool {
         monthDragOffset != 0 || monthDragAxis == .horizontal
@@ -270,7 +271,8 @@ struct Home: View {
 
         return FlippableSummaryCardView(
             monthKey: key,
-            summary: txnSummary
+            summary: txnSummary,
+            isShowingDonut: $isSummaryCardShowingDonut
         )
         .padding(.horizontal, 16)
         .frame(width: pageWidth)

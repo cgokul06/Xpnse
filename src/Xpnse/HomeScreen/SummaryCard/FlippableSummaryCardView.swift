@@ -8,8 +8,7 @@ import SwiftUI
 struct FlippableSummaryCardView: View {
     let monthKey: Int
     let summary: TransactionSummary?
-
-    @State private var isShowingDonut = false
+    @Binding var isShowingDonut: Bool
 
     var body: some View {
         ZStack {
@@ -37,9 +36,6 @@ struct FlippableSummaryCardView: View {
             perspective: 0.5
         )
         .animation(.easeInOut(duration: 0.34), value: isShowingDonut)
-        .onChange(of: monthKey) { _, _ in
-            isShowingDonut = false
-        }
     }
 
     private func flipCard() {
