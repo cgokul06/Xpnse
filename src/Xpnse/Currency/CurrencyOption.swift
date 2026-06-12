@@ -18,4 +18,13 @@ struct CurrencyOption: Identifiable, Codable, Hashable {
     var displayName: String {
         "\(code)"
     }
+
+    func matchesSearchQuery(_ query: String) -> Bool {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return true }
+
+        return name.localizedCaseInsensitiveContains(trimmed)
+            || code.localizedCaseInsensitiveContains(trimmed)
+            || symbol.localizedCaseInsensitiveContains(trimmed)
+    }
 }
