@@ -64,14 +64,7 @@ struct Home: View {
                 VStack(spacing: 16) {
                     dateSwitchBar(pageWidth: pageWidth)
 
-                    summaryCardPagerStrip(pageWidth: pageWidth)
-
-                    transactionListPagerStrip(pageWidth: pageWidth)
-                        .overlay(alignment: .bottom) {
-                            DividerGradient()
-                                .frame(height: 12)
-                                .allowsHitTesting(false)
-                        }
+                    monthContentPagerStrip(pageWidth: pageWidth)
                 }
                 .simultaneousGesture(monthDragGesture(pageWidth: pageWidth, swipeThreshold: swipeThreshold))
                 .padding(.bottom, XpnseBottomBarMetrics.buttonHeight + 16)
@@ -151,17 +144,45 @@ struct Home: View {
         .padding([.horizontal], 16)
     }
 
-    private func summaryCardPagerStrip(pageWidth: CGFloat) -> some View {
+    private func monthContentPagerStrip(pageWidth: CGFloat) -> some View {
         HStack(spacing: 0) {
-            summaryCardPanel(for: homeViewModel.currentKey - 1, pageWidth: pageWidth)
-            summaryCardPanel(for: homeViewModel.currentKey, pageWidth: pageWidth)
-            summaryCardPanel(for: homeViewModel.currentKey + 1, pageWidth: pageWidth)
+            monthContentPanel(for: homeViewModel.currentKey - 1, pageWidth: pageWidth)
+            monthContentPanel(for: homeViewModel.currentKey, pageWidth: pageWidth)
+            monthContentPanel(for: homeViewModel.currentKey + 1, pageWidth: pageWidth)
         }
         .offset(x: -pageWidth + monthDragOffset)
-        .frame(width: pageWidth, height: SummaryCardMetrics.height, alignment: .leading)
+        .frame(width: pageWidth, alignment: .topLeading)
         .clipped()
-        .frame(maxWidth: .infinity)
+        .frame(maxHeight: .infinity)
         .contentShape(Rectangle())
+        .overlay(alignment: .bottom) {
+            DividerGradient()
+                .frame(height: 12)
+                .allowsHitTesting(false)
+        }
+    }
+
+    private func monthContentPanel(for key: Int, pageWidth: CGFloat) -> some View {
+        VStack(spacing: 16) {
+            if monthHasTransactions(for: key) {
+                let txnSummary = homeViewModel.transactionSummaryDict[key]
+
+                FlippableSummaryCardView(
+                    summary: txnSummary,
+                    isShowingDonut: $isSummaryCardShowingDonut
+                )
+                .padding(.horizontal, 16)
+            }
+
+            transactionListPanel(for: key, pageWidth: pageWidth)
+        }
+        .frame(width: pageWidth, alignment: .topLeading)
+        .frame(maxHeight: .infinity, alignment: .topLeading)
+        .contentShape(Rectangle())
+    }
+
+    private func monthHasTransactions(for key: Int) -> Bool {
+        !(homeViewModel.transactionSummaryDict[key]?.transactions.isEmpty ?? true)
     }
 
     private func monthDragGesture(pageWidth: CGFloat, swipeThreshold: CGFloat) -> some Gesture {
@@ -255,30 +276,6 @@ struct Home: View {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }
 
-    private func summaryCardPanel(for key: Int, pageWidth: CGFloat) -> some View {
-        let txnSummary = homeViewModel.transactionSummaryDict[key]
-
-        return FlippableSummaryCardView(
-            summary: txnSummary,
-            isShowingDonut: $isSummaryCardShowingDonut
-        )
-        .padding(.horizontal, 16)
-        .frame(width: pageWidth)
-    }
-
-    private func transactionListPagerStrip(pageWidth: CGFloat) -> some View {
-        HStack(spacing: 0) {
-            transactionListPanel(for: homeViewModel.currentKey - 1, pageWidth: pageWidth)
-            transactionListPanel(for: homeViewModel.currentKey, pageWidth: pageWidth)
-            transactionListPanel(for: homeViewModel.currentKey + 1, pageWidth: pageWidth)
-        }
-        .offset(x: -pageWidth + monthDragOffset)
-        .frame(width: pageWidth, alignment: .leading)
-        .clipped()
-        .frame(maxHeight: .infinity)
-        .contentShape(Rectangle())
-    }
-
     private func transactionListPanel(for key: Int, pageWidth: CGFloat) -> some View {
         let txnSummary = homeViewModel.transactionSummaryDict[key]
 
@@ -292,8 +289,7 @@ struct Home: View {
             isScrollDisabled: isMonthDragActive
         )
         .padding(.horizontal, 16)
-        .frame(width: pageWidth, alignment: .topLeading)
-        .frame(maxHeight: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .contentShape(Rectangle())
     }
 

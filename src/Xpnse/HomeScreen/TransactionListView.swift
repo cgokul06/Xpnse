@@ -125,30 +125,30 @@ struct TransactionListView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Transactions")
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(XpnseColorKey.white.color)
-
-                Spacer(minLength: 0)
-
-                Button {
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        grouping = grouping == .date ? .category : .date
-                    }
-                } label: {
-                    Image(systemName: grouping == .date ? "square.grid.2x2.fill" : "calendar")
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(XpnseColorKey.white.color)
-                        .frame(width: 36, height: 36)
-                        .background(Color.white.opacity(0.15))
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                }
-                .accessibilityLabel(grouping == .date ? "Group by category" : "Group by date")
-            }
-
             if hasTransactions {
+                HStack {
+                    Text("Transactions")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(XpnseColorKey.white.color)
+
+                    Spacer(minLength: 0)
+
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            grouping = grouping == .date ? .category : .date
+                        }
+                    } label: {
+                        Image(systemName: grouping == .date ? "square.grid.2x2.fill" : "calendar")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(XpnseColorKey.white.color)
+                            .frame(width: 36, height: 36)
+                            .background(Color.white.opacity(0.15))
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }
+                    .accessibilityLabel(grouping == .date ? "Group by category" : "Group by date")
+                }
+
                 ScrollView(showsIndicators: false) {
                     LazyVStack(spacing: 12) {
                         Color.clear
