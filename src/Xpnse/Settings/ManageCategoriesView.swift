@@ -70,9 +70,7 @@ struct ManageCategoriesView: View {
 
     @ViewBuilder
     private func categoryRow(_ category: CategoryDefinition) -> some View {
-        Button {
-            editingCategory = category
-        } label: {
+        HStack(spacing: 12) {
             HStack(spacing: 12) {
                 CategoryIconBadge(
                     symbolName: category.symbolName,
@@ -81,14 +79,21 @@ struct ManageCategoriesView: View {
                 )
                 Text(category.name)
                     .foregroundColor(.primary)
-                Spacer()
-                if category.isBuiltIn || BuiltinCategories.builtInCategoryIds.contains(category.id) {
-                    Text("Built-in")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                editingCategory = category
+            }
+
+            Spacer(minLength: 0)
+
+            if category.isBuiltIn || BuiltinCategories.builtInCategoryIds.contains(category.id) {
+                Text("Built-in")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             if !category.isDeletionProtected {
                 Button(role: .destructive) {
