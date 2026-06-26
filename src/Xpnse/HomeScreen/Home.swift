@@ -117,7 +117,7 @@ struct Home: View {
     private var topView: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Xpnse")
+                Text("SnapLedger")
                     .font(.title2)
                     .fontWeight(.bold)
                     .foregroundColor(XpnseColorKey.white.color)

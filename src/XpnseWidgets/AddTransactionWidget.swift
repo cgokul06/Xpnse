@@ -46,7 +46,7 @@ struct AddTransactionWidgetView: View {
                 .minimumScaleFactor(0.8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .widgetURL(URL(string: "xpnse://add-transaction"))
+        .widgetURL(URL(string: "\(AppGroupConstants.urlScheme)://add-transaction"))
     }
 }
 

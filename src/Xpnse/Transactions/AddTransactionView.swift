@@ -276,7 +276,7 @@ struct AddTransactionView: View {
                 }
                 Button("OK", role: .cancel) {}
             } message: {
-                Text("Turn on notifications for Xpnse in Settings to get reminders for this recurring transaction.")
+                Text("Turn on notifications for SnapLedger in Settings to get reminders for this recurring transaction.")
             }
             .onChange(of: remindRecurring) { _, newValue in
                 guard newValue, isRecurring else { return }
@@ -742,7 +742,7 @@ struct AddTransactionView: View {
     }
 
     private func applyExtractedTransaction(_ data: ScannedTransaction) {
-        self.amount = String(format: "%.2f", data.amount)
+        self.amount = AmountFormatter.format(data.amount)
         self.description = data.title
         self.transactionType = data.type
         self.selectedCategoryId = data.categoryId

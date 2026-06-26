@@ -18,7 +18,7 @@ struct ExtractedDataPreview: View {
 
             VStack(alignment: .leading, spacing: 12) {
                 ScrollView {
-                    DataRow(label: "Amount", value: "\(CurrencyManager.shared.selectedCurrency.symbol) \(String(format: "%.2f", data.amount))")
+                    DataRow(label: "Amount", value: "\(CurrencyManager.shared.selectedCurrency.symbol) \(AmountFormatter.format(data.amount))")
 
                     DataRow(label: "Merchant", value: data.title)
 

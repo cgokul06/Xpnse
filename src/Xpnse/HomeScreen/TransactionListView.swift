@@ -102,7 +102,7 @@ struct TransactionListView: View {
         let isNegative = net < 0
         let displayAmount = abs(net)
 
-        Text("\(currency.symbol)\(String(format: "%.2f", displayAmount))")
+        Text("\(currency.symbol)\(AmountFormatter.format(displayAmount))")
             .font(.system(size: 14, weight: .semibold))
             .foregroundStyle(isNegative ? Color.red : Color.green)
     }

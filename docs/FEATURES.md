@@ -1,6 +1,6 @@
-# Xpnse — Product Features & Capabilities
+# SnapLedger — Product Features & Capabilities
 
-Xpnse is a native iOS expense-tracking app that helps you record income and expenses, understand spending by period and category, and stay on top of recurring bills. Data is stored locally on device with optional account sign-in infrastructure; there is no custom backend server.
+SnapLedger is a native iOS expense-tracking app that helps you record income and expenses, understand spending by period and category, and stay on top of recurring bills. Data is stored locally on device with optional account sign-in infrastructure; there is no custom backend server.
 
 **Platform:** iOS 26+  
 **Tech stack:** SwiftUI, SwiftData, Firebase Auth, Apple Foundation Models, WidgetKit
@@ -48,7 +48,7 @@ Xpnse is a native iOS expense-tracking app that helps you record income and expe
 
 ### Currency setup
 
-On first launch (when no currency has been saved), Xpnse presents a **Choose your currency** screen:
+On first launch (when no currency has been saved), SnapLedger presents a **Choose your currency** screen:
 
 - Pick a default currency before entering the app
 - Open a searchable currency list (name, ISO code, and symbol)
@@ -123,7 +123,7 @@ The transaction form supports:
 
 ### Description suggestions
 
-- As you type, Xpnse suggests titles from your transaction history
+- As you type, SnapLedger suggests titles from your transaction history
 - Suggestions are ranked by frequency and recency
 - Selecting a suggestion can pre-fill the category from past usage
 - Suggestions rebuild after data import
@@ -190,7 +190,7 @@ Recurring rules are processed automatically on app launch and when the app retur
 
 ### Built-in categories
 
-Xpnse ships with default expense and income categories (food, transport, salary, etc.).
+SnapLedger ships with default expense and income categories (food, transport, salary, etc.).
 
 ### Custom categories
 
@@ -232,7 +232,7 @@ Open **Settings** from the home screen gear icon.
 
 ### Data portability
 
-- **Export All Data** — generates a pretty-printed JSON backup (`xpnse_backup.json`) containing:
+- **Export All Data** — generates a pretty-printed JSON backup (`snapledger_backup.json`) containing:
   - Transactions
   - Recurring rules
   - Custom categories
@@ -253,7 +253,7 @@ Open **Settings** from the home screen gear icon.
 
 ## Home screen widgets
 
-Xpnse includes a WidgetKit extension with two widgets. Data is synced from the main app via an **App Group** snapshot pipeline that refreshes when transactions change or the app becomes active.
+SnapLedger includes a WidgetKit extension with two widgets. Data is synced from the main app via an **App Group** snapshot pipeline that refreshes when transactions change or the app becomes active.
 
 ### Total Balance
 
@@ -262,13 +262,13 @@ Xpnse includes a WidgetKit extension with two widgets. Data is synced from the m
 | **Small** | Period label, total balance, income and expense stacked vertically |
 | **Medium** | Period label, total balance, income and expense side by side |
 
-Tapping the widget opens the app home screen (`xpnse://home`).
+Tapping the widget opens the app home screen (`snapledger://home`).
 
 ### Add Transaction
 
 - **Small** only
 - Plus button shortcut
-- Opens the add-transaction flow (`xpnse://add-transaction`)
+- Opens the add-transaction flow (`snapledger://add-transaction`)
 
 ---
 
@@ -284,12 +284,12 @@ Recurring transactions can schedule **local reminders**:
 
 ## Deep links
 
-Custom URL scheme: `xpnse://`
+Custom URL scheme: `snapledger://`
 
 | URL | Action |
 |---|---|
-| `xpnse://home` | Open home dashboard |
-| `xpnse://add-transaction` | Open add-transaction screen |
+| `snapledger://home` | Open home dashboard |
+| `snapledger://add-transaction` | Open add-transaction screen |
 
 Used by widgets and can be invoked from Shortcuts or other apps.
 

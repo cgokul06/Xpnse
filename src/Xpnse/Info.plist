@@ -6,15 +6,15 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.gokulsHobby.Xpnse</string>
+			<string>com.snapledgerapp.ios</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>xpnse</string>
+				<string>snapledger</string>
 			</array>
 		</dict>
 	</array>
 	<key>NSUserNotificationsUsageDescription</key>
-	<string>Xpnse sends reminders for upcoming recurring transactions when you opt in.</string>
+	<string>SnapLedger sends reminders for upcoming recurring transactions when you opt in.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

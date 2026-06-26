@@ -2,7 +2,9 @@
 
 ## Project overview
 
-Xpnse is a native iOS expense-tracking app built with **SwiftUI** and **Swift 5**, targeting **iOS 26.0**. It uses SwiftData for local persistence, Firebase for auth/profile sync, and Apple's FoundationModels for receipt scanning. There is no backend server, no web component, and no Docker infrastructure.
+SnapLedger is a native iOS expense-tracking app built with **SwiftUI** and **Swift 5**, targeting **iOS 26.0**. It uses SwiftData for local persistence, Firebase for auth/profile sync, and Apple's FoundationModels for receipt scanning. There is no backend server, no web component, and no Docker infrastructure.
+
+**App bundle ID:** `com.snapledgerapp.ios` · **Widget bundle ID:** `com.snapledgerapp.ios.widgets` · **App Group:** `group.com.snapledgerapp.ios.shared`
 
 Key directories:
 - `src/Xpnse/` — all Swift source (76 files)
@@ -55,6 +57,7 @@ After **every code change**, always run a build/error check before considering t
 ### Building and running the app (requires macOS)
 
 1. Open `src/Xpnse.xcodeproj` in Xcode 26+
-2. Xcode will auto-resolve SPM dependencies (Firebase, GoogleSignIn)
-3. Select an iOS 26 Simulator or physical device
-4. Build and run (Cmd+R)
+2. Select the **SnapLedger** scheme to run the main app
+3. Xcode will auto-resolve SPM dependencies (Firebase, GoogleSignIn)
+4. Select an iOS 26 Simulator or physical device
+5. Build and run (Cmd+R)

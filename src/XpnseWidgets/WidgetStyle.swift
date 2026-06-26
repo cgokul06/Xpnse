@@ -67,7 +67,7 @@ enum WidgetAbbreviation {
     static func format(_ value: Double) -> String {
         let absolute = abs(value)
         guard absolute >= 1000 else {
-            return String(format: "%.0f", value)
+            return String(format: "%.2f", value)
         }
 
         let units: [(Double, String)] = [
@@ -78,13 +78,13 @@ enum WidgetAbbreviation {
         ]
 
         guard let unit = units.first(where: { absolute >= $0.0 }) else {
-            return String(format: "%.0f", value)
+            return String(format: "%.2f", value)
         }
 
         let scaled = absolute / unit.0
-        let floored = floor(scaled * 10) / 10
+        let floored = floor(scaled * 100) / 100
         let signed = value < 0 ? -floored : floored
-        return String(format: "%.1f%@", signed, unit.1)
+        return String(format: "%.2f%@", signed, unit.1)
     }
 }
 
