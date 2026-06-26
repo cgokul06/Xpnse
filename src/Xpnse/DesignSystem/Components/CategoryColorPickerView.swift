@@ -18,7 +18,7 @@ struct CategoryColorPickerView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        ColorPicker(selection: colorBinding, supportsOpacity: false) {
             HStack(spacing: 12) {
                 CategoryIconBadge(
                     symbolName: symbolName,
@@ -30,21 +30,17 @@ struct CategoryColorPickerView: View {
                     Text("Preview")
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.white.opacity(0.9))
-                    Text("How this category will look")
+                    Text("Tap to choose a color")
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(.white.opacity(0.65))
                 }
 
                 Spacer(minLength: 0)
             }
-
-            ColorPicker(
-                "Choose a color",
-                selection: colorBinding,
-                supportsOpacity: false
-            )
-            .foregroundColor(.white)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
         }
+        .foregroundColor(.white)
         .padding(.horizontal, 12)
         .padding(.vertical, 12)
         .background(XpnseColorKey.whiteWithAlphaFifteen.color)
