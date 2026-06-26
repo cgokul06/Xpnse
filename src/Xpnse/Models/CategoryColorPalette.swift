@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// 36 predefined category colors stored and exchanged as `#RRGGBB` hex strings.
+/// Category colors stored and exchanged as `#RRGGBB` hex strings.
 enum CategoryColorPalette {
     static let defaultHex = "#9CA3AF"
 
@@ -31,6 +31,12 @@ enum CategoryColorPalette {
     }
 
     static func isValid(_ hex: String) -> Bool {
+        let normalized = normalizedHex(hex)
+        guard normalized.count == 7, normalized.hasPrefix("#") else { return false }
+        return normalized.dropFirst().allSatisfy(\.isHexDigit)
+    }
+
+    static func isSuggested(_ hex: String) -> Bool {
         colors.contains(normalizedHex(hex))
     }
 

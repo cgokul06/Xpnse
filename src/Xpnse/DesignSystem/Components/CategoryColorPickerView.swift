@@ -7,45 +7,56 @@ import SwiftUI
 
 struct CategoryColorPickerView: View {
     @Binding var selectedColorHex: String
+    var symbolName: String = "tag.fill"
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 6)
+    private var normalizedSelectedHex: String {
+        let normalized = CategoryColorPalette.normalizedHex(selectedColorHex)
+        guard CategoryColorPalette.isValid(normalized) else {
+            return CategoryColorPalette.defaultHex
+        }
+        return normalized
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 12) {
-                Circle()
-                    .fill(Color(hex: selectedColorHex))
-                    .frame(width: 36, height: 36)
-                    .overlay(
-                        Circle()
-                            .stroke(Color.white.opacity(0.5), lineWidth: 2)
-                    )
+                CategoryIconBadge(
+                    symbolName: symbolName,
+                    colorHex: normalizedSelectedHex,
+                    size: 40
+                )
 
-                Text(selectedColorHex.uppercased())
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.white.opacity(0.9))
-            }
-
-            LazyVGrid(columns: columns, spacing: 12) {
-                ForEach(CategoryColorPalette.colors, id: \.self) { hex in
-                    Button {
-                        selectedColorHex = hex
-                    } label: {
-                        Circle()
-                            .fill(Color(hex: hex))
-                            .frame(width: 36, height: 36)
-                            .overlay {
-                                if CategoryColorPalette.normalizedHex(selectedColorHex) == hex {
-                                    Image(systemName: "checkmark")
-                                        .font(.system(size: 14, weight: .bold))
-                                        .foregroundColor(.white)
-                                        .shadow(radius: 1)
-                                }
-                            }
-                    }
-                    .buttonStyle(.plain)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Preview")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.9))
+                    Text("How this category will look")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.white.opacity(0.65))
                 }
+
+                Spacer(minLength: 0)
             }
+
+            ColorPicker(
+                "Choose a color",
+                selection: colorBinding,
+                supportsOpacity: false
+            )
+            .foregroundColor(.white)
         }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 12)
+        .background(XpnseColorKey.whiteWithAlphaFifteen.color)
+        .xpnseRoundedCorner(strokeConfig: StrokeConfig(color: .whiteWithAlphaThirty, lineWidth: 2))
+    }
+
+    private var colorBinding: Binding<Color> {
+        Binding(
+            get: { Color(hex: normalizedSelectedHex) },
+            set: { newColor in
+                selectedColorHex = CategoryColorPalette.normalizedHex(newColor.hexString)
+            }
+        )
     }
 }

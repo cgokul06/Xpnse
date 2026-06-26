@@ -82,7 +82,7 @@ struct ManageCategoriesView: View {
                 Text(category.name)
                     .foregroundColor(.primary)
                 Spacer()
-                if category.isBuiltIn {
+                if category.isBuiltIn || BuiltinCategories.builtInCategoryIds.contains(category.id) {
                     Text("Built-in")
                         .font(.caption)
                         .foregroundStyle(.secondary)

@@ -167,4 +167,12 @@ enum BuiltinCategories {
             income("investments", "Investments", "chart.bar", "#14B8A6")
         ]
     }
+
+    static func seedById() -> [String: CategoryDefinition] {
+        Dictionary(uniqueKeysWithValues: seedDefinitions().map { ($0.id, $0) })
+    }
+
+    static var builtInCategoryIds: Set<String> {
+        Set(seedDefinitions().map(\.id))
+    }
 }

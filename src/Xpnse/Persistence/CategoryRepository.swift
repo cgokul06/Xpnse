@@ -14,6 +14,8 @@ protocol CategoryRepository {
     func reassignTransactions(from oldId: String, to newId: String) async throws
     func reassignRecurring(from oldId: String, to newId: String) async throws
     func usageCount(for categoryId: String) async throws -> Int
+    func updateLinkedTransactionTypes(for categoryId: String, to type: TransactionType) async throws
+    func updateLinkedRecurringTypes(for categoryId: String, to type: TransactionType) async throws
 }
 
 final class SwiftDataCategoryRepository: CategoryRepository {
@@ -114,5 +116,37 @@ final class SwiftDataCategoryRepository: CategoryRepository {
         let txnCount = try context.fetch(txnDescriptor).count
         let recurringCount = try context.fetch(recurringDescriptor).count
         return txnCount + recurringCount
+    }
+
+    @MainActor
+    func updateLinkedTransactionTypes(for categoryId: String, to type: TransactionType) async throws {
+        let context = context()
+        let descriptor = FetchDescriptor<TransactionEntity>(
+            predicate: #Predicate { $0.categoryRawValue == categoryId }
+        )
+        let matches = try context.fetch(descriptor)
+        for entity in matches {
+            entity.typeRawValue = type.rawValue
+            entity.updatedAt = Date()
+        }
+        if !matches.isEmpty {
+            try context.save()
+        }
+    }
+
+    @MainActor
+    func updateLinkedRecurringTypes(for categoryId: String, to type: TransactionType) async throws {
+        let context = context()
+        let descriptor = FetchDescriptor<RecurringTransactionEntity>(
+            predicate: #Predicate { $0.categoryIdentifier == categoryId }
+        )
+        let matches = try context.fetch(descriptor)
+        for entity in matches {
+            entity.type = type.rawValue
+            entity.updatedAt = Date()
+        }
+        if !matches.isEmpty {
+            try context.save()
+        }
     }
 }
