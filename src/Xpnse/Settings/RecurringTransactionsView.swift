@@ -194,7 +194,7 @@ private struct EditRecurringTransactionView: View {
         self.original = item
         let type = TransactionType(rawValue: item.type) ?? .expense
         self._transactionType = State(initialValue: type)
-        self._amount = State(initialValue: NSDecimalNumber(decimal: item.amount).stringValue)
+        self._amount = State(initialValue: AmountFormatter.format(item.amount))
         self._selectedCategoryId = State(
             initialValue: item.categoryIdentifier ?? BuiltinCategories.otherCategoryId
         )
@@ -303,7 +303,7 @@ private struct EditRecurringTransactionView: View {
                 }
                 Button("OK", role: .cancel) {}
             } message: {
-                Text("Turn on notifications for Xpnse in Settings to get reminders for this recurring transaction.")
+                Text("Turn on notifications for SnapLedger in Settings to get reminders for this recurring transaction.")
             }
             .onChange(of: remindRecurring) { _, newValue in
                 guard newValue else { return }

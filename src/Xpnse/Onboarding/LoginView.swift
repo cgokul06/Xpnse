@@ -41,7 +41,7 @@ struct LoginView<AuthManager: AuthManagerProtocol>: View {
                     
                     // App Name and Tagline
                     VStack(spacing: 8) {
-                        Text("Xpnse")
+                        Text("SnapLedger")
                             .font(.system(size: 36, weight: .bold, design: .rounded))
                             .foregroundColor(XpnseColorKey.white.color)
 

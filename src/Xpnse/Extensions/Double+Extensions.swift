@@ -41,7 +41,7 @@ extension Double {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.maximumFractionDigits = maxFractionDigits
-        formatter.minimumFractionDigits = 0
+        formatter.minimumFractionDigits = maxFractionDigits >= 2 ? 2 : 0
         formatter.locale = Locale(identifier: "en_US_POSIX")
         return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
     }

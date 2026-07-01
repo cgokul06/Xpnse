@@ -21,6 +21,7 @@ struct EditCategoryView: View {
     @State private var symbolName: String = "tag.fill"
     @State private var colorHex: String = CategoryColorPalette.defaultHex(for: .expense)
     @State private var canChangeType = true
+    @State private var typeChangeMessage: String?
     @State private var isSaving = false
     @State private var errorMessage: String?
 
@@ -58,6 +59,12 @@ struct EditCategoryView: View {
                             }
                             .pickerStyle(.segmented)
                             .disabled(!canChangeType)
+
+                            if let typeChangeMessage {
+                                Text(typeChangeMessage)
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.7))
+                            }
                         }
 
                         VStack(alignment: .leading, spacing: 8) {
@@ -71,7 +78,10 @@ struct EditCategoryView: View {
                             Text("Color")
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(.white)
-                            CategoryColorPickerView(selectedColorHex: $colorHex)
+                            CategoryColorPickerView(
+                                selectedColorHex: $colorHex,
+                                symbolName: symbolName
+                            )
                         }
 
                         if let errorMessage {
@@ -109,7 +119,9 @@ struct EditCategoryView: View {
                     transactionType = category.transactionType
                     symbolName = category.symbolName
                     colorHex = category.colorHex
-                    canChangeType = await CategoryStore.shared.canChangeTransactionType(categoryId: category.id)
+                    let restriction = CategoryStore.shared.typeChangeRestriction(for: category.id)
+                    canChangeType = !restriction.blocksTypeChange
+                    typeChangeMessage = restriction.editMessage
                 }
             }
             .onChange(of: transactionType) { _, newType in

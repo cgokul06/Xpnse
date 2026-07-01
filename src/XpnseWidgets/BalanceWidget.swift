@@ -67,8 +67,8 @@ struct BalanceWidgetView: View {
         VStack(alignment: .leading, spacing: isSmall ? 8 : 12) {
             balanceHeader
 
-            Text("\(entry.snapshot.currencySymbol)\(entry.snapshot.totalBalance, specifier: "%.2f")")
-                .font(.system(size: isSmall ? 22 : 30, weight: .bold))
+            Text("\(entry.snapshot.currencySymbol)\(AmountFormatter.format(entry.snapshot.totalBalance))")
+                .font(.system(size: isSmall ? 24 : 30, weight: .bold))
                 .foregroundStyle(.white)
                 .minimumScaleFactor(0.65)
                 .lineLimit(1)
@@ -121,23 +121,23 @@ struct BalanceWidgetView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .widgetURL(URL(string: "xpnse://home"))
+        .widgetURL(URL(string: "\(AppGroupConstants.urlScheme)://home"))
     }
 
     private func metric(icon: String, color: Color, title: String, amount: Double, compact: Bool) -> some View {
         HStack(spacing: compact ? 5 : 8) {
             Image(systemName: icon)
-                .font(.system(size: compact ? 10 : 12, weight: .bold))
+                .font(.system(size: compact ? 12 : 14, weight: .bold))
                 .foregroundStyle(.white)
                 .frame(width: compact ? 20 : 26, height: compact ? 20 : 26)
                 .background(Circle().fill(color))
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(title)
-                    .font(.system(size: compact ? 9 : 10, weight: .medium))
+                    .font(.system(size: compact ? 11 : 12, weight: .medium))
                     .foregroundStyle(WidgetStyle.mutedText)
                 Text("\(entry.snapshot.currencySymbol)\(WidgetAbbreviation.format(amount))")
-                    .font(.system(size: compact ? 11 : 13, weight: .semibold))
+                    .font(.system(size: compact ? 13 : 15, weight: .semibold))
                     .foregroundStyle(.white)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)

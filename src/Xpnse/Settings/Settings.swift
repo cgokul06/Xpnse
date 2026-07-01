@@ -14,7 +14,7 @@ struct Settings: View {
     @State private var selectedCurrency: String = CurrencyManager.shared.selectedCurrency.code
     @State private var exportService = ExportImportService()
     @State private var exportDocument = BackupDocument()
-    @State private var exportFilename = "xpnse_backup.json"
+    @State private var exportFilename = "snapledger_backup.json"
     @State private var showExporter = false
     @State private var showImporter = false
     @State private var showImportResult = false
@@ -207,7 +207,7 @@ struct Settings: View {
                 isWorking = true
                 let backup = try await exportService.exportAllData()
                 exportDocument = BackupDocument(text: backup)
-                exportFilename = "xpnse_backup.json"
+                exportFilename = "snapledger_backup.json"
                 showExporter = true
                 isWorking = false
             } catch {

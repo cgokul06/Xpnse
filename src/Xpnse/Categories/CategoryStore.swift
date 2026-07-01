@@ -37,6 +37,7 @@ final class CategoryStore {
                 loaded = try await repository.fetchAll()
             }
             categories = try await migrateMissingColorsIfNeeded(loaded)
+            categories = try await repairBuiltInCategoryFlagsIfNeeded(categories)
             try await migrateOrphanedTransactionCategoryIdsIfNeeded()
         } catch {
             categories = BuiltinCategories.seedDefinitions()
@@ -103,6 +104,40 @@ final class CategoryStore {
             }
         }
         return migrated
+    }
+
+    private func repairBuiltInCategoryFlagsIfNeeded(_ loaded: [CategoryDefinition]) async throws -> [CategoryDefinition] {
+        let seeds = BuiltinCategories.seedById()
+        var repaired: [CategoryDefinition] = []
+        var didChange = false
+
+        for var category in loaded {
+            guard let seed = seeds[category.id] else {
+                repaired.append(category)
+                continue
+            }
+
+            var needsUpdate = false
+            if !category.isBuiltIn {
+                category.isBuiltIn = true
+                needsUpdate = true
+            }
+            if category.isDeletionProtected != seed.isDeletionProtected {
+                category.isDeletionProtected = seed.isDeletionProtected
+                needsUpdate = true
+            }
+            if needsUpdate {
+                didChange = true
+            }
+            repaired.append(category)
+        }
+
+        if didChange {
+            for category in repaired where seeds[category.id] != nil {
+                try await repository.upsert(category)
+            }
+        }
+        return repaired
     }
 
     func categories(for type: TransactionType, includeDeleted: Bool = false) -> [CategoryDefinition] {
@@ -181,11 +216,14 @@ final class CategoryStore {
 
     func update(_ definition: CategoryDefinition) async throws {
         guard let existing = categories.first(where: { $0.id == definition.id }) else { return }
+        let typeChanged = definition.transactionType != existing.transactionType
+
         if existing.isDeletionProtected {
             var updated = definition
             updated.id = existing.id
             updated.isDeletionProtected = true
             updated.isBuiltIn = existing.isBuiltIn
+            updated.transactionType = existing.transactionType
             updated.updatedAt = Date()
             try await repository.upsert(updated)
         } else {
@@ -193,17 +231,34 @@ final class CategoryStore {
             updated.updatedAt = Date()
             if existing.isBuiltIn {
                 updated.isBuiltIn = true
+                updated.transactionType = existing.transactionType
+            } else if typeChanged {
+                try await repository.updateLinkedTransactionTypes(
+                    for: existing.id,
+                    to: updated.transactionType
+                )
+                try await repository.updateLinkedRecurringTypes(
+                    for: existing.id,
+                    to: updated.transactionType
+                )
             }
             try await repository.upsert(updated)
         }
         await load()
     }
 
+    func typeChangeRestriction(for categoryId: String) -> CategoryTypeChangeRestriction {
+        guard let category = categories.first(where: { $0.id == categoryId }) else {
+            return .notFound
+        }
+        if category.isBuiltIn || BuiltinCategories.builtInCategoryIds.contains(category.id) {
+            return .builtIn
+        }
+        return .allowed
+    }
+
     func canChangeTransactionType(categoryId: String) async -> Bool {
-        guard let category = categories.first(where: { $0.id == categoryId }) else { return false }
-        if category.isBuiltIn { return false }
-        let count = (try? await repository.usageCount(for: categoryId)) ?? 0
-        return count == 0
+        typeChangeRestriction(for: categoryId) == .allowed
     }
 
     func softDelete(id: String) async throws {
@@ -274,6 +329,27 @@ enum CategoryStoreError: LocalizedError {
             return "This category cannot be deleted."
         case .emptyName:
             return "Category name cannot be empty."
+        }
+    }
+}
+
+enum CategoryTypeChangeRestriction: Equatable {
+    case allowed
+    case builtIn
+    case notFound
+
+    var blocksTypeChange: Bool {
+        self != .allowed
+    }
+
+    var editMessage: String? {
+        switch self {
+        case .allowed:
+            return nil
+        case .builtIn:
+            return "Built-in categories keep their expense or income type."
+        case .notFound:
+            return "This category could not be found."
         }
     }
 }

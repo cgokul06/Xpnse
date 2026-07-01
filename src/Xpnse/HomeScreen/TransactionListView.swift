@@ -53,6 +53,8 @@ struct TransactionListView: View {
     )
     @State private var scrollAnchor: TransactionListPersistedAnchor? = .top
     @State private var needsScrollRestore = false
+    @State private var lastKnownTopDate: Date?
+    @State private var lastTransactionCount = 0
 
     private var dates: [Date] {
         dateTransactions.keys.sorted(by: >)
@@ -112,7 +114,7 @@ struct TransactionListView: View {
         let isNegative = net < 0
         let displayAmount = abs(net)
 
-        Text("\(currency.symbol)\(String(format: "%.2f", displayAmount))")
+        Text("\(currency.symbol)\(AmountFormatter.format(displayAmount))")
             .font(.system(size: 14, weight: .semibold))
             .foregroundStyle(isNegative ? Color.red : Color.green)
     }
@@ -232,17 +234,18 @@ struct TransactionListView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
         .onAppear {
+            syncTransactionSnapshot()
             needsScrollRestore = true
             scheduleScrollRestore()
         }
         .onChange(of: monthKey) { _, _ in
             scrollAnchor = .top
+            syncTransactionSnapshot()
             needsScrollRestore = true
             scheduleScrollRestore()
         }
         .onChange(of: dateTransactions) { _, _ in
-            guard needsScrollRestore else { return }
-            scheduleScrollRestore()
+            handleTransactionDataChange()
         }
         .onChange(of: scrollAnchor) { _, newValue in
             guard scrollMetrics.isScrollable else { return }
@@ -256,6 +259,74 @@ struct TransactionListView: View {
         .task {
             await categoryStore.load()
         }
+    }
+
+    private func syncTransactionSnapshot() {
+        lastKnownTopDate = dates.first
+        lastTransactionCount = allTransactions.count
+    }
+
+    private func handleTransactionDataChange() {
+        let newTopDate = dates.first
+        let newCount = allTransactions.count
+
+        if isScrollAnchorStale {
+            revealNewestContent(topDate: newTopDate)
+        } else if lastTransactionCount > 0, newCount > lastTransactionCount {
+            revealNewestContent(topDate: newTopDate)
+        } else if lastTransactionCount == 0, newCount > 0, !needsScrollRestore {
+            revealNewestContent(topDate: newTopDate)
+        } else if needsScrollRestore {
+            scheduleScrollRestore()
+        }
+
+        lastKnownTopDate = newTopDate
+        lastTransactionCount = newCount
+    }
+
+    private var isScrollAnchorStale: Bool {
+        guard let scrollAnchor else { return true }
+
+        switch scrollAnchor {
+        case .top:
+            return false
+        case .date(let date):
+            return grouping == .date && !dates.contains(date)
+        case .category(let categoryId):
+            return grouping == .category
+                && !categorySections.contains(where: { $0.id == categoryId })
+        }
+    }
+
+    private func revealNewestContent(topDate: Date?) {
+        let target: TransactionListPersistedAnchor
+        if scrollMetrics.isScrollable, grouping == .date, let topDate {
+            target = .date(topDate)
+        } else {
+            target = .top
+        }
+
+        DispatchQueue.main.async {
+            DispatchQueue.main.async {
+                self.scrollToAnchor(target)
+            }
+        }
+    }
+
+    private func scrollToAnchor(_ anchor: TransactionListPersistedAnchor) {
+        let resolvedAnchor = scrollMetrics.isScrollable ? anchor : .top
+
+        guard scrollAnchor != resolvedAnchor else {
+            onScrollAnchorChange(resolvedAnchor)
+            return
+        }
+
+        var transaction = SwiftUI.Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            scrollAnchor = resolvedAnchor
+        }
+        onScrollAnchorChange(resolvedAnchor)
     }
 
     private func scheduleScrollRestore() {
@@ -292,13 +363,7 @@ struct TransactionListView: View {
 
         needsScrollRestore = false
         let target = validatedScrollAnchor(savedScrollAnchor)
-        guard target != scrollAnchor else { return }
-
-        var transaction = SwiftUI.Transaction(animation: nil)
-        transaction.disablesAnimations = true
-        withTransaction(transaction) {
-            scrollAnchor = target
-        }
+        scrollToAnchor(target)
     }
 
     private func validatedScrollAnchor(
@@ -337,17 +402,12 @@ struct TransactionListView: View {
     }
 
     private func scrollToTop() {
-        var transaction = SwiftUI.Transaction(animation: nil)
-        transaction.disablesAnimations = true
-        withTransaction(transaction) {
-            scrollAnchor = .top
-        }
+        scrollToAnchor(.top)
         scrollMetrics = TransactionListScrollMetrics(
             offsetY: 0,
             visibleHeight: scrollMetrics.visibleHeight,
             contentHeight: scrollMetrics.contentHeight
         )
-        onScrollAnchorChange(.top)
     }
 
     private func dateSection(date: Date, transactions: [Transaction]) -> some View {

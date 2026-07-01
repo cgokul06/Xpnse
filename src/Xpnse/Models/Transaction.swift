@@ -73,7 +73,7 @@ struct Transaction: Identifiable, Codable, Equatable, Hashable {
     }
 
     var formattedAmount: String {
-        return String(format: "%.2f", totalAmount)
+        AmountFormatter.format(totalAmount)
     }
 
     init(

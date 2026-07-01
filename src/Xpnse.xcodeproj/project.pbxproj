@@ -397,6 +397,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Xpnse/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = SnapLedger;
 				INFOPLIST_KEY_NSAppleMusicUsageDescription = "This app needs media access to scan bills and receipts for automatic data extraction.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "This app needs camera access to scan bills and receipts for automatic data extraction.";
 				INFOPLIST_KEY_NSMainCameraUsageDescription = "This app needs camera access to scan bills and receipts for automatic data extraction.";
@@ -417,7 +418,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.5;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.gokulsHobby.Xpnse;
+				PRODUCT_BUNDLE_IDENTIFIER = com.snapledgerapp.ios;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
@@ -448,6 +449,7 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Xpnse/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = SnapLedger;
 				INFOPLIST_KEY_NSAppleMusicUsageDescription = "This app needs media access to scan bills and receipts for automatic data extraction.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "This app needs camera access to scan bills and receipts for automatic data extraction.";
 				INFOPLIST_KEY_NSMainCameraUsageDescription = "This app needs camera access to scan bills and receipts for automatic data extraction.";
@@ -468,7 +470,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.5;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.gokulsHobby.Xpnse;
+				PRODUCT_BUNDLE_IDENTIFIER = com.snapledgerapp.ios;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
@@ -493,7 +495,7 @@
 				DEVELOPMENT_TEAM = 99BB8PQ3VU;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = XpnseWidgets/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = XpnseWidgets;
+				INFOPLIST_KEY_CFBundleDisplayName = SnapLedger;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -502,7 +504,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.gokulsHobby.Xpnse.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = com.snapledgerapp.ios.widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -522,7 +524,7 @@
 				DEVELOPMENT_TEAM = 99BB8PQ3VU;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = XpnseWidgets/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = XpnseWidgets;
+				INFOPLIST_KEY_CFBundleDisplayName = SnapLedger;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -531,7 +533,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.gokulsHobby.Xpnse.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = com.snapledgerapp.ios.widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;

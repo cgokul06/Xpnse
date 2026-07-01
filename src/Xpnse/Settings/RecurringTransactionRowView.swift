@@ -26,8 +26,7 @@ struct RecurringTransactionRowView: View {
 
     private var amountText: String {
         let symbol = CurrencyManager.shared.selectedCurrency.symbol
-        let value = NSDecimalNumber(decimal: item.amount).stringValue
-        return "\(symbol)\(value)"
+        return "\(symbol)\(AmountFormatter.format(item.amount))"
     }
 
     private var nextOccurrenceText: String {

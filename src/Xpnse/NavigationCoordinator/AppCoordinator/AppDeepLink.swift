@@ -11,7 +11,7 @@ enum AppDeepLink: Equatable {
     case addTransaction
 
     init?(url: URL) {
-        guard url.scheme?.lowercased() == "xpnse" else { return nil }
+        guard url.scheme?.lowercased() == AppGroupConstants.urlScheme else { return nil }
 
         switch url.host?.lowercased() {
         case "home":

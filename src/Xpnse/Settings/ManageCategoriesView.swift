@@ -70,24 +70,25 @@ struct ManageCategoriesView: View {
 
     @ViewBuilder
     private func categoryRow(_ category: CategoryDefinition) -> some View {
-        Button {
-            editingCategory = category
-        } label: {
-            HStack(spacing: 12) {
-                CategoryIconBadge(
-                    symbolName: category.symbolName,
-                    colorHex: category.colorHex,
-                    size: 32
-                )
-                Text(category.name)
-                    .foregroundColor(.primary)
-                Spacer()
-                if category.isBuiltIn {
-                    Text("Built-in")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+        HStack(spacing: 12) {
+            CategoryIconBadge(
+                symbolName: category.symbolName,
+                colorHex: category.colorHex,
+                size: 32
+            )
+            Text(category.name)
+                .foregroundColor(.primary)
+            Spacer(minLength: 0)
+            if category.isBuiltIn || BuiltinCategories.builtInCategoryIds.contains(category.id) {
+                Text("Built-in")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            editingCategory = category
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             if !category.isDeletionProtected {

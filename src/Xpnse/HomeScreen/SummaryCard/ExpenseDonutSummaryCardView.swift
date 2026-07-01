@@ -49,9 +49,7 @@ struct ExpenseDonutSummaryCardView: View {
 
     private var formattedDonutCenterAmount: String {
         let symbol = currencyManager.selectedCurrency.symbol
-        let fullAmount = String(format: "%.0f", donutCenterAmount)
-        let amountText = fullAmount.count > 3 ? donutCenterAmount.abbreviatedFloor() : fullAmount
-        return "\(symbol)\(amountText)"
+        return "\(symbol)\(donutCenterAmount.abbreviatedFloor())"
     }
 
     var body: some View {
@@ -164,7 +162,7 @@ struct ExpenseDonutSummaryCardView: View {
 
             Spacer(minLength: 4)
 
-            Text("\(currencyManager.selectedCurrency.symbol)\(slice.amount, specifier: "%.2f")")
+            Text("\(currencyManager.selectedCurrency.symbol)\(AmountFormatter.format(slice.amount))")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(.white.opacity(0.85))
         }
