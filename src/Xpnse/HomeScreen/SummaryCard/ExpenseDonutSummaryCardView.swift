@@ -110,19 +110,6 @@ struct ExpenseDonutSummaryCardView: View {
                 }
                 .chartLegend(.hidden)
             }
-
-            VStack(spacing: 2) {
-                Text(donutCenterTitle)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.gray)
-
-                Text(formattedDonutCenterAmount)
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(.white)
-                    .minimumScaleFactor(0.7)
-                    .lineLimit(1)
-            }
-            .padding(.horizontal, 6)
         }
     }
 

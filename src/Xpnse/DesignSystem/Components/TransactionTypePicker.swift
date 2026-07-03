@@ -4,40 +4,56 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct TransactionTypePicker: View {
     @Binding var selection: TransactionType
     var onSelectionChange: ((TransactionType) -> Void)?
 
+    @Namespace private var selectionNamespace
+
     var body: some View {
-        Menu {
+        HStack(spacing: 4) {
             ForEach(TransactionType.pickerOrder, id: \.self) { type in
-                Button {
-                    selection = type
-                    onSelectionChange?(type)
-                } label: {
-                    Label(type.displayName, systemImage: type.displayIcon)
-                }
+                segmentButton(for: type)
+            }
+        }
+        .padding(4)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.white.opacity(0.12))
+        )
+    }
+
+    private func segmentButton(for type: TransactionType) -> some View {
+        let isSelected = selection == type
+
+        return Button {
+            guard selection != type else { return }
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            withAnimation(.easeInOut(duration: 0.2)) {
+                selection = type
+                onSelectionChange?(type)
             }
         } label: {
-            HStack(spacing: 10) {
-                Image(systemName: selection.displayIcon)
-                    .font(.system(size: 16, weight: .semibold))
-
-                Text(selection.displayName)
-                    .font(.system(size: 16, weight: .semibold))
-
-                Spacer(minLength: 0)
-
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 14, weight: .semibold))
-            }
-            .foregroundColor(.white)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .frame(maxWidth: .infinity)
-            .background(selection.brandColor)
-            .xpnseRoundedCorner()
+            Text(type.displayName)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundColor(isSelected ? .white : .white.opacity(0.7))
+                .lineLimit(1)
+                .minimumScaleFactor(0.85)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background {
+                    ZStack {
+                        if isSelected {
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(type.brandColor)
+                                .matchedGeometryEffect(id: "selection", in: selectionNamespace)
+                        }
+                    }
+                }
         }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

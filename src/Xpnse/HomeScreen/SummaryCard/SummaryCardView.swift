@@ -82,6 +82,7 @@ struct SummaryCardView: View {
                     .font(.system(size: 11, weight: .bold))
                     .foregroundColor(.white)
                     .frame(width: 18, height: 18)
+                    .padding(2)
                     .background(Circle().fill(type.brandColor))
 
                 Text(type.displayName)
@@ -90,7 +91,7 @@ struct SummaryCardView: View {
             }
 
             Text("\(currencySymbol)\(amount.abbreviatedFloor())")
-                .font(.system(size: 17, weight: .bold))
+                .font(.system(size: 20, weight: .bold))
                 .foregroundColor(.white)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)

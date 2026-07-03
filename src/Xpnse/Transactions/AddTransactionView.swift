@@ -12,7 +12,6 @@ fileprivate enum AddTransactionViewFocusField {
     case cost
     case category
     case date
-    case transactionType
 }
 
 struct AddTransactionView: View {
@@ -328,7 +327,6 @@ struct AddTransactionView: View {
             didManuallySelectCategory = false
             showSuggestions = false
         }
-        .focused(self.$focussedField, equals: .transactionType)
     }
 
     // MARK: - Amount Input Section
