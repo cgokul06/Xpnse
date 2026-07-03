@@ -33,7 +33,7 @@ struct BalanceWidgetProvider: TimelineProvider {
             totalBalance: 3542.15,
             totalIncome: 5240,
             totalExpenses: 1697.85,
-            totalSavings: 0,
+            totalSavings: 800,
             currencySymbol: "$",
             donutSlices: [],
             expenseCategories: [],
@@ -52,113 +52,178 @@ struct BalanceWidgetView: View {
         family == .systemSmall
     }
 
+    private var currencySymbol: String {
+        entry.snapshot.currencySymbol
+    }
+
+    private var showsIncomeRatio: Bool {
+        entry.snapshot.totalIncome > 0
+    }
+
     @ViewBuilder
     private var balanceHeader: some View {
         if entry.snapshot.periodLabel.isEmpty {
-            WidgetSectionHeader(title: "Total Balance", subtitle: nil)
+            WidgetSectionHeader(title: "Current Balance", subtitle: nil)
         } else {
             WidgetSectionHeader(
                 title: entry.snapshot.periodLabel,
-                subtitle: "Total Balance"
+                subtitle: "Current Balance"
             )
         }
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: isSmall ? 8 : 12) {
+        VStack(alignment: .leading, spacing: 0) {
             balanceHeader
 
-            Text("\(entry.snapshot.currencySymbol)\(AmountFormatter.format(entry.snapshot.totalBalance))")
-                .font(.system(size: isSmall ? 24 : 30, weight: .bold))
-                .foregroundStyle(.white)
-                .minimumScaleFactor(0.65)
-                .lineLimit(1)
+            Spacer(minLength: isSmall ? 6 : 8)
 
-            Spacer(minLength: 0)
+            balanceAmountView
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-            if isSmall {
-                VStack(alignment: .leading, spacing: 6) {
-                    metric(
-                        icon: "arrow.up",
-                        color: WidgetStyle.income,
-                        title: "Income",
-                        amount: entry.snapshot.totalIncome,
-                        compact: true
-                    )
+            Spacer(minLength: isSmall ? 6 : 10)
 
-                    metric(
-                        icon: "banknote",
-                        color: WidgetStyle.savings,
-                        title: "Savings",
-                        amount: entry.snapshot.totalSavings,
-                        compact: true
-                    )
-
-                    metric(
-                        icon: "arrow.down",
-                        color: WidgetStyle.expense,
-                        title: "Expense",
-                        amount: entry.snapshot.totalExpenses,
-                        compact: true
-                    )
-                }
-            } else {
-                HStack(spacing: 8) {
-                    metric(
-                        icon: "arrow.up",
-                        color: WidgetStyle.income,
-                        title: "Income",
-                        amount: entry.snapshot.totalIncome,
-                        compact: false
-                    )
-                    Rectangle()
-                        .fill(WidgetStyle.divider)
-                        .frame(width: 1, height: 34)
-                    metric(
-                        icon: "banknote",
-                        color: WidgetStyle.savings,
-                        title: "Savings",
-                        amount: entry.snapshot.totalSavings,
-                        compact: false
-                    )
-                    Rectangle()
-                        .fill(WidgetStyle.divider)
-                        .frame(width: 1, height: 34)
-                    metric(
-                        icon: "arrow.down",
-                        color: WidgetStyle.expense,
-                        title: "Expense",
-                        amount: entry.snapshot.totalExpenses,
-                        compact: false
-                    )
-                }
-            }
+            bottomStatsRow
         }
         .padding(16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .widgetURL(URL(string: "\(AppGroupConstants.urlScheme)://home"))
     }
 
-    private func metric(icon: String, color: Color, title: String, amount: Double, compact: Bool) -> some View {
-        HStack(spacing: compact ? 5 : 8) {
-            Image(systemName: icon)
-                .font(.system(size: compact ? 12 : 14, weight: .bold))
-                .foregroundStyle(.white)
-                .frame(width: compact ? 20 : 26, height: compact ? 20 : 26)
-                .background(Circle().fill(color))
+    private var bottomStatsRow: some View {
+        Group {
+            if isSmall {
+                VStack(alignment: .leading, spacing: 8) {
+                    centeredStat(
+                        icon: "banknote",
+                        color: WidgetStyle.savings,
+                        title: "Savings",
+                        amount: entry.snapshot.totalSavings,
+                        alignment: .leading
+                    )
 
-            VStack(alignment: .leading, spacing: 1) {
-                Text(title)
-                    .font(.system(size: compact ? 11 : 12, weight: .medium))
-                    .foregroundStyle(WidgetStyle.mutedText)
-                Text("\(entry.snapshot.currencySymbol)\(WidgetAbbreviation.format(amount))")
-                    .font(.system(size: compact ? 13 : 15, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    centeredStat(
+                        icon: "arrow.down",
+                        color: WidgetStyle.expense,
+                        title: "Expense",
+                        amount: entry.snapshot.totalExpenses,
+                        alignment: .leading
+                    )
+                }
+            } else {
+                HStack(spacing: 0) {
+                    centeredStat(
+                        icon: "banknote",
+                        color: WidgetStyle.savings,
+                        title: "Savings",
+                        amount: entry.snapshot.totalSavings,
+                        alignment: .center
+                    )
+
+                    RoundedRectangle(cornerRadius: 1)
+                        .fill(Color.gray.opacity(0.45))
+                        .frame(width: 2, height: 30)
+                        .padding(.horizontal, 12)
+
+                    centeredStat(
+                        icon: "arrow.down",
+                        color: WidgetStyle.expense,
+                        title: "Expense",
+                        amount: entry.snapshot.totalExpenses,
+                        alignment: .center
+                    )
+                }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity)
+    }
+
+    private func formattedBalance(_ balance: Double) -> String {
+        if isSmall {
+            return "\(currencySymbol)\(WidgetAbbreviation.format(balance))"
+        }
+        return "\(currencySymbol) \(AmountFormatter.format(balance))"
+    }
+
+    @ViewBuilder
+    private var balanceAmountView: some View {
+        if showsIncomeRatio {
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(formattedBalance(entry.snapshot.totalBalance))
+                    .font(.system(size: isSmall ? 22 : 28, weight: .bold))
+                    .foregroundStyle(.white)
+
+                Text("/")
+                    .font(.system(size: isSmall ? 14 : 16, weight: .medium))
+                    .foregroundStyle(WidgetStyle.mutedText)
+
+                Text("\(currencySymbol)\(WidgetAbbreviation.format(entry.snapshot.totalIncome))")
+                    .font(.system(size: isSmall ? 14 : 16, weight: .semibold))
+                    .foregroundStyle(WidgetStyle.mutedText)
+            }
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+        } else {
+            Text(formattedBalance(entry.snapshot.totalBalance))
+                .font(.system(size: isSmall ? 22 : 28, weight: .bold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+        }
+    }
+
+    private func centeredStat(
+        icon: String,
+        color: Color,
+        title: String,
+        amount: Double,
+        alignment: HorizontalAlignment
+    ) -> some View {
+        let iconSize: CGFloat = isSmall ? 16 : 18
+        let iconFontSize: CGFloat = isSmall ? 10 : 11
+        let titleFontSize: CGFloat = isSmall ? 11 : 13
+        let amountFontSize: CGFloat = isSmall ? 16 : 20
+
+        return Group {
+            if isSmall {
+                HStack(spacing: 8) {
+                    Image(systemName: icon)
+                        .font(.system(size: iconFontSize, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: iconSize, height: iconSize)
+                        .padding(2)
+                        .background(Circle().fill(color))
+
+                    Text("\(currencySymbol)\(WidgetAbbreviation.format(amount))")
+                        .font(.system(size: amountFontSize, weight: .bold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
+            } else {
+                VStack(spacing: 2) {
+                    HStack(spacing: 4) {
+                        Image(systemName: icon)
+                            .font(.system(size: iconFontSize, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(width: iconSize, height: iconSize)
+                            .padding(2)
+                            .background(Circle().fill(color))
+
+                        Text(title)
+                            .font(.system(size: titleFontSize, weight: .medium))
+                            .foregroundStyle(WidgetStyle.mutedText)
+                    }
+
+                    Text("\(currencySymbol)\(WidgetAbbreviation.format(amount))")
+                        .font(.system(size: amountFontSize, weight: .bold))
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: Alignment(horizontal: alignment, vertical: .center))
     }
 }
 
@@ -171,8 +236,8 @@ struct BalanceWidget: Widget {
                 BalanceWidgetView(entry: entry)
             }
         }
-        .configurationDisplayName("Total Balance")
-        .description("Current period balance, income, savings, and expenses.")
+        .configurationDisplayName("Current Balance")
+        .description("Current period balance over income, with savings and expenses.")
         .supportedFamilies([.systemSmall, .systemMedium])
         .contentMarginsDisabled()
     }

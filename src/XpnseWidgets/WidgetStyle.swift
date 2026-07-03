@@ -66,26 +66,7 @@ extension Color {
 
 enum WidgetAbbreviation {
     static func format(_ value: Double) -> String {
-        let absolute = abs(value)
-        guard absolute >= 1000 else {
-            return String(format: "%.2f", value)
-        }
-
-        let units: [(Double, String)] = [
-            (10_000_000, "C"),
-            (1_000_000, "M"),
-            (100_000, "L"),
-            (1_000, "K")
-        ]
-
-        guard let unit = units.first(where: { absolute >= $0.0 }) else {
-            return String(format: "%.2f", value)
-        }
-
-        let scaled = absolute / unit.0
-        let floored = floor(scaled * 100) / 100
-        let signed = value < 0 ? -floored : floored
-        return String(format: "%.2f%@", signed, unit.1)
+        AmountFormatter.abbreviatedFloor(value)
     }
 }
 
