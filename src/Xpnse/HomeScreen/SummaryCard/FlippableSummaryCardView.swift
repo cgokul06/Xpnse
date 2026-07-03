@@ -10,7 +10,7 @@ struct FlippableSummaryCardView: View {
     @Binding var isShowingDonut: Bool
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .top) {
             SummaryCardView(
                 totalBalance: summary?.totalBalance ?? 0,
                 income: summary?.totalIncome ?? 0,

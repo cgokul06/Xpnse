@@ -16,9 +16,9 @@ struct SummaryCardFlipButton: View {
             action()
         } label: {
             Image(systemName: iconName)
-                .font(.system(size: 16, weight: .medium))
+                .font(.system(size: 15, weight: .medium))
                 .foregroundColor(.white)
-                .frame(width: 44, height: 44)
+                .frame(width: 36, height: 36)
                 .background(XpnseColorKey.transactionsButton.color)
                 .clipShape(Circle())
         }

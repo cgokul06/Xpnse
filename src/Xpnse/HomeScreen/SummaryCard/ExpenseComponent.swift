@@ -15,8 +15,9 @@ struct ExpenseComponent: View {
 
     private var iconSize: CGFloat { compact ? 28 : 40 }
     private var iconFontSize: CGFloat { compact ? 14 : 20 }
-    private var titleFontSize: CGFloat { compact ? 11 : 16 }
-    private var amountFontSize: CGFloat { compact ? 13 : 20 }
+    private var titleFontSize: CGFloat { compact ? 13 : 16 }
+    private var amountFontSize: CGFloat { compact ? 15 : 20 }
+    private var amountWeight: Font.Weight { compact ? .bold : .semibold }
 
     var body: some View {
         HStack(spacing: compact ? 6 : 8) {
@@ -37,7 +38,7 @@ struct ExpenseComponent: View {
                     .minimumScaleFactor(0.8)
 
                 Text("\(currencyManager.selectedCurrency.symbol)\(cash.abbreviatedFloor())")
-                    .font(.system(size: amountFontSize, weight: .semibold))
+                    .font(.system(size: amountFontSize, weight: amountWeight))
                     .foregroundColor(.white)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)

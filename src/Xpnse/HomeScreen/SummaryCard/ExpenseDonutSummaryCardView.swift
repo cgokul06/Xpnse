@@ -68,18 +68,16 @@ struct ExpenseDonutSummaryCardView: View {
     }
 
     var body: some View {
-        VStack(spacing: SummaryCardMetrics.sectionSpacing) {
-            SummaryCardHeaderBar(
-                title: "Financial Overview",
-                flipIconName: "dollarsign.circle.fill",
-                onFlip: onFlip
-            )
-
+        SummaryCardShell(
+            title: "Budget Overview",
+            flipIconName: "dollarsign.circle.fill",
+            onFlip: onFlip
+        ) {
             Group {
                 if !hasFinancialActivity {
                     emptyState(message: "No activity yet")
                 } else {
-                    HStack(alignment: .center, spacing: 12) {
+                    HStack(alignment: .bottom, spacing: 8) {
                         donutChart
                             .frame(
                                 width: SummaryCardMetrics.donutSize,
@@ -87,17 +85,12 @@ struct ExpenseDonutSummaryCardView: View {
                             )
 
                         legendView
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: SummaryCardMetrics.donutSize, alignment: .center)
                     }
                 }
             }
-            .frame(height: SummaryCardMetrics.contentAreaHeight)
         }
-        .padding(.horizontal, SummaryCardMetrics.horizontalPadding)
-        .padding(.vertical, SummaryCardMetrics.verticalPadding)
-        .frame(height: SummaryCardMetrics.height)
-        .frame(maxWidth: .infinity)
-        .summaryCardFaceBackground()
     }
 
     @ViewBuilder
@@ -138,7 +131,7 @@ struct ExpenseDonutSummaryCardView: View {
         if slices.isEmpty {
             emptyState(message: "No activity yet")
         } else {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
                 ForEach(slices) { slice in
                     legendRow(for: slice)
                 }
