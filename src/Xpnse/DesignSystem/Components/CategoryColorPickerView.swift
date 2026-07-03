@@ -6,6 +6,7 @@
 import SwiftUI
 
 struct CategoryColorPickerView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @Binding var selectedColorHex: String
     var symbolName: String = "tag.fill"
 
@@ -29,10 +30,10 @@ struct CategoryColorPickerView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Preview")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.9))
+                        .xpnseAdaptiveForeground()
                     Text("Tap to choose a color")
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.white.opacity(0.65))
+                        .xpnseAdaptiveForeground(muted: true)
                 }
 
                 Spacer(minLength: 0)
@@ -40,11 +41,14 @@ struct CategoryColorPickerView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
         }
-        .foregroundColor(.white)
         .padding(.horizontal, 12)
         .padding(.vertical, 12)
-        .background(XpnseColorKey.whiteWithAlphaFifteen.color)
-        .xpnseRoundedCorner(strokeConfig: StrokeConfig(color: .whiteWithAlphaThirty, lineWidth: 2))
+        .background(AdaptiveBrandSurface.fieldBackground(for: colorScheme))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(AdaptiveBrandSurface.fieldBorder(for: colorScheme), lineWidth: 2)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
     private var colorBinding: Binding<Color> {

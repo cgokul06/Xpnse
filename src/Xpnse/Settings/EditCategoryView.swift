@@ -44,7 +44,7 @@ struct EditCategoryView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Name")
                                 .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.white)
+                                .xpnseAdaptiveForeground()
                             TextField("Category name", text: $name)
                                 .textFieldStyle(XpnseTextFieldStyle())
                         }
@@ -52,7 +52,7 @@ struct EditCategoryView: View {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Type")
                                 .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.white)
+                                .xpnseAdaptiveForeground()
                             Picker("Type", selection: $transactionType) {
                                 Text("Expense").tag(TransactionType.expense)
                                 Text("Savings").tag(TransactionType.savings)
@@ -64,21 +64,21 @@ struct EditCategoryView: View {
                             if let typeChangeMessage {
                                 Text(typeChangeMessage)
                                     .font(.system(size: 13, weight: .medium))
-                                    .foregroundColor(.white.opacity(0.7))
+                                    .xpnseAdaptiveForeground(muted: true)
                             }
                         }
 
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Icon")
                                 .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.white)
+                                .xpnseAdaptiveForeground()
                             SFSymbolPickerView(selectedSymbol: $symbolName)
                         }
 
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Color")
                                 .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.white)
+                                .xpnseAdaptiveForeground()
                             CategoryColorPickerView(
                                 selectedColorHex: $colorHex,
                                 symbolName: symbolName
@@ -98,20 +98,20 @@ struct EditCategoryView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
-                        .foregroundColor(.white)
+                        .xpnseAdaptiveForeground()
                 }
                 ToolbarItem(placement: .principal) {
                     Text(editingCategory == nil ? "New Category" : "Edit Category")
                         .font(.title3)
                         .fontWeight(.bold)
-                        .foregroundColor(.white)
+                        .xpnseAdaptiveForeground()
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         Task { await save() }
                     }
                     .disabled(!isValid || isSaving)
-                    .foregroundColor(.white)
+                    .xpnseAdaptiveForeground()
                 }
             }
             .task {

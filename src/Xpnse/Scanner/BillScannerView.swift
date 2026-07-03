@@ -13,6 +13,7 @@ struct BillScannerView: View {
     @ObservedObject var billScannerService: BillScannerService
     @EnvironmentObject private var homeCoordinator: NavigationCoordinator<HomeRoute>
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     @State private var showingCamera = false
     @StateObject private var imagePicker = ImagePicker()
 
@@ -75,7 +76,7 @@ struct BillScannerView: View {
                         dismiss()
                     } label: {
                         Image(systemName: "xmark")
-                            .foregroundStyle(XpnseColorKey.white.color)
+                            .xpnseAdaptiveForeground()
                             .bold()
                             .padding(.all, 8)
                     }
@@ -85,7 +86,7 @@ struct BillScannerView: View {
                     Text("Scan Bill")
                         .font(.title2)
                         .fontWeight(.bold)
-                        .foregroundColor(.white)
+                        .xpnseAdaptiveForeground()
                 }
             }
             .onChange(of: billScannerService.extractedTransaction) { _, newTxn in
@@ -154,16 +155,20 @@ struct BillScannerView: View {
     private var scanningCard: some View {
         VStack(spacing: 12) {
             ProgressView()
-                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                .progressViewStyle(
+                    CircularProgressViewStyle(
+                        tint: AdaptiveBrandSurface.primaryForeground(for: colorScheme)
+                    )
+                )
                 .scaleEffect(1.2)
 
             Text("Analyzing bill...")
                 .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(.white)
+                .xpnseAdaptiveForeground()
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 24)
-        .background(Color.white.opacity(0.1))
+        .background(AdaptiveBrandSurface.elevatedSurfaceBackground(for: colorScheme))
         .xpnseRoundedCorner(16)
     }
 

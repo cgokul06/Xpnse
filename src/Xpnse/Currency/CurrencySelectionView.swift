@@ -9,6 +9,7 @@ import SwiftUI
 
 struct CurrencySelectionView: View {
     @EnvironmentObject private var appCoordinator: AppCoordinator
+    @Environment(\.colorScheme) private var colorScheme
 
     @State private var selectedCurrencyCode: String = CurrencyManager.shared.selectedCurrency.code
     @State private var didSelectCurrency = false
@@ -22,10 +23,10 @@ struct CurrencySelectionView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Choose your currency")
                             .font(.system(size: 28, weight: .bold))
-                            .foregroundColor(.white)
+                            .xpnseAdaptiveForeground()
                         Text("Set your preferred currency before you start tracking expenses.")
                             .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.white.opacity(0.85))
+                            .xpnseAdaptiveForeground(muted: true)
                     }
 
                     NavigationLink {
@@ -38,18 +39,18 @@ struct CurrencySelectionView: View {
                         HStack(spacing: 12) {
                             Text("Currency")
                                 .font(.system(size: 18, weight: .semibold))
-                                .foregroundColor(.white)
+                                .xpnseAdaptiveForeground()
                             Spacer()
                             Text("\(CurrencyManager.shared.selectedCurrency.symbol) \(selectedCurrencyCode)")
                                 .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.white.opacity(0.9))
+                                .xpnseAdaptiveForeground()
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(.white.opacity(0.8))
+                                .xpnseAdaptiveForeground(muted: true)
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 14)
-                        .background(.white.opacity(0.12))
+                        .background(AdaptiveBrandSurface.rowBackground(for: colorScheme))
                         .xpnseRoundedCorner()
                     }
 
@@ -81,4 +82,3 @@ struct CurrencySelectionView: View {
         }
     }
 }
-

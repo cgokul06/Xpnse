@@ -28,6 +28,7 @@ enum CuratedSFSymbols {
 
 struct SFSymbolPickerView: View {
     @Binding var selectedSymbol: String
+    @Environment(\.colorScheme) private var colorScheme
     @State private var searchText = ""
 
     private let columns = [
@@ -45,9 +46,9 @@ struct SFSymbolPickerView: View {
             HStack(spacing: 12) {
                 Image(systemName: selectedSymbol)
                     .font(.system(size: 28))
-                    .foregroundColor(.white)
+                    .foregroundStyle(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
                     .frame(width: 44, height: 44)
-                    .background(Color.white.opacity(0.15))
+                    .background(AdaptiveBrandSurface.fieldBackground(for: colorScheme))
                     .clipShape(RoundedRectangle(cornerRadius: 10))
 
                 TextField("Search symbols", text: $searchText)
@@ -62,12 +63,16 @@ struct SFSymbolPickerView: View {
                         } label: {
                             Image(systemName: symbol)
                                 .font(.system(size: 22))
-                                .foregroundColor(.white)
+                                .foregroundStyle(
+                                    selectedSymbol == symbol
+                                        ? Color.white
+                                        : AdaptiveBrandSurface.primaryForeground(for: colorScheme)
+                                )
                                 .frame(width: 48, height: 48)
                                 .background(
                                     selectedSymbol == symbol
                                         ? XpnseColorKey.secondaryButtonBGColor.color
-                                        : Color.white.opacity(0.12)
+                                        : AdaptiveBrandSurface.segmentTrackBackground(for: colorScheme)
                                 )
                                 .clipShape(RoundedRectangle(cornerRadius: 10))
                         }

@@ -16,6 +16,7 @@ struct DropDownMenu: View {
 
     @Binding var selectedCategoryId: String
     @Binding var showDropdown: Bool
+    @Environment(\.colorScheme) private var colorScheme
     @State private var scrollPosition: String?
 
     private var selectedCategory: CategoryDefinition {
@@ -103,14 +104,19 @@ struct DropDownMenu: View {
                     }
                 }
             }
-            .foregroundStyle(Color.white)
+            .foregroundStyle(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
             .background(
                 RoundedRectangle(cornerRadius: 16)
                     .fill(
-                        showDropdown ? Color(red: 0.6, green: 0.3, blue: 0.9) : XpnseColorKey.whiteWithAlphaFifteen.color
+                        showDropdown
+                            ? AdaptiveBrandSurface.dropdownExpandedBackground(for: colorScheme)
+                            : AdaptiveBrandSurface.fieldBackground(for: colorScheme)
                     )
             )
-            .xpnseRoundedCorner(strokeConfig: StrokeConfig(color: .whiteWithAlphaThirty, lineWidth: 2))
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(AdaptiveBrandSurface.fieldBorder(for: colorScheme), lineWidth: 2)
+            )
         }
         .frame(width: menuWdith, height: buttonHeight, alignment: .top)
         .zIndex(100)

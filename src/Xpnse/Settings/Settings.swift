@@ -10,6 +10,7 @@ import UniformTypeIdentifiers
 
 struct Settings: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
 
     @State private var selectedCurrency: String = CurrencyManager.shared.selectedCurrency.code
     @State private var exportService = ExportImportService()
@@ -29,7 +30,7 @@ struct Settings: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Preferences")
                         .font(.system(size: 20, weight: .bold))
-                        .foregroundColor(.white)
+                        .xpnseAdaptiveForeground()
 
                     NavigationLink {
                         CurrencyListView(selectedCurrencyCode: selectedCurrency) { selected in
@@ -40,18 +41,18 @@ struct Settings: View {
                         HStack(spacing: 10) {
                             Text("Currency")
                                 .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(.white)
+                                .xpnseAdaptiveForeground()
                             Spacer()
                             Text("\(CurrencyManager.shared.selectedCurrency.symbol) \(CurrencyManager.shared.selectedCurrency.code)")
                                 .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(.white.opacity(0.9))
+                                .xpnseAdaptiveForeground()
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(.white.opacity(0.8))
+                                .xpnseAdaptiveForeground(muted: true)
                         }
                         .padding(.vertical, 12)
                         .padding(.horizontal, 12)
-                        .background(.white.opacity(0.1))
+                        .background(AdaptiveBrandSurface.rowBackground(for: colorScheme))
                         .xpnseRoundedCorner()
                     }
                 }
@@ -59,7 +60,7 @@ struct Settings: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Data Portability")
                         .font(.system(size: 20, weight: .bold))
-                        .foregroundColor(.white)
+                        .xpnseAdaptiveForeground()
 
                     Button {
                         self.startExport()
@@ -77,7 +78,7 @@ struct Settings: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Categories")
                         .font(.system(size: 20, weight: .bold))
-                        .foregroundColor(.white)
+                        .xpnseAdaptiveForeground()
 
                     NavigationLink {
                         ManageCategoriesView()
@@ -89,7 +90,7 @@ struct Settings: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Recurring")
                         .font(.system(size: 20, weight: .bold))
-                        .foregroundColor(.white)
+                        .xpnseAdaptiveForeground()
 
                     NavigationLink {
                         RecurringTransactionsView()
@@ -131,14 +132,14 @@ struct Settings: View {
                         .bold()
                         .padding(.all, 8)
                 })
-                .foregroundStyle(Color.white)
+                .foregroundStyle(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
             }
 
             ToolbarItem(placement: .principal) {
                 Text("Settings")
                     .font(.title2)
                     .fontWeight(.bold)
-                    .foregroundColor(.white)
+                    .xpnseAdaptiveForeground()
             }
         }
         .navigationBarBackButtonHidden()
@@ -193,11 +194,11 @@ struct Settings: View {
     private func actionLabel(text: String) -> some View {
         Text(text)
             .font(.system(size: 16, weight: .medium))
-            .foregroundColor(.white)
+            .xpnseAdaptiveForeground()
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.vertical, 12)
             .padding(.horizontal, 12)
-            .background(.white.opacity(0.1))
+            .background(AdaptiveBrandSurface.rowBackground(for: colorScheme))
             .xpnseRoundedCorner()
     }
 

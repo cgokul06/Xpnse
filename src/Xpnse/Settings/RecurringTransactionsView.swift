@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct RecurringTransactionsView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @State private var recurringItems: [RecurringTransaction] = []
     @State private var isLoading = true
     @State private var selectedForEdit: RecurringTransaction?
@@ -27,7 +28,7 @@ struct RecurringTransactionsView: View {
         ZStack {
             if isLoading {
                 ProgressView()
-                    .tint(.white)
+                    .tint(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
             } else if recurringItems.isEmpty {
                 emptyState
             } else {
@@ -38,7 +39,6 @@ struct RecurringTransactionsView: View {
         .gradientNavigationBackground()
         .navigationTitle("Recurring")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarColorScheme(.dark, for: .navigationBar)
         .sheet(item: $selectedForEdit) { item in
             EditRecurringTransactionView(item: item) {
                 Task { await reload() }
@@ -79,7 +79,7 @@ struct RecurringTransactionsView: View {
     private func sectionHeader(_ title: String) -> some View {
         Text(title)
             .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(XpnseColorKey.white.color.opacity(0.9))
+            .foregroundStyle(AdaptiveBrandSurface.mutedForeground(for: colorScheme))
             .textCase(nil)
     }
 
@@ -122,15 +122,15 @@ struct RecurringTransactionsView: View {
         VStack(spacing: 12) {
             Image(systemName: "arrow.triangle.2.circlepath")
                 .font(.system(size: 40))
-                .foregroundStyle(XpnseColorKey.white.color.opacity(0.6))
+                .xpnseAdaptiveForeground(muted: true)
 
             Text("No recurring transactions")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(XpnseColorKey.white.color)
+                .xpnseAdaptiveForeground()
 
             Text("Create one when adding a transaction and enabling Recurring.")
                 .font(.system(size: 14, weight: .regular))
-                .foregroundStyle(XpnseColorKey.white.color.opacity(0.75))
+                .xpnseAdaptiveForeground(muted: true)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
         }
@@ -147,6 +147,7 @@ struct RecurringTransactionsView: View {
 
 private struct EditRecurringTransactionView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
 
     @State private var transactionType: TransactionType
     @State private var amount: String
@@ -278,13 +279,13 @@ private struct EditRecurringTransactionView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
-                        .foregroundColor(.white)
+                        .xpnseAdaptiveForeground()
                 }
                 ToolbarItem(placement: .principal) {
                     Text("Update Recurring")
                         .font(.title3)
                         .fontWeight(.bold)
-                        .foregroundColor(.white)
+                        .xpnseAdaptiveForeground()
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
@@ -294,7 +295,7 @@ private struct EditRecurringTransactionView: View {
                         !isDateRangeValid || amount.isEmpty || description.isEmpty
                             || (remindRecurring && !isReminderScheduleValid)
                     )
-                    .foregroundColor(.white)
+                    .xpnseAdaptiveForeground()
                 }
             }
             .alert("Notifications", isPresented: $showReminderPermissionAlert) {
@@ -373,7 +374,7 @@ private struct EditRecurringTransactionView: View {
             Toggle(isOn: $remindRecurring) {
                 Text("Remind me")
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.white)
+                    .xpnseAdaptiveForeground()
             }
             .toggleStyle(.switch)
             .tint(XpnseColorKey.secondaryButtonBGColor.color)
@@ -385,8 +386,6 @@ private struct EditRecurringTransactionView: View {
                     displayedComponents: [.date, .hourAndMinute]
                 )
                 .datePickerStyle(.compact)
-                .colorScheme(.dark)
-                .foregroundColor(.white)
 
                 if !isReminderScheduleValid {
                     Text("Reminder must be before the start date, at latest the end of the previous day (e.g. start 11 May → reminder on or before 10 May, 11:59 p.m.).")
@@ -407,13 +406,13 @@ private struct EditRecurringTransactionView: View {
         HStack(alignment: .center, spacing: 16) {
             Text("Date of initial transaction")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(.white)
+                .xpnseAdaptiveForeground()
 
             Spacer(minLength: 0)
 
             Text(initialTransactionDate.formatted(date: .abbreviated, time: .omitted))
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.white.opacity(0.8))
+                .xpnseAdaptiveForeground(muted: true)
         }
     }
 
@@ -421,11 +420,10 @@ private struct EditRecurringTransactionView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Description")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(.white)
+                .xpnseAdaptiveForeground()
 
             TextField("Add a description", text: $description)
                 .font(.system(size: 20, weight: .bold))
-                .foregroundStyle(XpnseColorKey.white.color)
                 .textFieldStyle(XpnseTextFieldStyle())
         }
     }
@@ -434,16 +432,15 @@ private struct EditRecurringTransactionView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Amount")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(.white)
+                .xpnseAdaptiveForeground()
 
             HStack {
                 Text(CurrencyManager.shared.selectedCurrency.symbol)
                     .font(.system(size: 24, weight: .bold))
-                    .foregroundColor(.white)
+                    .xpnseAdaptiveForeground()
 
                 TextField("0.00", text: $amount)
                     .font(.system(size: 24, weight: .bold))
-                    .foregroundColor(.white)
                     .keyboardType(.decimalPad)
                     .textFieldStyle(XpnseTextFieldStyle())
             }
@@ -454,7 +451,7 @@ private struct EditRecurringTransactionView: View {
         HStack(spacing: 16) {
             Text("Category")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(.white)
+                .xpnseAdaptiveForeground()
 
             Spacer(minLength: 0)
 
@@ -473,7 +470,7 @@ private struct EditRecurringTransactionView: View {
             HStack {
                 Text("Frequency")
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.white)
+                    .xpnseAdaptiveForeground()
 
                 Spacer(minLength: 0)
 
@@ -483,25 +480,23 @@ private struct EditRecurringTransactionView: View {
                     }
                 }
                 .pickerStyle(.menu)
-                .tint(.white)
             }
 
             HStack {
                 Text("Start date")
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.white)
+                    .xpnseAdaptiveForeground()
                 Spacer(minLength: 0)
                 DatePicker("", selection: $recurringStartDate, displayedComponents: .date)
                     .labelsHidden()
                     .datePickerStyle(.compact)
-                    .colorScheme(.dark)
                     .disabled(!canEditStartDate)
             }
 
             Toggle(isOn: $hasRecurringEndDate) {
                 Text("Set end date")
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.white)
+                    .xpnseAdaptiveForeground()
             }
             .toggleStyle(.switch)
             .tint(XpnseColorKey.secondaryButtonBGColor.color)
@@ -509,8 +504,6 @@ private struct EditRecurringTransactionView: View {
             if hasRecurringEndDate {
                 DatePicker("End date", selection: $recurringEndDate, displayedComponents: .date)
                     .datePickerStyle(.compact)
-                    .colorScheme(.dark)
-                    .foregroundColor(.white)
             }
 
             if !isDateRangeValid {

@@ -9,6 +9,7 @@ import SwiftUI
 
 struct CurrencyListView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
 
     let selectedCurrencyCode: String
     let onSelect: (CurrencyOption) -> Void
@@ -31,7 +32,7 @@ struct CurrencyListView: View {
                 if filteredCurrencies.isEmpty {
                     Text("No currencies found")
                         .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.white.opacity(0.8))
+                        .xpnseAdaptiveForeground(muted: true)
                         .frame(maxWidth: .infinity)
                         .padding(.top, 40)
                 } else {
@@ -45,10 +46,10 @@ struct CurrencyListView: View {
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(currency.name)
                                             .font(.system(size: 16, weight: .semibold))
-                                            .foregroundColor(.white)
+                                            .xpnseAdaptiveForeground()
                                         Text("\(currency.symbol)  \(currency.code)")
                                             .font(.system(size: 14, weight: .medium))
-                                            .foregroundColor(.white.opacity(0.8))
+                                            .xpnseAdaptiveForeground(muted: true)
                                     }
 
                                     Spacer(minLength: 0)
@@ -56,13 +57,18 @@ struct CurrencyListView: View {
                                     if currency.code == selectedCurrencyCode {
                                         Image(systemName: "checkmark.circle.fill")
                                             .font(.system(size: 20, weight: .semibold))
-                                            .foregroundColor(.white)
+                                            .xpnseAdaptiveForeground()
                                     }
                                 }
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.vertical, 14)
                                 .padding(.horizontal, 12)
-                                .background(.white.opacity(currency.code == selectedCurrencyCode ? 0.2 : 0.1))
+                                .background(
+                                    AdaptiveBrandSurface.rowBackground(
+                                        for: colorScheme,
+                                        emphasized: currency.code == selectedCurrencyCode
+                                    )
+                                )
                                 .xpnseRoundedCorner()
                             }
                             .id(currency.code)
@@ -80,7 +86,6 @@ struct CurrencyListView: View {
         .gradientNavigationBackground()
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarColorScheme(.dark, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 ZStack {
@@ -94,7 +99,7 @@ struct CurrencyListView: View {
                         Text("Select Currency")
                             .font(.headline)
                             .fontWeight(.semibold)
-                            .foregroundColor(.white)
+                            .xpnseAdaptiveForeground()
                             .transition(.opacity)
                     }
                 }
@@ -108,7 +113,7 @@ struct CurrencyListView: View {
                         activateSearch()
                     } label: {
                         Image(systemName: "magnifyingglass")
-                            .foregroundColor(.white)
+                            .xpnseAdaptiveForeground()
                     }
                     .transition(.opacity)
                 }
@@ -121,11 +126,11 @@ struct CurrencyListView: View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.white.opacity(0.7))
+                .xpnseAdaptiveForeground(muted: true)
 
             TextField("Search by name, code, or symbol", text: $searchText)
                 .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(.white)
+                .foregroundStyle(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .focused($isSearchFieldFocused)
@@ -135,15 +140,19 @@ struct CurrencyListView: View {
             } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.white.opacity(0.7))
+                    .xpnseAdaptiveForeground(muted: true)
             }
             .buttonStyle(.plain)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity)
-        .background(XpnseColorKey.whiteWithAlphaFifteen.color)
-        .xpnseRoundedCorner(strokeConfig: StrokeConfig(color: .whiteWithAlphaThirty, lineWidth: 2))
+        .background(AdaptiveBrandSurface.fieldBackground(for: colorScheme))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(AdaptiveBrandSurface.fieldBorder(for: colorScheme), lineWidth: 2)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
     private func activateSearch() {

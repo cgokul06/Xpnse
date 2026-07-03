@@ -52,6 +52,7 @@ struct TransactionListView: View {
     var onScrollAnchorChange: (TransactionListPersistedAnchor) -> Void
     var isScrollDisabled: Bool = false
 
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.scenePhase) private var scenePhase
     @State private var categoryStore = CategoryStore.shared
     @State private var scrollMetrics = TransactionListScrollMetrics(
@@ -174,7 +175,7 @@ struct TransactionListView: View {
                 HStack {
                     Text("Transactions")
                         .font(.system(size: 18, weight: .medium))
-                        .foregroundStyle(XpnseColorKey.white.color)
+                        .xpnseAdaptiveForeground()
 
                     Spacer(minLength: 0)
 
@@ -186,9 +187,9 @@ struct TransactionListView: View {
                     } label: {
                         Image(systemName: grouping == .date ? "square.grid.2x2.fill" : "calendar")
                             .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(XpnseColorKey.white.color)
+                            .foregroundStyle(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
                             .frame(width: 36, height: 36)
-                            .background(Color.white.opacity(0.15))
+                            .background(AdaptiveBrandSurface.rowBackground(for: colorScheme))
                             .clipShape(RoundedRectangle(cornerRadius: 10))
                     }
                     .accessibilityLabel(grouping == .date ? "Group by category" : "Group by date")
@@ -453,7 +454,7 @@ struct TransactionListView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(date.formattedDate())
                     .font(.system(size: 12, weight: .regular))
-                    .foregroundStyle(XpnseColorKey.white.color)
+                    .foregroundStyle(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
 
                 Spacer(minLength: 0)
 
@@ -478,7 +479,7 @@ struct TransactionListView: View {
                 )
                 Text(section.category.name)
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(XpnseColorKey.white.color)
+                    .foregroundStyle(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
 
                 Spacer(minLength: 0)
 
@@ -502,7 +503,7 @@ struct TransactionListView: View {
 
                 Text("No transactions found!")
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(XpnseColorKey.white.color)
+                    .foregroundStyle(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
 
                 Spacer(minLength: 0)
             }

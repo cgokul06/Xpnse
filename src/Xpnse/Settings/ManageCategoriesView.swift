@@ -6,6 +6,7 @@
 import SwiftUI
 
 struct ManageCategoriesView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @State private var categoryStore = CategoryStore.shared
     @State private var editingCategory: CategoryDefinition?
     @State private var showAddCategory = false
@@ -54,7 +55,7 @@ struct ManageCategoriesView: View {
                     showAddCategory = true
                 } label: {
                     Image(systemName: "plus")
-                        .foregroundColor(.white)
+                        .foregroundStyle(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
                 }
             }
         }

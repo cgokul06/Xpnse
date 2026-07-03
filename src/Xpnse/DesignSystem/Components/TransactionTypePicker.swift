@@ -10,6 +10,7 @@ struct TransactionTypePicker: View {
     @Binding var selection: TransactionType
     var onSelectionChange: ((TransactionType) -> Void)?
 
+    @Environment(\.colorScheme) private var colorScheme
     @Namespace private var selectionNamespace
 
     var body: some View {
@@ -21,7 +22,7 @@ struct TransactionTypePicker: View {
         .padding(4)
         .background(
             RoundedRectangle(cornerRadius: 10)
-                .fill(Color.white.opacity(0.12))
+                .fill(AdaptiveBrandSurface.segmentTrackBackground(for: colorScheme))
         )
     }
 
@@ -38,7 +39,11 @@ struct TransactionTypePicker: View {
         } label: {
             Text(type.displayName)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundColor(isSelected ? .white : .white.opacity(0.7))
+                .foregroundColor(
+                    isSelected
+                        ? .white
+                        : AdaptiveBrandSurface.mutedForeground(for: colorScheme)
+                )
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
                 .frame(maxWidth: .infinity)

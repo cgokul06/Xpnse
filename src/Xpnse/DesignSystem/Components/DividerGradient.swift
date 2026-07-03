@@ -8,14 +8,16 @@
 import SwiftUI
 
 struct DividerGradient: View {
-    static let colors: [Color] = [
-        Color(red: 0.8, green: 0.4, blue: 1.0).opacity(0.2),
-        Color(red: 0.4, green: 0.2, blue: 0.8).opacity(0.75)
-    ]
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
+        let background = AdaptiveBrandSurface.background(for: colorScheme)
+
         LinearGradient(
-            gradient: Gradient(colors: Self.colors),
+            gradient: Gradient(colors: [
+                background.opacity(0.2),
+                background.opacity(0.75)
+            ]),
             startPoint: .top,
             endPoint: .bottom
         )

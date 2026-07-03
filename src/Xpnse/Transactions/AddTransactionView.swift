@@ -17,6 +17,7 @@ fileprivate enum AddTransactionViewFocusField {
 struct AddTransactionView: View {
     @EnvironmentObject var homeCoordinator: NavigationCoordinator<HomeRoute>
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
 
     @ObservedObject var billScannerService: BillScannerService
     @FocusState fileprivate var focussedField: AddTransactionViewFocusField?
@@ -209,7 +210,7 @@ struct AddTransactionView: View {
                         self.showSuggestions = false
                     }, label: {
                         Image(systemName: "xmark")
-                            .foregroundStyle(XpnseColorKey.white.color)
+                            .xpnseAdaptiveForeground()
                             .bold()
                             .padding(.all, 8)
                     })
@@ -219,7 +220,7 @@ struct AddTransactionView: View {
                     Text("Add Transaction")
                         .font(.title2)
                         .fontWeight(.bold)
-                        .foregroundColor(.white)
+                        .xpnseAdaptiveForeground()
                 }
 
                 if isEditing {
@@ -228,7 +229,7 @@ struct AddTransactionView: View {
                             self.showDeleteAlert = true
                         }, label: {
                             Image(systemName: "trash")
-                                .foregroundStyle(XpnseColorKey.white.color)
+                                .xpnseAdaptiveForeground()
                                 .bold()
                                 .padding(.all, 8)
                         })
@@ -334,16 +335,15 @@ struct AddTransactionView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Amount")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(.white)
+                .xpnseAdaptiveForeground()
 
             HStack {
                 Text(CurrencyManager.shared.selectedCurrency.symbol)
                     .font(.system(size: 24, weight: .bold))
-                    .foregroundColor(.white)
+                    .xpnseAdaptiveForeground()
 
                 TextField("0.00", text: $amount)
                     .font(.system(size: 24, weight: .bold))
-                    .foregroundColor(.white)
                     .keyboardType(.decimalPad)
                     .textFieldStyle(XpnseTextFieldStyle())
                     .focused(self.$focussedField, equals: .cost)
@@ -356,7 +356,7 @@ struct AddTransactionView: View {
         HStack(spacing: 16) {
             Text("Category")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(.white)
+                .xpnseAdaptiveForeground()
 
             Spacer(minLength: 0)
 
@@ -377,7 +377,7 @@ struct AddTransactionView: View {
             Toggle(isOn: $isRecurring) {
                 Text("Recurring")
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundColor(.white)
+                    .xpnseAdaptiveForeground()
             }
             .toggleStyle(.switch)
             .tint(XpnseColorKey.secondaryButtonBGColor.color)
@@ -386,7 +386,7 @@ struct AddTransactionView: View {
                 HStack {
                     Text("Frequency")
                         .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.white)
+                        .xpnseAdaptiveForeground()
 
                     Spacer(minLength: 0)
 
@@ -401,7 +401,7 @@ struct AddTransactionView: View {
                 Toggle(isOn: $hasRecurringEndDate) {
                     Text("Set end date")
                         .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.white)
+                        .xpnseAdaptiveForeground()
                 }
                 .toggleStyle(.switch)
                 .tint(XpnseColorKey.secondaryButtonBGColor.color)
@@ -413,8 +413,6 @@ struct AddTransactionView: View {
                         displayedComponents: .date
                     )
                     .datePickerStyle(.compact)
-                    .colorScheme(.dark)
-                    .foregroundColor(.white)
                 }
 
                 if !recurringDateRangeValid {
@@ -426,7 +424,7 @@ struct AddTransactionView: View {
                 Toggle(isOn: $remindRecurring) {
                     Text("Remind me")
                         .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(.white)
+                        .xpnseAdaptiveForeground()
                 }
                 .toggleStyle(.switch)
                 .tint(XpnseColorKey.secondaryButtonBGColor.color)
@@ -438,8 +436,6 @@ struct AddTransactionView: View {
                         displayedComponents: [.date, .hourAndMinute]
                     )
                     .datePickerStyle(.compact)
-                    .colorScheme(.dark)
-                    .foregroundColor(.white)
 
                     if !isRecurringReminderScheduleValid {
                         Text("Reminder must be before the transaction date, at latest the end of the previous day (e.g. transaction 11 May → reminder on or before 10 May, 11:59 p.m.).")
@@ -456,12 +452,11 @@ struct AddTransactionView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Description")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(.white)
+                .xpnseAdaptiveForeground()
 
             VStack(alignment: .leading, spacing: 0) {
                 TextField("Add a description", text: $description)
                     .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(XpnseColorKey.white.color)
                     .textFieldStyle(XpnseTextFieldStyle())
                     .focused(self.$focussedField, equals: .description)
 
@@ -469,7 +464,7 @@ struct AddTransactionView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Suggestions:")
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.white)
+                            .xpnseAdaptiveForeground()
                             .padding(.top, 12)
                             .padding(.leading, 8)
 
@@ -486,12 +481,12 @@ struct AddTransactionView: View {
                                 } label: {
                                     HStack {
                                         Text(item.title)
-                                            .foregroundColor(XpnseColorKey.white.color)
+                                            .xpnseAdaptiveForeground()
                                             .font(.system(size: 16, weight: .medium))
                                         Spacer()
                                         if let cat = item.categoryIdentifier {
                                             Text(categoryStore.categoryDisplayName(for: cat))
-                                                .foregroundColor(.white.opacity(0.7))
+                                                .xpnseAdaptiveForeground(muted: true)
                                                 .font(.system(size: 14))
                                         }
                                     }
@@ -501,7 +496,7 @@ struct AddTransactionView: View {
 
                                 if idx != self.suggestions.count - 1 {
                                     Rectangle()
-                                        .fill(XpnseColorKey.white.color)
+                                        .fill(AdaptiveBrandSurface.fieldBorder(for: colorScheme))
                                         .frame(maxWidth: .infinity)
                                         .frame(height: 1)
                                         .padding(.horizontal, 12)
@@ -509,7 +504,7 @@ struct AddTransactionView: View {
                             }
                         }
                     }
-                    .background(Color.white.opacity(0.08))
+                    .background(AdaptiveBrandSurface.elevatedSurfaceBackground(for: colorScheme))
                     .xpnseRoundedCorner()
                 }
             }
@@ -532,7 +527,7 @@ struct AddTransactionView: View {
         HStack(alignment: .center, spacing: 16) {
             Text("Date of transaction")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundColor(.white)
+                .xpnseAdaptiveForeground()
 
             Spacer(minLength: 0)
 
@@ -543,7 +538,6 @@ struct AddTransactionView: View {
             )
             .labelsHidden()
             .datePickerStyle(.compact)
-            .colorScheme(.dark)
             .focused(self.$focussedField, equals: .date)
         }
     }

@@ -23,6 +23,7 @@ private enum MonthPagerAnimation {
 
 struct Home: View {
     @EnvironmentObject var homeCoordinator: NavigationCoordinator<HomeRoute>
+    @Environment(\.colorScheme) private var colorScheme
     @StateObject private var homeViewModel: HomeScreenViewModel = HomeScreenViewModel()
     @State private var monthDragOffset: CGFloat = 0
     @State private var monthDragAxis: MonthDragAxis?
@@ -121,10 +122,10 @@ struct Home: View {
                 Text("SnapLedger")
                     .font(.title2)
                     .fontWeight(.bold)
-                    .foregroundColor(XpnseColorKey.white.color)
+                    .xpnseAdaptiveForeground()
 
                 Text("Track your expenses")
-                    .foregroundColor(XpnseColorKey.white.color)
+                    .xpnseAdaptiveForeground(muted: true)
                     .font(.headline)
             }
 
@@ -138,7 +139,7 @@ struct Home: View {
                         .resizable()
                         .renderingMode(.template)
                         .frame(width: 32, height: 32)
-                        .foregroundStyle(XpnseColorKey.white.color)
+                        .foregroundStyle(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
                 }
             }
         }
