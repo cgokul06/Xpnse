@@ -31,10 +31,6 @@ struct Home: View {
     @State private var isSummaryCardShowingDonut = false
     @State private var transactionListGrouping: TransactionListGrouping = .date
 
-    private var isMonthDragActive: Bool {
-        monthDragOffset != 0 || monthDragAxis == .horizontal
-    }
-
     var body: some View {
         ZStack {
             PrimaryGradient()
@@ -165,22 +161,11 @@ struct Home: View {
     }
 
     private func monthContentPanel(for key: Int, pageWidth: CGFloat) -> some View {
-        VStack(spacing: 16) {
-            if monthHasTransactions(for: key) {
-                let txnSummary = homeViewModel.transactionSummaryDict[key]
-
-                FlippableSummaryCardView(
-                    summary: txnSummary,
-                    isShowingDonut: $isSummaryCardShowingDonut
-                )
-                .padding(.horizontal, 16)
-            }
-
-            transactionListPanel(for: key, pageWidth: pageWidth)
-        }
-        .frame(width: pageWidth, alignment: .topLeading)
-        .frame(maxHeight: .infinity, alignment: .topLeading)
-        .contentShape(Rectangle())
+        transactionListPanel(for: key, pageWidth: pageWidth)
+            .id(key)
+            .frame(width: pageWidth, alignment: .topLeading)
+            .frame(maxHeight: .infinity, alignment: .topLeading)
+            .contentShape(Rectangle())
     }
 
     private func monthHasTransactions(for key: Int) -> Bool {
@@ -280,16 +265,18 @@ struct Home: View {
 
     private func transactionListPanel(for key: Int, pageWidth: CGFloat) -> some View {
         let txnSummary = homeViewModel.transactionSummaryDict[key]
+        let hasTransactions = monthHasTransactions(for: key)
 
         return TransactionListView(
             monthKey: key,
+            summary: hasTransactions ? txnSummary : nil,
+            isShowingDonut: $isSummaryCardShowingDonut,
             dateTransactions: txnSummary?.transactions ?? [:],
             grouping: $transactionListGrouping,
             savedScrollAnchor: monthScrollAnchors[key],
             onScrollAnchorChange: { anchor in
                 monthScrollAnchors[key] = anchor
-            },
-            isScrollDisabled: isMonthDragActive
+            }
         )
         .padding(.horizontal, 16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

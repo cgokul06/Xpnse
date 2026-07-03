@@ -44,13 +44,22 @@ private struct CategorySection: Identifiable {
     let transactions: [Transaction]
 }
 
+private struct TransactionsHeaderMinYKey: PreferenceKey {
+    static var defaultValue: CGFloat = .greatestFiniteMagnitude
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = min(value, nextValue())
+    }
+}
+
 struct TransactionListView: View {
     let monthKey: Int
+    var summary: TransactionSummary?
+    @Binding var isShowingDonut: Bool
     var dateTransactions: [Date: [Transaction]]
     @Binding var grouping: TransactionListGrouping
     var savedScrollAnchor: TransactionListPersistedAnchor?
     var onScrollAnchorChange: (TransactionListPersistedAnchor) -> Void
-    var isScrollDisabled: Bool = false
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.scenePhase) private var scenePhase
@@ -65,6 +74,10 @@ struct TransactionListView: View {
     @State private var lastKnownTopDate: Date?
     @State private var lastTransactionCount = 0
     @State private var pendingScrollMetrics: TransactionListScrollMetrics?
+    @State private var isTransactionsHeaderPinned = false
+    @State private var pendingProgrammaticScroll: TransactionListPersistedAnchor?
+
+    private static let summaryCardScrollThreshold: CGFloat = 176
 
     private var dates: [Date] {
         dateTransactions.keys.sorted(by: >)
@@ -156,106 +169,23 @@ struct TransactionListView: View {
         return scrollMetrics.offsetY > scrollMetrics.visibleHeight * 0.5
     }
 
-    private var scrollAnchorBinding: Binding<TransactionListPersistedAnchor?> {
-        Binding(
-            get: { scrollMetrics.isScrollable ? scrollAnchor : .top },
-            set: { newValue in
-                guard scrollMetrics.isScrollable else {
-                    scrollAnchor = .top
-                    return
-                }
-                scrollAnchor = newValue
-            }
-        )
-    }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        Group {
             if hasTransactions {
-                HStack {
-                    Text("Transactions")
-                        .font(.system(size: 18, weight: .medium))
-                        .xpnseAdaptiveForeground()
-
-                    Spacer(minLength: 0)
-
-                    Button {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            grouping = grouping == .date ? .category : .date
-                        }
-                    } label: {
-                        Image(systemName: grouping == .date ? "square.grid.2x2.fill" : "calendar")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
-                            .frame(width: 36, height: 36)
-                            .background(AdaptiveBrandSurface.rowBackground(for: colorScheme))
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
-                    }
-                    .accessibilityLabel(grouping == .date ? "Group by category" : "Group by date")
-                }
-
-                ScrollView(showsIndicators: false) {
-                    LazyVStack(spacing: 12) {
-                        Color.clear
-                            .frame(height: 0)
-                            .id(TransactionListPersistedAnchor.top)
-
-                        switch grouping {
-                        case .date:
-                            ForEach(dates, id: \.self) { date in
-                                dateSection(date: date, transactions: dateTransactions[date] ?? [])
-                                    .id(TransactionListPersistedAnchor.date(date))
-                            }
-                        case .category:
-                            ForEach(categorySections) { section in
-                                categorySection(section)
-                                    .id(TransactionListPersistedAnchor.category(section.id))
-                            }
-                        }
-                    }
-                    .padding(.bottom, 62)
-                }
-                .id(monthKey)
-                .scrollBounceBehavior(.basedOnSize, axes: .vertical)
-                .scrollPosition(id: scrollAnchorBinding, anchor: .top)
-                .scrollDisabled(isScrollDisabled)
-                .onScrollGeometryChange(for: TransactionListScrollMetrics.self) { geometry in
-                    TransactionListScrollMetrics.from(geometry)
-                } action: { oldMetrics, newMetrics in
-                    handleScrollGeometryChange(from: oldMetrics, to: newMetrics)
-                }
-                .onChange(of: scenePhase) { oldPhase, newPhase in
-                    resetScrollIfNeeded(from: oldPhase, to: newPhase)
-                }
+                transactionScrollContent
             } else {
                 noTransactionsFound
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .contentShape(Rectangle())
-        .onAppear {
-            syncTransactionSnapshot()
-            needsScrollRestore = true
-            scheduleScrollRestore()
-        }
-        .onChange(of: monthKey) { _, _ in
-            scrollAnchor = .top
-            syncTransactionSnapshot()
-            needsScrollRestore = true
-            scheduleScrollRestore()
-        }
         .onChange(of: dateTransactions) { _, _ in
             handleTransactionDataChange()
-        }
-        .onChange(of: scrollAnchor) { _, newValue in
-            guard scrollMetrics.isScrollable else { return }
-            guard let newValue, newValue != savedScrollAnchor else { return }
-            onScrollAnchorChange(newValue)
         }
         .onChange(of: grouping) { _, _ in
             scrollAnchor = .top
             onScrollAnchorChange(.top)
+            pendingProgrammaticScroll = .top
         }
         .task {
             await categoryStore.load()
@@ -266,7 +196,6 @@ struct TransactionListView: View {
         from oldMetrics: TransactionListScrollMetrics,
         to newMetrics: TransactionListScrollMetrics
     ) {
-        guard !isScrollDisabled else { return }
         guard newMetrics != scrollMetrics else { return }
 
         let scrollabilityChanged = oldMetrics.isScrollable != newMetrics.isScrollable
@@ -283,16 +212,9 @@ struct TransactionListView: View {
     }
 
     private func applyPendingScrollMetricsIfNeeded() {
-        guard !isScrollDisabled else {
-            pendingScrollMetrics = nil
-            return
-        }
         guard let newMetrics = pendingScrollMetrics else { return }
         pendingScrollMetrics = nil
         guard newMetrics != scrollMetrics else { return }
-
-        let scrollabilityChanged = scrollMetrics.isScrollable != newMetrics.isScrollable
-        let needsInitialLayout = scrollMetrics.visibleHeight == 0 && newMetrics.visibleHeight > 0
 
         scrollMetrics = newMetrics
 
@@ -300,8 +222,16 @@ struct TransactionListView: View {
             scrollAnchor = .top
         }
 
-        if needsScrollRestore, scrollabilityChanged || needsInitialLayout {
-            scheduleScrollRestore()
+        updateVisibleScrollAnchor(from: newMetrics)
+    }
+
+    private func updateVisibleScrollAnchor(from metrics: TransactionListScrollMetrics) {
+        guard metrics.isScrollable else { return }
+
+        if metrics.offsetY < Self.summaryCardScrollThreshold {
+            guard scrollAnchor != .top else { return }
+            scrollAnchor = .top
+            onScrollAnchorChange(.top)
         }
     }
 
@@ -321,7 +251,7 @@ struct TransactionListView: View {
         } else if lastTransactionCount == 0, newCount > 0, !needsScrollRestore {
             revealNewestContent(topDate: newTopDate)
         } else if needsScrollRestore {
-            scheduleScrollRestore()
+            pendingProgrammaticScroll = validatedScrollAnchor(savedScrollAnchor)
         }
 
         lastKnownTopDate = newTopDate
@@ -351,63 +281,52 @@ struct TransactionListView: View {
         }
 
         DispatchQueue.main.async {
-            DispatchQueue.main.async {
-                self.scrollToAnchor(target)
-            }
+            self.pendingProgrammaticScroll = target
         }
     }
 
-    private func scrollToAnchor(_ anchor: TransactionListPersistedAnchor) {
+    private func scrollToAnchor(_ anchor: TransactionListPersistedAnchor, proxy: ScrollViewProxy) {
         let resolvedAnchor = scrollMetrics.isScrollable ? anchor : .top
 
-        guard scrollAnchor != resolvedAnchor else {
-            onScrollAnchorChange(resolvedAnchor)
-            return
-        }
+        scrollAnchor = resolvedAnchor
+        onScrollAnchorChange(resolvedAnchor)
 
         var transaction = SwiftUI.Transaction(animation: nil)
         transaction.disablesAnimations = true
         withTransaction(transaction) {
-            scrollAnchor = resolvedAnchor
+            proxy.scrollTo(resolvedAnchor, anchor: .top)
         }
-        onScrollAnchorChange(resolvedAnchor)
     }
 
-    private func scheduleScrollRestore() {
+    private func scheduleScrollRestore(using proxy: ScrollViewProxy) {
         DispatchQueue.main.async {
             DispatchQueue.main.async {
-                applyValidatedSavedAnchor()
+                applyValidatedSavedAnchor(using: proxy)
             }
         }
     }
 
-    private func applyValidatedSavedAnchor() {
+    private func applyValidatedSavedAnchor(using proxy: ScrollViewProxy) {
         guard needsScrollRestore else { return }
 
         if !hasTransactions {
             needsScrollRestore = false
-            if scrollAnchor != .top {
-                scrollToTop()
-            }
             return
         }
 
         if scrollMetrics.visibleHeight == 0 {
-            scheduleScrollRestore()
+            scheduleScrollRestore(using: proxy)
             return
         }
 
         if !scrollMetrics.isScrollable {
             needsScrollRestore = false
-            if scrollAnchor != .top {
-                scrollToTop()
-            }
             return
         }
 
         needsScrollRestore = false
         let target = validatedScrollAnchor(savedScrollAnchor)
-        scrollToAnchor(target)
+        scrollToAnchor(target, proxy: proxy)
     }
 
     private func validatedScrollAnchor(
@@ -431,22 +350,119 @@ struct TransactionListView: View {
 
     private func resetScrollIfNeeded(
         from oldPhase: ScenePhase,
-        to newPhase: ScenePhase
+        to newPhase: ScenePhase,
+        proxy: ScrollViewProxy
     ) {
         guard isPartiallyScrolled else { return }
 
         switch newPhase {
         case .background, .inactive:
-            scrollToTop()
+            scrollToTop(using: proxy)
         case .active where oldPhase == .background || oldPhase == .inactive:
-            scrollToTop()
+            scrollToTop(using: proxy)
         default:
             break
         }
     }
 
-    private func scrollToTop() {
-        scrollToAnchor(.top)
+    private func scrollToTop(using proxy: ScrollViewProxy) {
+        scrollToAnchor(.top, proxy: proxy)
+    }
+
+    private var transactionScrollContent: some View {
+        ScrollViewReader { proxy in
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 12) {
+                    if summary != nil {
+                        FlippableSummaryCardView(
+                            summary: summary,
+                            isShowingDonut: $isShowingDonut
+                        )
+                        .id(TransactionListPersistedAnchor.top)
+                    }
+
+                    transactionsSectionHeader
+                        .background(
+                            GeometryReader { geometry in
+                                Color.clear.preference(
+                                    key: TransactionsHeaderMinYKey.self,
+                                    value: geometry.frame(in: .named("transactionScroll")).minY
+                                )
+                            }
+                        )
+
+                    switch grouping {
+                    case .date:
+                        ForEach(dates, id: \.self) { date in
+                            dateSection(date: date, transactions: dateTransactions[date] ?? [])
+                                .id(TransactionListPersistedAnchor.date(date))
+                        }
+                    case .category:
+                        ForEach(categorySections) { section in
+                            categorySection(section)
+                                .id(TransactionListPersistedAnchor.category(section.id))
+                        }
+                    }
+                }
+                .padding(.bottom, 62)
+            }
+            .coordinateSpace(name: "transactionScroll")
+            .onPreferenceChange(TransactionsHeaderMinYKey.self) { minY in
+                isTransactionsHeaderPinned = minY < 0
+            }
+            .overlay(alignment: .top) {
+                if isTransactionsHeaderPinned {
+                    transactionsSectionHeader
+                }
+            }
+            .scrollBounceBehavior(.basedOnSize, axes: .vertical)
+            .onScrollGeometryChange(for: TransactionListScrollMetrics.self) { geometry in
+                TransactionListScrollMetrics.from(geometry)
+            } action: { oldMetrics, newMetrics in
+                handleScrollGeometryChange(from: oldMetrics, to: newMetrics)
+            }
+            .onChange(of: scenePhase) { oldPhase, newPhase in
+                resetScrollIfNeeded(from: oldPhase, to: newPhase, proxy: proxy)
+            }
+            .onChange(of: pendingProgrammaticScroll) { _, target in
+                guard let target else { return }
+                pendingProgrammaticScroll = nil
+                scrollToAnchor(target, proxy: proxy)
+            }
+            .onAppear {
+                syncTransactionSnapshot()
+                needsScrollRestore = true
+                scheduleScrollRestore(using: proxy)
+            }
+        }
+    }
+
+    private var transactionsSectionHeader: some View {
+        HStack {
+            Text("Transactions")
+                .font(.system(size: 18, weight: .medium))
+                .xpnseAdaptiveForeground()
+
+            Spacer(minLength: 0)
+
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    grouping = grouping == .date ? .category : .date
+                }
+            } label: {
+                Image(systemName: grouping == .date ? "square.grid.2x2.fill" : "calendar")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
+                    .frame(width: 36, height: 36)
+                    .background(AdaptiveBrandSurface.rowBackground(for: colorScheme))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+            .accessibilityLabel(grouping == .date ? "Group by category" : "Group by date")
+        }
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AdaptiveBrandSurface.background(for: colorScheme))
     }
 
     private func dateSection(date: Date, transactions: [Transaction]) -> some View {
