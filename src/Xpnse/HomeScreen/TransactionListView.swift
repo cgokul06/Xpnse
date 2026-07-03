@@ -97,6 +97,12 @@ struct TransactionListView: View {
             .reduce(0) { $0 + $1.totalAmount }
     }
 
+    private func savingsTotal(for transactions: [Transaction]) -> Double {
+        transactions
+            .filter { $0.type == .savings }
+            .reduce(0) { $0 + $1.totalAmount }
+    }
+
     private func incomeTotal(for transactions: [Transaction]) -> Double {
         transactions
             .filter { $0.type == .income }
@@ -104,7 +110,7 @@ struct TransactionListView: View {
     }
 
     private func netTotal(for transactions: [Transaction]) -> Double {
-        incomeTotal(for: transactions) - expenseTotal(for: transactions)
+        incomeTotal(for: transactions) - expenseTotal(for: transactions) - savingsTotal(for: transactions)
     }
 
     @ViewBuilder
@@ -116,7 +122,11 @@ struct TransactionListView: View {
 
         Text("\(currency.symbol)\(AmountFormatter.format(displayAmount))")
             .font(.system(size: 14, weight: .semibold))
-            .foregroundStyle(isNegative ? Color.red : Color.green)
+            .foregroundStyle(
+                isNegative
+                    ? TransactionType.expense.brandColor
+                    : TransactionType.income.brandColor
+            )
     }
 
     private var hasTransactions: Bool {

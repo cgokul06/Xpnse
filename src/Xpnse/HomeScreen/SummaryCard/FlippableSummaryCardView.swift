@@ -14,6 +14,7 @@ struct FlippableSummaryCardView: View {
             SummaryCardView(
                 totalBalance: summary?.totalBalance ?? 0,
                 income: summary?.totalIncome ?? 0,
+                savings: summary?.totalSavings ?? 0,
                 expenses: summary?.totalExpenses ?? 0,
                 onFlip: { flipCard() }
             )

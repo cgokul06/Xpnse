@@ -323,44 +323,10 @@ struct AddTransactionView: View {
 
     // MARK: - Transaction Type Selector
     private var transactionTypeSelector: some View {
-        HStack(spacing: 12) {
-            Button(action: {
-                transactionType = .expense
-                selectedCategoryId = BuiltinCategories.otherCategoryId
-                didManuallySelectCategory = false
-                showSuggestions = false
-            }) {
-                HStack(spacing: 8) {
-                    Image(systemName: "arrow.down")
-                        .font(.system(size: 16, weight: .semibold))
-                    Text("Expense")
-                        .font(.system(size: 16, weight: .semibold))
-                }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(transactionType == .expense ? XpnseColorKey.expensePrimary.color : Color.gray.opacity(0.3))
-                .xpnseRoundedCorner()
-            }
-
-            Button(action: {
-                transactionType = .income
-                selectedCategoryId = BuiltinCategories.otherCategoryId
-                didManuallySelectCategory = false
-                showSuggestions = false
-            }) {
-                HStack(spacing: 8) {
-                    Image(systemName: "arrow.up")
-                        .font(.system(size: 16, weight: .semibold))
-                    Text("Income")
-                        .font(.system(size: 16, weight: .semibold))
-                }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 12)
-                .background(transactionType == .income ? XpnseColorKey.incomePrimary.color : Color.gray.opacity(0.3))
-                .xpnseRoundedCorner()
-            }
+        TransactionTypePicker(selection: $transactionType) { type in
+            selectedCategoryId = BuiltinCategories.defaultCategoryId(for: type)
+            didManuallySelectCategory = false
+            showSuggestions = false
         }
         .focused(self.$focussedField, equals: .transactionType)
     }

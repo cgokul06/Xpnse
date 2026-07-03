@@ -38,6 +38,8 @@ final class CategoryStore {
             }
             categories = try await migrateMissingColorsIfNeeded(loaded)
             categories = try await repairBuiltInCategoryFlagsIfNeeded(categories)
+            try await seedMissingBuiltinSavingsCategoriesIfNeeded()
+            try await consolidateRetiredSavingsCategoriesIfNeeded()
             try await migrateOrphanedTransactionCategoryIdsIfNeeded()
         } catch {
             categories = BuiltinCategories.seedDefinitions()
@@ -53,7 +55,11 @@ final class CategoryStore {
         if trimmed.lowercased() == BuiltinCategories.otherCategoryId {
             return BuiltinCategories.otherCategoryId
         }
-        if categories.contains(where: { $0.id == trimmed }) {
+        if trimmed.hasPrefix("savings_"),
+           !BuiltinCategories.activeSavingsCategoryIds.contains(trimmed) {
+            return BuiltinCategories.savingsReplacementId(for: trimmed)
+        }
+        if categories.contains(where: { $0.id == trimmed && !$0.isDeleted }) {
             return trimmed
         }
         return BuiltinCategories.otherCategoryId
@@ -140,11 +146,61 @@ final class CategoryStore {
         return repaired
     }
 
+    private func seedMissingBuiltinSavingsCategoriesIfNeeded() async throws {
+        let savingsSeeds = BuiltinCategories.savingsSeedDefinitions()
+        let existingIds = Set(categories.map(\.id))
+        var didSeed = false
+
+        for seed in savingsSeeds where !existingIds.contains(seed.id) {
+            try await repository.upsert(seed)
+            didSeed = true
+        }
+
+        if didSeed {
+            categories = try await repository.fetchAll()
+        }
+    }
+
+    private func consolidateRetiredSavingsCategoriesIfNeeded() async throws {
+        let activeSavingsIds = BuiltinCategories.activeSavingsCategoryIds
+        var didChange = false
+
+        for var category in categories where category.transactionType == .savings {
+            guard !activeSavingsIds.contains(category.id) else { continue }
+            guard !category.isDeleted else { continue }
+
+            let isLegacyBuiltin = category.isBuiltIn || category.id.hasPrefix("savings_")
+            guard isLegacyBuiltin else { continue }
+
+            let replacementId = BuiltinCategories.savingsReplacementId(for: category.id)
+            try await repository.reassignTransactions(from: category.id, to: replacementId)
+            try await repository.reassignRecurring(from: category.id, to: replacementId)
+
+            category.isDeleted = true
+            category.updatedAt = Date()
+            try await repository.upsert(category)
+            didChange = true
+        }
+
+        if didChange {
+            categories = try await repository.fetchAll()
+        }
+    }
+
     func categories(for type: TransactionType, includeDeleted: Bool = false) -> [CategoryDefinition] {
         categories
             .filter { category in
-                (includeDeleted || !category.isDeleted)
-                    && (category.transactionType == type || category.id == BuiltinCategories.otherCategoryId)
+                guard includeDeleted || !category.isDeleted else { return false }
+                if category.transactionType == type {
+                    if type == .savings {
+                        return BuiltinCategories.activeSavingsCategoryIds.contains(category.id)
+                            || (!category.isBuiltIn && !category.id.hasPrefix("savings_"))
+                    }
+                    return true
+                }
+                if type == .expense, category.id == BuiltinCategories.otherCategoryId { return true }
+                if type == .savings, category.id == BuiltinCategories.savingsGeneralCategoryId { return true }
+                return false
             }
             .sorted { $0.sortOrder < $1.sortOrder }
     }
@@ -153,11 +209,21 @@ final class CategoryStore {
         categories
             .filter { includeDeleted || !$0.isDeleted }
             .sorted { lhs, rhs in
-                if lhs.transactionType != rhs.transactionType {
-                    return lhs.transactionType == .expense
+                let lhsOrder = Self.typeSortOrder(lhs.transactionType)
+                let rhsOrder = Self.typeSortOrder(rhs.transactionType)
+                if lhsOrder != rhsOrder {
+                    return lhsOrder < rhsOrder
                 }
                 return lhs.sortOrder < rhs.sortOrder
             }
+    }
+
+    private static func typeSortOrder(_ type: TransactionType) -> Int {
+        switch type {
+        case .expense: return 0
+        case .savings: return 1
+        case .income: return 2
+        }
     }
 
     func resolve(id: String) -> CategoryDefinition {
@@ -271,11 +337,11 @@ final class CategoryStore {
         try await repository.upsert(category)
         try await repository.reassignTransactions(
             from: id,
-            to: BuiltinCategories.otherCategoryId
+            to: BuiltinCategories.defaultCategoryId(for: category.transactionType)
         )
         try await repository.reassignRecurring(
             from: id,
-            to: BuiltinCategories.otherCategoryId
+            to: BuiltinCategories.defaultCategoryId(for: category.transactionType)
         )
         await load()
     }
@@ -309,13 +375,14 @@ final class CategoryStore {
         if let byName = active.first(where: { $0.name.lowercased() == trimmed }) {
             return byName.id
         }
-        return BuiltinCategories.otherCategoryId
+        return BuiltinCategories.defaultCategoryId(for: transactionType)
     }
 
     func categoryGuideDescription(for transactionType: TransactionType) -> String {
         let active = categories(for: transactionType)
         let list = active.map { "\($0.id)=\($0.name)" }.joined(separator: ", ")
-        return "Category id. Must be one of: \(list). Use '\(BuiltinCategories.otherCategoryId)' if unsure."
+        let fallback = BuiltinCategories.defaultCategoryId(for: transactionType)
+        return "Category id. Must be one of: \(list). Use '\(fallback)' if unsure."
     }
 }
 
@@ -347,7 +414,7 @@ enum CategoryTypeChangeRestriction: Equatable {
         case .allowed:
             return nil
         case .builtIn:
-            return "Built-in categories keep their expense or income type."
+            return "Built-in categories keep their expense, savings, or income type."
         case .notFound:
             return "This category could not be found."
         }

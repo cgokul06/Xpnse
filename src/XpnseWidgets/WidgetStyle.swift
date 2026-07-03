@@ -8,8 +8,9 @@ import WidgetKit
 
 enum WidgetStyle {
     static let summaryCard = Color(red: 0x47 / 255, green: 0x54 / 255, blue: 0xD3 / 255)
-    static let income = Color(red: 0x34 / 255, green: 0xC7 / 255, blue: 0x59 / 255)
-    static let expense = Color(red: 0xFF / 255, green: 0x3B / 255, blue: 0x30 / 255)
+    static let income = Color(XpnseColorKey.incomePrimary.rawValue)
+    static let savings = Color(XpnseColorKey.savingsPrimary.rawValue)
+    static let expense = Color(XpnseColorKey.expensePrimary.rawValue)
     static let secondaryButton = Color(red: 0x5E / 255, green: 0x5C / 255, blue: 0xE6 / 255)
     static let mutedText = Color.white.opacity(0.72)
     static let divider = Color.white.opacity(0.22)

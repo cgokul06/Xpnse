@@ -93,6 +93,7 @@ struct CategoryDefinition: Identifiable, Codable, Hashable, Sendable {
 
 enum BuiltinCategories {
     static let otherCategoryId = "other"
+    static let savingsGeneralCategoryId = "savings_general"
 
     private static let defaultColorsById: [String: String] = [
         "food": "#EF4444",
@@ -105,14 +106,89 @@ enum BuiltinCategories {
         "business": "#3B82F6",
         "gifts": "#FB7185",
         "rewards": "#EAB308",
-        "investments": "#14B8A6"
+        "investments": "#14B8A6",
+        "savings_general": "#3B82F6",
+        "savings_emergency": "#0EA5E9",
+        "savings_vacation": "#06B6D4",
+        "savings_home": "#8B5CF6",
+        "savings_investments": "#10B981"
     ]
 
     static func defaultColorHex(for id: String) -> String? {
         defaultColorsById[id]
     }
 
+    static func defaultCategoryId(for type: TransactionType) -> String {
+        switch type {
+        case .expense:
+            return otherCategoryId
+        case .savings:
+            return savingsGeneralCategoryId
+        case .income:
+            return "salary"
+        }
+    }
+
     static func seedDefinitions() -> [CategoryDefinition] {
+        expenseSeedDefinitions() + savingsSeedDefinitions() + incomeSeedDefinitions()
+    }
+
+    static func savingsSeedDefinitions() -> [CategoryDefinition] {
+        var order = 100
+        func savings(
+            _ id: String,
+            _ name: String,
+            _ symbol: String,
+            _ colorHex: String,
+            protected: Bool = false
+        ) -> CategoryDefinition {
+            defer { order += 1 }
+            return CategoryDefinition(
+                id: id,
+                name: name,
+                symbolName: symbol,
+                colorHex: colorHex,
+                transactionType: .savings,
+                isBuiltIn: true,
+                isDeletionProtected: protected,
+                sortOrder: order
+            )
+        }
+
+        return [
+            savings("savings_general", "General Savings", "banknote", "#3B82F6", protected: true),
+            savings("savings_emergency", "Emergency Fund", "exclamationmark.triangle", "#0EA5E9"),
+            savings("savings_vacation", "Vacation", "airplane", "#06B6D4"),
+            savings("savings_home", "Home", "house", "#8B5CF6"),
+            savings("savings_investments", "Investments", "chart.line.uptrend.xyaxis", "#10B981")
+        ]
+    }
+
+    static var activeSavingsCategoryIds: Set<String> {
+        Set(savingsSeedDefinitions().map(\.id))
+    }
+
+    /// Maps retired built-in savings category ids to their replacement.
+    static let retiredSavingsCategoryMigration: [String: String] = [
+        "savings_vehicle": "savings_home",
+        "savings_retirement": "savings_investments",
+        "savings_education": savingsGeneralCategoryId,
+        "savings_healthcare": "savings_emergency",
+        "savings_wedding": savingsGeneralCategoryId,
+        "savings_child_future": savingsGeneralCategoryId,
+        "savings_taxes": savingsGeneralCategoryId,
+        "savings_debt_repayment": savingsGeneralCategoryId,
+        "savings_gold": "savings_investments",
+        "savings_stocks_etfs": "savings_investments",
+        "savings_crypto": "savings_investments",
+        "savings_other": savingsGeneralCategoryId
+    ]
+
+    static func savingsReplacementId(for retiredId: String) -> String {
+        retiredSavingsCategoryMigration[retiredId] ?? savingsGeneralCategoryId
+    }
+
+    private static func expenseSeedDefinitions() -> [CategoryDefinition] {
         var order = 0
         func expense(
             _ id: String,
@@ -133,6 +209,19 @@ enum BuiltinCategories {
                 sortOrder: order
             )
         }
+
+        return [
+            expense("food", "Food", "fork.knife", "#EF4444"),
+            expense("transport", "Transport", "car", "#0EA5E9"),
+            expense("shopping", "Shopping", "bag", "#8B5CF6"),
+            expense("health", "Health", "medical.thermometer", "#EC4899"),
+            expense("bills", "Bills", "text.pad.header", "#F59E0B"),
+            expense("other", "Other", "ellipsis.circle", "#9CA3AF", protected: true)
+        ]
+    }
+
+    private static func incomeSeedDefinitions() -> [CategoryDefinition] {
+        var order = 200
         func income(
             _ id: String,
             _ name: String,
@@ -154,12 +243,6 @@ enum BuiltinCategories {
         }
 
         return [
-            expense("food", "Food", "fork.knife", "#EF4444"),
-            expense("transport", "Transport", "car", "#0EA5E9"),
-            expense("shopping", "Shopping", "bag", "#8B5CF6"),
-            expense("health", "Health", "medical.thermometer", "#EC4899"),
-            expense("bills", "Bills", "text.pad.header", "#F59E0B"),
-            expense("other", "Other", "ellipsis.circle", "#9CA3AF", protected: true),
             income("salary", "Salary", "dollarsign.circle", "#22C55E"),
             income("business", "Business", "building.2", "#3B82F6"),
             income("gifts", "Gifts", "gift", "#FB7185"),

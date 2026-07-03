@@ -55,6 +55,7 @@ struct EditCategoryView: View {
                                 .foregroundColor(.white)
                             Picker("Type", selection: $transactionType) {
                                 Text("Expense").tag(TransactionType.expense)
+                                Text("Savings").tag(TransactionType.savings)
                                 Text("Income").tag(TransactionType.income)
                             }
                             .pickerStyle(.segmented)

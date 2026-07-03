@@ -56,10 +56,11 @@ class BillScannerService: ObservableObject {
     private func parseTransactionWithLanguageModel(_ extractedText: String) async throws -> ScannedTransaction {
         await CategoryStore.shared.load()
         let expenseGuide = CategoryStore.shared.categoryGuideDescription(for: .expense)
+        let savingsGuide = CategoryStore.shared.categoryGuideDescription(for: .savings)
         let incomeGuide = CategoryStore.shared.categoryGuideDescription(for: .income)
         let prompt = """
         Analyze this receipt text and extract transaction information. The date might be in different formats. Find the exact date format used here and map it to 'dateFormat' property.
-        For categoryId: use expense categories (\(expenseGuide)) for expenses, or income categories (\(incomeGuide)) for income.
+        For categoryId: use expense categories (\(expenseGuide)) for expenses, savings categories (\(savingsGuide)) for savings, or income categories (\(incomeGuide)) for income. Receipts are usually expenses unless clearly income or savings.
         \(extractedText).
         """
 

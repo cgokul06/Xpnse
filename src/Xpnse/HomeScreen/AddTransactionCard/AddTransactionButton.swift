@@ -59,17 +59,17 @@ extension AddTransactionButton {
     static func addExpense(action: @escaping () -> Void) -> AddTransactionButton {
         AddTransactionButton(
             title: "Add Expense",
-            iconColor: XpnseColorKey.expensePrimary.color,
+            iconColor: TransactionType.expense.brandColor,
             iconSymbol: "minus",
             action: action
         )
     }
-    
+
     /// Creates an "Add Income" button with green background and plus icon
     static func addIncome(action: @escaping () -> Void) -> AddTransactionButton {
         AddTransactionButton(
             title: "Add Income",
-            iconColor: XpnseColorKey.incomePrimary.color,
+            iconColor: TransactionType.income.brandColor,
             iconSymbol: "plus",
             action: action
         )

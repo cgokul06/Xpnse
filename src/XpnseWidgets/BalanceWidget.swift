@@ -33,11 +33,12 @@ struct BalanceWidgetProvider: TimelineProvider {
             totalBalance: 3542.15,
             totalIncome: 5240,
             totalExpenses: 1697.85,
+            totalSavings: 0,
             currencySymbol: "$",
             donutSlices: [],
             expenseCategories: [],
-            donutCenterTitle: "Income",
-            donutCenterAmount: 5240,
+            donutCenterTitle: "Balance",
+            donutCenterAmount: 3542.15,
             updatedAt: Date()
         )
     }
@@ -85,9 +86,13 @@ struct BalanceWidgetView: View {
                         compact: true
                     )
 
-                    Rectangle()
-                        .fill(WidgetStyle.divider)
-                        .frame(height: 1)
+                    metric(
+                        icon: "banknote",
+                        color: WidgetStyle.savings,
+                        title: "Savings",
+                        amount: entry.snapshot.totalSavings,
+                        compact: true
+                    )
 
                     metric(
                         icon: "arrow.down",
@@ -98,12 +103,22 @@ struct BalanceWidgetView: View {
                     )
                 }
             } else {
-                HStack(spacing: 10) {
+                HStack(spacing: 8) {
                     metric(
                         icon: "arrow.up",
                         color: WidgetStyle.income,
                         title: "Income",
                         amount: entry.snapshot.totalIncome,
+                        compact: false
+                    )
+                    Rectangle()
+                        .fill(WidgetStyle.divider)
+                        .frame(width: 1, height: 34)
+                    metric(
+                        icon: "banknote",
+                        color: WidgetStyle.savings,
+                        title: "Savings",
+                        amount: entry.snapshot.totalSavings,
                         compact: false
                     )
                     Rectangle()
@@ -157,7 +172,7 @@ struct BalanceWidget: Widget {
             }
         }
         .configurationDisplayName("Total Balance")
-        .description("Current period balance, income, and expenses.")
+        .description("Current period balance, income, savings, and expenses.")
         .supportedFamilies([.systemSmall, .systemMedium])
         .contentMarginsDisabled()
     }

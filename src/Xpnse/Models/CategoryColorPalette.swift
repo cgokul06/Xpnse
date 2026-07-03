@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import SwiftUI
 
 /// Category colors stored and exchanged as `#RRGGBB` hex strings.
 enum CategoryColorPalette {
@@ -41,11 +42,6 @@ enum CategoryColorPalette {
     }
 
     static func defaultHex(for transactionType: TransactionType) -> String {
-        switch transactionType {
-        case .expense:
-            return colors[10]
-        case .income:
-            return colors[5]
-        }
+        transactionType.iconFGColor.brandHex
     }
 }

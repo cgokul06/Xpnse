@@ -398,32 +398,8 @@ private struct EditRecurringTransactionView: View {
     }
 
     private var transactionTypeSelector: some View {
-        HStack(spacing: 12) {
-            Button {
-                transactionType = .expense
-                selectedCategoryId = BuiltinCategories.otherCategoryId
-            } label: {
-                Text("Expense")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(transactionType == .expense ? XpnseColorKey.expensePrimary.color : Color.gray.opacity(0.3))
-                    .xpnseRoundedCorner()
-            }
-
-            Button {
-                transactionType = .income
-                selectedCategoryId = BuiltinCategories.otherCategoryId
-            } label: {
-                Text("Income")
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(transactionType == .income ? XpnseColorKey.incomePrimary.color : Color.gray.opacity(0.3))
-                    .xpnseRoundedCorner()
-            }
+        TransactionTypePicker(selection: $transactionType) { type in
+            selectedCategoryId = BuiltinCategories.defaultCategoryId(for: type)
         }
     }
 

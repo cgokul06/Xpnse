@@ -2,13 +2,12 @@
 //  XpnseColorKey.swift
 //  Xpnse
 //
-//  Created by Gokul C on 25/07/25.
-//
 
 import Foundation
 
 enum XpnseColorKey: String {
     case expensePrimary = "ExpensePrimary"
+    case savingsPrimary = "SavingsPrimary"
     case incomePrimary = "IncomePrimary"
     case summaryCard = "SummaryCard"
     case transactionsButton = "TransactionsButton"

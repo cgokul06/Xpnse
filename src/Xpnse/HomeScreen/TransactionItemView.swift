@@ -23,7 +23,7 @@ struct TransactionItemView: View {
             Image(systemName: transaction.type.displayIcon)
                 .resizable()
                 .frame(width: 16, height: 16)
-                .foregroundStyle(transaction.type.iconFGColor.color)
+                .foregroundStyle(transaction.type.brandColor)
 
             VStack(alignment: .leading, spacing: 8) {
                 Text(transaction.title)

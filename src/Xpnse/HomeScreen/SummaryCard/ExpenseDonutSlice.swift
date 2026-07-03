@@ -4,6 +4,7 @@
 //
 
 import Foundation
+import SwiftUI
 
 struct ExpenseDonutSlice: Identifiable, Equatable {
     let id: String
@@ -11,6 +12,16 @@ struct ExpenseDonutSlice: Identifiable, Equatable {
     let amount: Double
     let colorHex: String
     var isRemainder: Bool = false
+}
+
+enum FinancialOverviewSliceId {
+    static let expense = "overview_expense"
+    static let savings = "overview_savings"
+    static let balance = "overview_balance"
+}
+
+enum FinancialOverviewColors {
+    static let balanceHex = "#FFFFFF"
 }
 
 extension WidgetDonutSlice {
@@ -38,38 +49,42 @@ extension ExpenseDonutSlice {
 }
 
 extension TransactionSummary {
-    @MainActor
-    func expenseDonutSlices(categoryStore: CategoryStore = .shared) -> [ExpenseDonutSlice] {
-        var categoryTotals: [String: Double] = [:]
-        for transaction in allTransactions where transaction.type == .expense {
-            let canonicalId = categoryStore.canonicalCategoryId(for: transaction.categoryId)
-            categoryTotals[canonicalId, default: 0] += transaction.totalAmount
-        }
+    func financialOverviewSlices() -> [ExpenseDonutSlice] {
+        var slices: [ExpenseDonutSlice] = []
 
-        var slices = categoryTotals.map { categoryId, amount in
-            let category = categoryStore.resolve(id: categoryId)
-            return ExpenseDonutSlice(
-                id: categoryId,
-                name: category.name,
-                amount: amount,
-                colorHex: category.colorHex
+        if totalExpenses > 0 {
+            slices.append(
+                ExpenseDonutSlice(
+                    id: FinancialOverviewSliceId.expense,
+                    name: "Expense",
+                    amount: totalExpenses,
+                    colorHex: TransactionType.expense.brandHex
+                )
             )
         }
-        .sorted { $0.amount > $1.amount }
 
-        if totalIncome > 0 {
-            let remainder = max(0, totalIncome - totalExpenses)
-            if remainder > 0 {
-                slices.append(
-                    ExpenseDonutSlice(
-                        id: "__remainder__",
-                        name: "Remaining",
-                        amount: remainder,
-                        colorHex: "FFFFFF",
-                        isRemainder: true
-                    )
+        if totalSavings > 0 {
+            slices.append(
+                ExpenseDonutSlice(
+                    id: FinancialOverviewSliceId.savings,
+                    name: "Savings",
+                    amount: totalSavings,
+                    colorHex: TransactionType.savings.brandHex
                 )
-            }
+            )
+        }
+
+        let balanceAmount = max(0, totalBalance)
+        if balanceAmount > 0 {
+            slices.append(
+                ExpenseDonutSlice(
+                    id: FinancialOverviewSliceId.balance,
+                    name: "Balance",
+                    amount: balanceAmount,
+                    colorHex: FinancialOverviewColors.balanceHex,
+                    isRemainder: true
+                )
+            )
         }
 
         return slices

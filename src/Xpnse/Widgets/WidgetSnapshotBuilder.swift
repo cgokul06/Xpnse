@@ -9,9 +9,7 @@ import Foundation
 enum WidgetSnapshotBuilder {
     static func build() async throws -> WidgetMonthSnapshot {
         let transactionRepository = SwiftDataTransactionRepository.shared
-        let categoryStore = CategoryStore.shared
         let currencyManager = CurrencyManager.shared
-        await categoryStore.load()
 
         let comparison = calendarComparison()
         let (startDate, endDate) = PeriodDateRangeCalculator.dateRange(
@@ -35,16 +33,11 @@ enum WidgetSnapshotBuilder {
             range: comparison
         )
 
-        let expenseSlices = summary.expenseDonutSlices(categoryStore: categoryStore)
-        let legendSlices = expenseSlices
-            .filter { !$0.isRemainder }
-            .map(WidgetDonutSlice.init(expenseSlice:))
-            .sorted { $0.amount > $1.amount }
-
-        let allSlices = expenseSlices.map(WidgetDonutSlice.init(expenseSlice:))
+        let overviewSlices = summary.financialOverviewSlices()
+        let legendSlices = overviewSlices.map(WidgetDonutSlice.init(expenseSlice:))
         let chartSlices = DonutChartSliceBuilder.chartSlices(
             legendSlices: legendSlices,
-            allSlices: allSlices,
+            allSlices: legendSlices,
             income: summary.totalIncome
         )
 
@@ -53,13 +46,15 @@ enum WidgetSnapshotBuilder {
             totalBalance: summary.totalBalance,
             totalIncome: summary.totalIncome,
             totalExpenses: summary.totalExpenses,
+            totalSavings: summary.totalSavings,
             currencySymbol: currencyManager.selectedCurrency.symbol,
             donutSlices: chartSlices,
             expenseCategories: legendSlices,
             donutCenterTitle: DonutChartSliceBuilder.centerTitle(income: summary.totalIncome),
             donutCenterAmount: DonutChartSliceBuilder.centerAmount(
                 income: summary.totalIncome,
-                expenses: summary.totalExpenses
+                expenses: summary.totalExpenses,
+                savings: summary.totalSavings
             ),
             updatedAt: Date()
         )

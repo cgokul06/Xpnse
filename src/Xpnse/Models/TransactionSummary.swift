@@ -12,6 +12,7 @@ struct TransactionSummary {
     let totalBalance: Double
     let totalIncome: Double
     let totalExpenses: Double
+    let totalSavings: Double
     let startDate: Date
     let endDate: Date
     let dateRangeText: String
@@ -26,12 +27,14 @@ struct TransactionSummary {
         }
         let incomeTransactions = self.allTransactions.filter { $0.type == .income }
         let expenseTransactions = self.allTransactions.filter { $0.type == .expense }
+        let savingsTransactions = self.allTransactions.filter { $0.type == .savings }
         self.startDate = startDate
         self.endDate = endDate
 
         self.totalIncome = incomeTransactions.reduce(0) { $0 + $1.totalAmount }
         self.totalExpenses = expenseTransactions.reduce(0) { $0 + $1.totalAmount }
-        self.totalBalance = totalIncome - totalExpenses
+        self.totalSavings = savingsTransactions.reduce(0) { $0 + $1.totalAmount }
+        self.totalBalance = totalIncome - totalExpenses - totalSavings
         self.dateRangeText = Self.setupDateSwitcherText(
             currentCalendarComparator: range,
             startDate: startDate,
@@ -39,7 +42,7 @@ struct TransactionSummary {
         ) ?? ""
     }
 
-    // Category-wise breakdown
+    // Category-wise breakdown (expenses only; savings excluded per spec)
     func expensesByCategory() -> [String: Double] {
         let expenseTransactions = allTransactions.filter { $0.type == .expense }
         var categoryTotals: [String: Double] = [:]
@@ -71,12 +74,5 @@ struct TransactionSummary {
     // Monthly breakdown
     func monthlyBreakdown() -> [String: TransactionSummary] {
         return [:]
-//        let calendar = Calendar.current
-//        let groupedTransactions = Dictionary(grouping: transactions) { transaction in
-//            let components = calendar.dateComponents([.year, .month], from: transaction.date)
-//            return "\(components.year!)-\(String(format: "%02d", components.month!))"
-//        }
-//
-//        return groupedTransactions.mapValues { TransactionSummary(transactions: $0) }
     }
 }

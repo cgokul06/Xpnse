@@ -20,10 +20,20 @@ struct ManageCategoriesView: View {
         categoryStore.categories(for: .income)
     }
 
+    private var savingsCategories: [CategoryDefinition] {
+        categoryStore.categories(for: .savings)
+    }
+
     var body: some View {
         List {
             Section("Expense") {
                 ForEach(expenseCategories) { category in
+                    categoryRow(category)
+                }
+            }
+
+            Section("Savings") {
+                ForEach(savingsCategories) { category in
                     categoryRow(category)
                 }
             }

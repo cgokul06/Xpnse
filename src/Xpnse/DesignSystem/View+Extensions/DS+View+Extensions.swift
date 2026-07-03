@@ -12,6 +12,10 @@ extension XpnseColorKey {
     var color: Color {
         Color(self.rawValue)
     }
+
+    var brandHex: String {
+        color.hexString
+    }
 }
 
 // MARK: - ViewModifier Extensions

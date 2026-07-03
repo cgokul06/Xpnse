@@ -8,7 +8,6 @@ import SwiftUI
 
 struct ExpenseDonutSummaryCardView: View {
     @ObservedObject private var currencyManager = CurrencyManager.shared
-    @State private var categoryStore = CategoryStore.shared
 
     let summary: TransactionSummary?
     let onFlip: () -> Void
@@ -21,8 +20,16 @@ struct ExpenseDonutSummaryCardView: View {
         summary?.totalExpenses ?? 0
     }
 
+    private var savings: Double {
+        summary?.totalSavings ?? 0
+    }
+
+    private var balance: Double {
+        summary?.totalBalance ?? 0
+    }
+
     private var slices: [ExpenseDonutSlice] {
-        summary?.expenseDonutSlices(categoryStore: categoryStore) ?? []
+        summary?.financialOverviewSlices() ?? []
     }
 
     private var legendSlices: [ExpenseDonutSlice] {
@@ -44,7 +51,11 @@ struct ExpenseDonutSummaryCardView: View {
     }
 
     private var donutCenterAmount: Double {
-        DonutChartSliceBuilder.centerAmount(income: income, expenses: expenses)
+        DonutChartSliceBuilder.centerAmount(
+            income: income,
+            expenses: expenses,
+            savings: savings
+        )
     }
 
     private var formattedDonutCenterAmount: String {
@@ -52,17 +63,21 @@ struct ExpenseDonutSummaryCardView: View {
         return "\(symbol)\(donutCenterAmount.abbreviatedFloor())"
     }
 
+    private var hasFinancialActivity: Bool {
+        income > 0 || expenses > 0 || savings > 0
+    }
+
     var body: some View {
         VStack(spacing: SummaryCardMetrics.sectionSpacing) {
             SummaryCardHeaderBar(
-                title: "Expense Breakdown",
+                title: "Financial Overview",
                 flipIconName: "dollarsign.circle.fill",
                 onFlip: onFlip
             )
 
             Group {
-                if expenses <= 0, income <= 0 {
-                    emptyState(message: "No expenses yet")
+                if !hasFinancialActivity {
+                    emptyState(message: "No activity yet")
                 } else {
                     HStack(alignment: .center, spacing: 12) {
                         donutChart
@@ -83,9 +98,6 @@ struct ExpenseDonutSummaryCardView: View {
         .frame(height: SummaryCardMetrics.height)
         .frame(maxWidth: .infinity)
         .summaryCardFaceBackground()
-        .task {
-            await categoryStore.load()
-        }
     }
 
     @ViewBuilder
@@ -116,13 +128,6 @@ struct ExpenseDonutSummaryCardView: View {
                     .foregroundColor(.white)
                     .minimumScaleFactor(0.7)
                     .lineLimit(1)
-
-                if expenses == 0, income > 0 {
-                    Text("No expenses yet")
-                        .font(.system(size: 9, weight: .medium))
-                        .foregroundColor(.gray)
-                        .multilineTextAlignment(.center)
-                }
             }
             .padding(.horizontal, 6)
         }
@@ -130,29 +135,22 @@ struct ExpenseDonutSummaryCardView: View {
 
     @ViewBuilder
     private var legendView: some View {
-        if legendSlices.isEmpty && expenses == 0 {
-            Text("No expenses yet")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(.gray)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        } else if legendSlices.isEmpty {
-            emptyState(message: "No expenses yet")
+        if slices.isEmpty {
+            emptyState(message: "No activity yet")
         } else {
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 8) {
-                    ForEach(legendSlices) { slice in
-                        legendRow(for: slice)
-                    }
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(slices) { slice in
+                    legendRow(for: slice)
                 }
             }
-            .frame(maxHeight: .infinity)
+            .frame(maxHeight: .infinity, alignment: .center)
         }
     }
 
     private func legendRow(for slice: ExpenseDonutSlice) -> some View {
         HStack(spacing: 8) {
             Circle()
-                .fill(Color(hex: slice.colorHex))
+                .fill(sliceColor(for: slice))
                 .frame(width: 10, height: 10)
 
             Text(slice.name)

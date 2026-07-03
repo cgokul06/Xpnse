@@ -12,11 +12,18 @@ import FoundationModels
 @Generable
 enum TransactionType: String, CaseIterable, Codable {
     case expense = "expense"
+    case savings = "savings"
     case income = "income"
+
+    /// UI order: Expense, Savings, Income.
+    static var pickerOrder: [TransactionType] {
+        [.expense, .savings, .income]
+    }
 
     var displayName: String {
         switch self {
         case .expense: return "Expense"
+        case .savings: return "Savings"
         case .income: return "Income"
         }
     }
@@ -25,6 +32,8 @@ enum TransactionType: String, CaseIterable, Codable {
         switch self {
         case .expense:
             "arrow.down"
+        case .savings:
+            "banknote"
         case .income:
             "arrow.up"
         }
@@ -33,9 +42,11 @@ enum TransactionType: String, CaseIterable, Codable {
     var iconFGColor: XpnseColorKey {
         switch self {
         case .expense:
-                .expensePrimary
+            .expensePrimary
+        case .savings:
+            .savingsPrimary
         case .income:
-                .incomePrimary
+            .incomePrimary
         }
     }
 }
