@@ -28,6 +28,7 @@ struct Home: View {
     @State private var monthDragAxis: MonthDragAxis?
     @State private var monthScrollAnchors: [Int: TransactionListPersistedAnchor] = [:]
     @State private var isSummaryCardShowingDonut = false
+    @State private var transactionListGrouping: TransactionListGrouping = .date
 
     private var isMonthDragActive: Bool {
         monthDragOffset != 0 || monthDragAxis == .horizontal
@@ -282,6 +283,7 @@ struct Home: View {
         return TransactionListView(
             monthKey: key,
             dateTransactions: txnSummary?.transactions ?? [:],
+            grouping: $transactionListGrouping,
             savedScrollAnchor: monthScrollAnchors[key],
             onScrollAnchorChange: { anchor in
                 monthScrollAnchors[key] = anchor

@@ -14,7 +14,7 @@ enum TransactionListPersistedAnchor: Hashable {
     case category(String)
 }
 
-private enum TransactionListGrouping {
+enum TransactionListGrouping {
     case date
     case category
 }
@@ -28,6 +28,14 @@ private struct TransactionListScrollMetrics: Equatable {
         guard visibleHeight > 0 else { return false }
         return contentHeight > visibleHeight + 1
     }
+
+    static func from(_ geometry: ScrollGeometry) -> TransactionListScrollMetrics {
+        TransactionListScrollMetrics(
+            offsetY: max(0, geometry.contentOffset.y).rounded(.down),
+            visibleHeight: geometry.visibleRect.height.rounded(.down),
+            contentHeight: geometry.contentSize.height.rounded(.down)
+        )
+    }
 }
 
 private struct CategorySection: Identifiable {
@@ -39,12 +47,12 @@ private struct CategorySection: Identifiable {
 struct TransactionListView: View {
     let monthKey: Int
     var dateTransactions: [Date: [Transaction]]
+    @Binding var grouping: TransactionListGrouping
     var savedScrollAnchor: TransactionListPersistedAnchor?
     var onScrollAnchorChange: (TransactionListPersistedAnchor) -> Void
     var isScrollDisabled: Bool = false
 
     @Environment(\.scenePhase) private var scenePhase
-    @State private var grouping: TransactionListGrouping = .date
     @State private var categoryStore = CategoryStore.shared
     @State private var scrollMetrics = TransactionListScrollMetrics(
         offsetY: 0,
@@ -55,6 +63,7 @@ struct TransactionListView: View {
     @State private var needsScrollRestore = false
     @State private var lastKnownTopDate: Date?
     @State private var lastTransactionCount = 0
+    @State private var pendingScrollMetrics: TransactionListScrollMetrics?
 
     private var dates: [Date] {
         dateTransactions.keys.sorted(by: >)
@@ -211,28 +220,9 @@ struct TransactionListView: View {
                 .scrollPosition(id: scrollAnchorBinding, anchor: .top)
                 .scrollDisabled(isScrollDisabled)
                 .onScrollGeometryChange(for: TransactionListScrollMetrics.self) { geometry in
-                    TransactionListScrollMetrics(
-                        offsetY: max(0, geometry.contentOffset.y),
-                        visibleHeight: geometry.visibleRect.height,
-                        contentHeight: geometry.contentSize.height
-                    )
+                    TransactionListScrollMetrics.from(geometry)
                 } action: { oldMetrics, newMetrics in
-                    let scrollabilityChanged = oldMetrics.isScrollable != newMetrics.isScrollable
-                    let needsInitialLayout = scrollMetrics.visibleHeight == 0 && newMetrics.visibleHeight > 0
-
-                    guard scrollabilityChanged || needsInitialLayout || newMetrics.isScrollable else {
-                        return
-                    }
-
-                    scrollMetrics = newMetrics
-
-                    if !newMetrics.isScrollable, scrollAnchor != .top {
-                        scrollAnchor = .top
-                    }
-
-                    if needsScrollRestore, scrollabilityChanged || needsInitialLayout {
-                        scheduleScrollRestore()
-                    }
+                    handleScrollGeometryChange(from: oldMetrics, to: newMetrics)
                 }
                 .onChange(of: scenePhase) { oldPhase, newPhase in
                     resetScrollIfNeeded(from: oldPhase, to: newPhase)
@@ -268,6 +258,49 @@ struct TransactionListView: View {
         }
         .task {
             await categoryStore.load()
+        }
+    }
+
+    private func handleScrollGeometryChange(
+        from oldMetrics: TransactionListScrollMetrics,
+        to newMetrics: TransactionListScrollMetrics
+    ) {
+        guard !isScrollDisabled else { return }
+        guard newMetrics != scrollMetrics else { return }
+
+        let scrollabilityChanged = oldMetrics.isScrollable != newMetrics.isScrollable
+        let needsInitialLayout = scrollMetrics.visibleHeight == 0 && newMetrics.visibleHeight > 0
+
+        guard scrollabilityChanged || needsInitialLayout || newMetrics.isScrollable else {
+            return
+        }
+
+        pendingScrollMetrics = newMetrics
+        DispatchQueue.main.async {
+            applyPendingScrollMetricsIfNeeded()
+        }
+    }
+
+    private func applyPendingScrollMetricsIfNeeded() {
+        guard !isScrollDisabled else {
+            pendingScrollMetrics = nil
+            return
+        }
+        guard let newMetrics = pendingScrollMetrics else { return }
+        pendingScrollMetrics = nil
+        guard newMetrics != scrollMetrics else { return }
+
+        let scrollabilityChanged = scrollMetrics.isScrollable != newMetrics.isScrollable
+        let needsInitialLayout = scrollMetrics.visibleHeight == 0 && newMetrics.visibleHeight > 0
+
+        scrollMetrics = newMetrics
+
+        if !newMetrics.isScrollable, scrollAnchor != .top {
+            scrollAnchor = .top
+        }
+
+        if needsScrollRestore, scrollabilityChanged || needsInitialLayout {
+            scheduleScrollRestore()
         }
     }
 
@@ -413,11 +446,6 @@ struct TransactionListView: View {
 
     private func scrollToTop() {
         scrollToAnchor(.top)
-        scrollMetrics = TransactionListScrollMetrics(
-            offsetY: 0,
-            visibleHeight: scrollMetrics.visibleHeight,
-            contentHeight: scrollMetrics.contentHeight
-        )
     }
 
     private func dateSection(date: Date, transactions: [Transaction]) -> some View {
