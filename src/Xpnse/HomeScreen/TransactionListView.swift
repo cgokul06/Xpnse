@@ -90,8 +90,14 @@ struct TransactionListView: View {
     @State private var pendingScrollMetrics: TransactionListScrollMetrics?
     @State private var isTransactionsHeaderPinned = false
     @State private var pendingProgrammaticScroll: TransactionListPersistedAnchor?
+    @State private var isSearching = false
+    @State private var searchText = ""
+    @State private var debouncedSearchQuery = ""
+    @State private var searchDebounceTask: Task<Void, Never>?
+    @FocusState private var isSearchFieldFocused: Bool
 
     private static let summaryCardScrollThreshold: CGFloat = 176
+    private static let searchDebounceInterval: Duration = .milliseconds(300)
 
     private var scrollContentBottomPadding: CGFloat {
         let safeAreaPadding = extendsToBottomSafeArea ? DeviceSafeArea.bottom : 0
@@ -104,6 +110,19 @@ struct TransactionListView: View {
 
     private var allTransactions: [Transaction] {
         dates.flatMap { dateTransactions[$0] ?? [] }
+    }
+
+    private var isSearchActive: Bool {
+        !debouncedSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var filteredSearchResults: [Transaction] {
+        let query = debouncedSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return [] }
+
+        return allTransactions
+            .filter { $0.title.localizedCaseInsensitiveContains(query) }
+            .sorted { $0.date > $1.date }
     }
 
     private var categorySections: [CategorySection] {
@@ -172,12 +191,7 @@ struct TransactionListView: View {
     }
 
     private var hasTransactions: Bool {
-        switch grouping {
-        case .date:
-            return !dates.isEmpty
-        case .category:
-            return !categorySections.isEmpty
-        }
+        !allTransactions.isEmpty
     }
 
     private var isPartiallyScrolled: Bool {
@@ -190,7 +204,7 @@ struct TransactionListView: View {
 
     var body: some View {
         Group {
-            if hasTransactions {
+            if hasTransactions || isSearching {
                 transactionScrollContent
             } else {
                 noTransactionsFound
@@ -206,9 +220,50 @@ struct TransactionListView: View {
             onScrollAnchorChange(.top)
             pendingProgrammaticScroll = .top
         }
+        .onChange(of: searchText) { _, newValue in
+            scheduleSearchDebounce(for: newValue)
+        }
+        .onChange(of: debouncedSearchQuery) { _, _ in
+            pendingProgrammaticScroll = .top
+        }
+        .onChange(of: monthKey) { _, _ in
+            closeSearch()
+        }
         .task {
             await categoryStore.load()
         }
+    }
+
+    private func scheduleSearchDebounce(for text: String) {
+        searchDebounceTask?.cancel()
+        searchDebounceTask = Task {
+            try? await Task.sleep(for: Self.searchDebounceInterval)
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                debouncedSearchQuery = text
+            }
+        }
+    }
+
+    private func activateSearch() {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        withAnimation(.easeInOut(duration: 0.25)) {
+            isSearching = true
+        }
+        DispatchQueue.main.async {
+            isSearchFieldFocused = true
+        }
+    }
+
+    private func closeSearch() {
+        searchDebounceTask?.cancel()
+        searchDebounceTask = nil
+        withAnimation(.easeInOut(duration: 0.25)) {
+            isSearching = false
+            searchText = ""
+            debouncedSearchQuery = ""
+        }
+        isSearchFieldFocused = false
     }
 
     private func handleScrollGeometryChange(
@@ -424,14 +479,22 @@ struct TransactionListView: View {
 
                     switch grouping {
                     case .date:
-                        ForEach(dates, id: \.self) { date in
-                            dateSection(date: date, transactions: dateTransactions[date] ?? [])
-                                .id(TransactionListPersistedAnchor.date(date))
+                        if isSearchActive {
+                            searchResultsContent
+                        } else {
+                            ForEach(dates, id: \.self) { date in
+                                dateSection(date: date, transactions: dateTransactions[date] ?? [])
+                                    .id(TransactionListPersistedAnchor.date(date))
+                            }
                         }
                     case .category:
-                        ForEach(categorySections) { section in
-                            categorySection(section)
-                                .id(TransactionListPersistedAnchor.category(section.id))
+                        if isSearchActive {
+                            searchResultsContent
+                        } else {
+                            ForEach(categorySections) { section in
+                                categorySection(section)
+                                    .id(TransactionListPersistedAnchor.category(section.id))
+                            }
                         }
                     }
                 }
@@ -471,31 +534,106 @@ struct TransactionListView: View {
     }
 
     private var transactionsSectionHeader: some View {
-        HStack {
-            Text("Transactions")
-                .font(.system(size: 18, weight: .medium))
-                .xpnseAdaptiveForeground()
+        HStack(spacing: 8) {
+            if isSearching {
+                searchField
+                    .transition(.asymmetric(
+                        insertion: .move(edge: .trailing).combined(with: .opacity),
+                        removal: .move(edge: .trailing).combined(with: .opacity)
+                    ))
+            } else {
+                Text("Transactions")
+                    .font(.system(size: 18, weight: .medium))
+                    .xpnseAdaptiveForeground()
 
-            Spacer(minLength: 0)
+                groupingToggleButton
 
-            Button {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    grouping = grouping == .date ? .category : .date
+                Spacer(minLength: 0)
+
+                Button {
+                    activateSearch()
+                } label: {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
+                        .frame(width: 36, height: 36)
+                        .background(AdaptiveBrandSurface.rowBackground(for: colorScheme))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
-            } label: {
-                Image(systemName: grouping == .date ? "square.grid.2x2.fill" : "calendar")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
-                    .frame(width: 36, height: 36)
-                    .background(AdaptiveBrandSurface.rowBackground(for: colorScheme))
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                .accessibilityLabel("Search transactions")
+                .transition(.opacity)
             }
-            .accessibilityLabel(grouping == .date ? "Group by category" : "Group by date")
         }
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(AdaptiveBrandSurface.background(for: colorScheme))
+        .animation(.easeInOut(duration: 0.25), value: isSearching)
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 14, weight: .medium))
+                .xpnseAdaptiveForeground(muted: true)
+
+            TextField("Search by description", text: $searchText)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .focused($isSearchFieldFocused)
+
+            Button {
+                closeSearch()
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 16, weight: .medium))
+                    .xpnseAdaptiveForeground(muted: true)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(AdaptiveBrandSurface.fieldBackground(for: colorScheme))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(AdaptiveBrandSurface.fieldBorder(for: colorScheme), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+
+    private var groupingToggleButton: some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            withAnimation(.easeInOut(duration: 0.2)) {
+                grouping = grouping == .date ? .category : .date
+            }
+        } label: {
+            Image(systemName: grouping == .date ? "square.grid.2x2.fill" : "calendar")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
+                .frame(width: 36, height: 36)
+                .background(AdaptiveBrandSurface.rowBackground(for: colorScheme))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+        }
+        .accessibilityLabel(grouping == .date ? "Group by category" : "Group by date")
+    }
+
+    @ViewBuilder
+    private var searchResultsContent: some View {
+        if filteredSearchResults.isEmpty {
+            Text("No matching transactions")
+                .font(.system(size: 16, weight: .medium))
+                .xpnseAdaptiveForeground(muted: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, 8)
+        } else {
+            VStack(spacing: 8) {
+                ForEach(filteredSearchResults) { transaction in
+                    TransactionItemView(transaction: transaction, subtitle: .category)
+                }
+            }
+        }
     }
 
     private func dateSection(date: Date, transactions: [Transaction]) -> some View {
