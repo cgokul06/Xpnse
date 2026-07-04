@@ -21,6 +21,7 @@ enum TransactionListGrouping {
 
 struct TransactionListScrollUpdate: Equatable {
     let offsetY: CGFloat
+    let previousOffsetY: CGFloat
     let delta: CGFloat
     let visibleHeight: CGFloat
     let contentHeight: CGFloat
@@ -72,6 +73,7 @@ struct TransactionListView: View {
     var savedScrollAnchor: TransactionListPersistedAnchor?
     var onScrollAnchorChange: (TransactionListPersistedAnchor) -> Void
     var onScrollOffsetChange: ((TransactionListScrollUpdate) -> Void)?
+    var onListAppear: (() -> Void)?
     var scrollBottomInset: CGFloat = 62
     var extendsToBottomSafeArea: Bool = false
 
@@ -297,6 +299,7 @@ struct TransactionListView: View {
             onScrollOffsetChange?(
                 TransactionListScrollUpdate(
                     offsetY: newMetrics.offsetY,
+                    previousOffsetY: previousOffsetY,
                     delta: newMetrics.offsetY - previousOffsetY,
                     visibleHeight: newMetrics.visibleHeight,
                     contentHeight: newMetrics.contentHeight
@@ -333,7 +336,9 @@ struct TransactionListView: View {
         if isScrollAnchorStale {
             revealNewestContent(topDate: newTopDate)
         } else if lastTransactionCount > 0, newCount > lastTransactionCount {
-            revealNewestContent(topDate: newTopDate)
+            if scrollAnchor != .top, newTopDate != lastKnownTopDate {
+                revealNewestContent(topDate: newTopDate)
+            }
         } else if lastTransactionCount == 0, newCount > 0, !needsScrollRestore {
             revealNewestContent(topDate: newTopDate)
         } else if needsScrollRestore {
@@ -526,6 +531,7 @@ struct TransactionListView: View {
                 scrollToAnchor(target, proxy: proxy)
             }
             .onAppear {
+                onListAppear?()
                 syncTransactionSnapshot()
                 needsScrollRestore = true
                 scheduleScrollRestore(using: proxy)

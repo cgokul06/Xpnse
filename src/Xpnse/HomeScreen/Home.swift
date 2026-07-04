@@ -25,6 +25,7 @@ private enum HomeBottomBarMetrics {
     static let collapseDistance: CGFloat = XpnseBottomBarMetrics.buttonHeight + 48
     static let contentInset: CGFloat = XpnseBottomBarMetrics.buttonHeight + 16
     static let visibleListScrollInset: CGFloat = 62
+    static let programmaticScrollDeltaThreshold: CGFloat = 80
 }
 
 struct Home: View {
@@ -94,6 +95,14 @@ struct Home: View {
         .overlay(alignment: .bottom) {
             bottomActionBar
         }
+        .onChange(of: homeCoordinator.path.count) { oldCount, newCount in
+            guard newCount < oldCount else { return }
+            resetBottomActionBar()
+        }
+    }
+
+    private func resetBottomActionBar() {
+        bottomBarHiddenAmount = 0
     }
 
     private var bottomActionBar: some View {
@@ -147,9 +156,21 @@ struct Home: View {
             return
         }
 
-        let nextHiddenAmount = bottomBarHiddenAmount + update.delta
+        if update.previousOffsetY > update.maxOffset || update.offsetY > update.maxOffset {
+            return
+        }
+
+        let delta = update.delta
+        if abs(delta) > HomeBottomBarMetrics.programmaticScrollDeltaThreshold {
+            bottomBarHiddenAmount = min(
+                update.offsetY,
+                HomeBottomBarMetrics.collapseDistance
+            )
+            return
+        }
+
         bottomBarHiddenAmount = min(
-            max(0, nextHiddenAmount),
+            max(0, bottomBarHiddenAmount + delta),
             HomeBottomBarMetrics.collapseDistance
         )
     }
@@ -321,6 +342,9 @@ struct Home: View {
             },
             onScrollOffsetChange: key == homeViewModel.currentKey
                 ? handleTransactionListScroll
+                : nil,
+            onListAppear: key == homeViewModel.currentKey
+                ? resetBottomActionBar
                 : nil,
             scrollBottomInset: listScrollBottomInset,
             extendsToBottomSafeArea: bottomBarHiddenAmount > 0
