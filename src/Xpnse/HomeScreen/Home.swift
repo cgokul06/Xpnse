@@ -21,6 +21,12 @@ private enum MonthPagerAnimation {
     static let slide = Animation.easeOut(duration: 0.28)
 }
 
+private enum HomeBottomBarMetrics {
+    static let collapseDistance: CGFloat = XpnseBottomBarMetrics.buttonHeight + 48
+    static let contentInset: CGFloat = XpnseBottomBarMetrics.buttonHeight + 16
+    static let visibleListScrollInset: CGFloat = 62
+}
+
 struct Home: View {
     @EnvironmentObject var homeCoordinator: NavigationCoordinator<HomeRoute>
     @Environment(\.colorScheme) private var colorScheme
@@ -30,6 +36,20 @@ struct Home: View {
     @State private var monthScrollAnchors: [Int: TransactionListPersistedAnchor] = [:]
     @State private var isSummaryCardShowingDonut = false
     @State private var transactionListGrouping: TransactionListGrouping = .date
+    @State private var bottomBarHiddenAmount: CGFloat = 0
+
+    private var bottomBarHideProgress: CGFloat {
+        guard HomeBottomBarMetrics.collapseDistance > 0 else { return 0 }
+        return min(1, max(0, bottomBarHiddenAmount / HomeBottomBarMetrics.collapseDistance))
+    }
+
+    private var contentBottomInset: CGFloat {
+        max(0, HomeBottomBarMetrics.contentInset - bottomBarHiddenAmount)
+    }
+
+    private var listScrollBottomInset: CGFloat {
+        max(0, HomeBottomBarMetrics.visibleListScrollInset - bottomBarHiddenAmount)
+    }
 
     var body: some View {
         ZStack {
@@ -38,9 +58,10 @@ struct Home: View {
             if !homeViewModel.transactionSummaryDict.isEmpty {
                 contentView
                     .navigationBarTitleDisplayMode(.inline)
-                    .onChange(of: self.homeViewModel.currentKey) { _, newKey in
+                    .onChange(of: self.homeViewModel.currentKey) { _, _ in
+                        bottomBarHiddenAmount = 0
                         Task {
-                            await homeViewModel.prefetchIfNeeded(currentKey: newKey)
+                            await homeViewModel.prefetchIfNeeded(currentKey: homeViewModel.currentKey)
                         }
                     }
             }
@@ -65,51 +86,72 @@ struct Home: View {
                     monthContentPagerStrip(pageWidth: pageWidth)
                 }
                 .simultaneousGesture(monthDragGesture(pageWidth: pageWidth, swipeThreshold: swipeThreshold))
-                .padding(.bottom, XpnseBottomBarMetrics.buttonHeight + 16)
+                .padding(.bottom, contentBottomInset)
             }
             .topSpacingIfNoSafeArea()
         }
-        .overlay(
-            alignment: .bottom,
-            content: {
-                VStack(spacing: 0) {
-                    HStack(spacing: 12) {
-                        Button {
-                            self.homeCoordinator.push(.transactions)
-                        } label: {
-                            Text("Add transaction")
-                                .font(.system(size: 20, weight: .bold))
-                        }
-                        .buttonStyle(
-                            XpnsePrimaryButtonStyle.defaultButton(
-                                bgColor: XpnseColorKey.secondaryButtonBGColor,
-                                isDisabled: .constant(false),
-                                isLoading: .constant(false)
-                            )
-                        )
-                        .frame(maxWidth: .infinity)
-                        .frame(height: XpnseBottomBarMetrics.buttonHeight)
+        .ignoresSafeArea(.container, edges: bottomBarHiddenAmount > 0 ? .bottom : [])
+        .overlay(alignment: .bottom) {
+            bottomActionBar
+        }
+    }
 
-                        if FoundationModelsAvailability.isAvailable {
-                            Button {
-                                self.homeCoordinator.push(.billScanner)
-                            } label: {
-                                Image(systemName: "doc.text.viewfinder")
-                            }
-                            .buttonStyle(
-                                XpnseSquareIconButtonStyle.defaultButton(
-                                    bgColor: XpnseColorKey.secondaryButtonBGColor,
-                                    isDisabled: .constant(false),
-                                    isLoading: .constant(false)
-                                )
-                            )
-                            .accessibilityLabel("Scan bill")
-                        }
-                    }
-                    .padding(.horizontal, 16)
+    private var bottomActionBar: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                Button {
+                    self.homeCoordinator.push(.transactions)
+                } label: {
+                    Text("Add transaction")
+                        .font(.system(size: 20, weight: .bold))
                 }
-                .bottomSpacingIfNoSafeArea(8)
-            })
+                .buttonStyle(
+                    XpnsePrimaryButtonStyle.defaultButton(
+                        bgColor: XpnseColorKey.secondaryButtonBGColor,
+                        isDisabled: .constant(false),
+                        isLoading: .constant(false)
+                    )
+                )
+                .frame(maxWidth: .infinity)
+                .frame(height: XpnseBottomBarMetrics.buttonHeight)
+
+                if FoundationModelsAvailability.isAvailable {
+                    Button {
+                        self.homeCoordinator.push(.billScanner)
+                    } label: {
+                        Image(systemName: "doc.text.viewfinder")
+                    }
+                    .buttonStyle(
+                        XpnseSquareIconButtonStyle.defaultButton(
+                            bgColor: XpnseColorKey.secondaryButtonBGColor,
+                            isDisabled: .constant(false),
+                            isLoading: .constant(false)
+                        )
+                    )
+                    .accessibilityLabel("Scan bill")
+                }
+            }
+            .padding(.horizontal, 16)
+        }
+        .bottomSpacingIfNoSafeArea(8)
+        .offset(y: bottomBarHiddenAmount)
+        .opacity(1 - bottomBarHideProgress)
+        .allowsHitTesting(bottomBarHideProgress < 1)
+    }
+
+    private func handleTransactionListScroll(_ update: TransactionListScrollUpdate) {
+        guard update.visibleHeight > 0 else { return }
+
+        if update.offsetY <= 0 {
+            bottomBarHiddenAmount = 0
+            return
+        }
+
+        let nextHiddenAmount = bottomBarHiddenAmount + update.delta
+        bottomBarHiddenAmount = min(
+            max(0, nextHiddenAmount),
+            HomeBottomBarMetrics.collapseDistance
+        )
     }
 
     private var topView: some View {
@@ -276,7 +318,12 @@ struct Home: View {
             savedScrollAnchor: monthScrollAnchors[key],
             onScrollAnchorChange: { anchor in
                 monthScrollAnchors[key] = anchor
-            }
+            },
+            onScrollOffsetChange: key == homeViewModel.currentKey
+                ? handleTransactionListScroll
+                : nil,
+            scrollBottomInset: listScrollBottomInset,
+            extendsToBottomSafeArea: bottomBarHiddenAmount > 0
         )
         .padding(.horizontal, 16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

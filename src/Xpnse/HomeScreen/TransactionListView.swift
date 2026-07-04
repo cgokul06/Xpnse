@@ -19,6 +19,17 @@ enum TransactionListGrouping {
     case category
 }
 
+struct TransactionListScrollUpdate: Equatable {
+    let offsetY: CGFloat
+    let delta: CGFloat
+    let visibleHeight: CGFloat
+    let contentHeight: CGFloat
+
+    var maxOffset: CGFloat {
+        max(0, contentHeight - visibleHeight)
+    }
+}
+
 private struct TransactionListScrollMetrics: Equatable {
     let offsetY: CGFloat
     let visibleHeight: CGFloat
@@ -60,6 +71,9 @@ struct TransactionListView: View {
     @Binding var grouping: TransactionListGrouping
     var savedScrollAnchor: TransactionListPersistedAnchor?
     var onScrollAnchorChange: (TransactionListPersistedAnchor) -> Void
+    var onScrollOffsetChange: ((TransactionListScrollUpdate) -> Void)?
+    var scrollBottomInset: CGFloat = 62
+    var extendsToBottomSafeArea: Bool = false
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.scenePhase) private var scenePhase
@@ -78,6 +92,11 @@ struct TransactionListView: View {
     @State private var pendingProgrammaticScroll: TransactionListPersistedAnchor?
 
     private static let summaryCardScrollThreshold: CGFloat = 176
+
+    private var scrollContentBottomPadding: CGFloat {
+        let safeAreaPadding = extendsToBottomSafeArea ? DeviceSafeArea.bottom : 0
+        return scrollBottomInset + safeAreaPadding
+    }
 
     private var dates: [Date] {
         dateTransactions.keys.sorted(by: >)
@@ -216,7 +235,19 @@ struct TransactionListView: View {
         pendingScrollMetrics = nil
         guard newMetrics != scrollMetrics else { return }
 
+        let previousOffsetY = scrollMetrics.offsetY
         scrollMetrics = newMetrics
+
+        if newMetrics.isScrollable {
+            onScrollOffsetChange?(
+                TransactionListScrollUpdate(
+                    offsetY: newMetrics.offsetY,
+                    delta: newMetrics.offsetY - previousOffsetY,
+                    visibleHeight: newMetrics.visibleHeight,
+                    contentHeight: newMetrics.contentHeight
+                )
+            )
+        }
 
         if !newMetrics.isScrollable, scrollAnchor != .top {
             scrollAnchor = .top
@@ -404,9 +435,10 @@ struct TransactionListView: View {
                         }
                     }
                 }
-                .padding(.bottom, 62)
+                .padding(.bottom, scrollContentBottomPadding)
             }
             .coordinateSpace(name: "transactionScroll")
+            .disableBounces()
             .onPreferenceChange(TransactionsHeaderMinYKey.self) { minY in
                 isTransactionsHeaderPinned = minY < 0
             }
@@ -416,6 +448,7 @@ struct TransactionListView: View {
                 }
             }
             .scrollBounceBehavior(.basedOnSize, axes: .vertical)
+            .ignoresSafeArea(.container, edges: extendsToBottomSafeArea ? .bottom : [])
             .onScrollGeometryChange(for: TransactionListScrollMetrics.self) { geometry in
                 TransactionListScrollMetrics.from(geometry)
             } action: { oldMetrics, newMetrics in
