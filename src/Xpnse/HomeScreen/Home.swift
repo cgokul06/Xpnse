@@ -38,18 +38,25 @@ struct Home: View {
     @State private var isSummaryCardShowingDonut = false
     @State private var transactionListGrouping: TransactionListGrouping = .date
     @State private var bottomBarHiddenAmount: CGFloat = 0
+    @State private var isTransactionSearchActive = false
+
+    private var displayedBottomBarHiddenAmount: CGFloat {
+        isTransactionSearchActive
+            ? HomeBottomBarMetrics.collapseDistance
+            : bottomBarHiddenAmount
+    }
 
     private var bottomBarHideProgress: CGFloat {
         guard HomeBottomBarMetrics.collapseDistance > 0 else { return 0 }
-        return min(1, max(0, bottomBarHiddenAmount / HomeBottomBarMetrics.collapseDistance))
+        return min(1, max(0, displayedBottomBarHiddenAmount / HomeBottomBarMetrics.collapseDistance))
     }
 
     private var contentBottomInset: CGFloat {
-        max(0, HomeBottomBarMetrics.contentInset - bottomBarHiddenAmount)
+        max(0, HomeBottomBarMetrics.contentInset - displayedBottomBarHiddenAmount)
     }
 
     private var listScrollBottomInset: CGFloat {
-        max(0, HomeBottomBarMetrics.visibleListScrollInset - bottomBarHiddenAmount)
+        max(0, HomeBottomBarMetrics.visibleListScrollInset - displayedBottomBarHiddenAmount)
     }
 
     var body: some View {
@@ -61,6 +68,7 @@ struct Home: View {
                     .navigationBarTitleDisplayMode(.inline)
                     .onChange(of: self.homeViewModel.currentKey) { _, _ in
                         bottomBarHiddenAmount = 0
+                        isTransactionSearchActive = false
                         Task {
                             await homeViewModel.prefetchIfNeeded(currentKey: homeViewModel.currentKey)
                         }
@@ -91,7 +99,7 @@ struct Home: View {
             }
             .topSpacingIfNoSafeArea()
         }
-        .ignoresSafeArea(.container, edges: bottomBarHiddenAmount > 0 ? .bottom : [])
+        .ignoresSafeArea(.container, edges: displayedBottomBarHiddenAmount > 0 ? .bottom : [])
         .overlay(alignment: .bottom) {
             bottomActionBar
         }
@@ -143,13 +151,13 @@ struct Home: View {
             .padding(.horizontal, 16)
         }
         .bottomSpacingIfNoSafeArea(8)
-        .offset(y: bottomBarHiddenAmount)
+        .offset(y: displayedBottomBarHiddenAmount)
         .opacity(1 - bottomBarHideProgress)
         .allowsHitTesting(bottomBarHideProgress < 1)
     }
 
     private func handleTransactionListScroll(_ update: TransactionListScrollUpdate) {
-        guard update.visibleHeight > 0 else { return }
+        guard update.visibleHeight > 0, !isTransactionSearchActive else { return }
 
         if update.offsetY <= 0 {
             bottomBarHiddenAmount = 0
@@ -346,8 +354,11 @@ struct Home: View {
             onListAppear: key == homeViewModel.currentKey
                 ? resetBottomActionBar
                 : nil,
+            onSearchActiveChange: key == homeViewModel.currentKey
+                ? { isTransactionSearchActive = $0 }
+                : nil,
             scrollBottomInset: listScrollBottomInset,
-            extendsToBottomSafeArea: bottomBarHiddenAmount > 0
+            extendsToBottomSafeArea: displayedBottomBarHiddenAmount > 0
         )
         .padding(.horizontal, 16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

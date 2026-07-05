@@ -74,6 +74,7 @@ struct TransactionListView: View {
     var onScrollAnchorChange: (TransactionListPersistedAnchor) -> Void
     var onScrollOffsetChange: ((TransactionListScrollUpdate) -> Void)?
     var onListAppear: (() -> Void)?
+    var onSearchActiveChange: ((Bool) -> Void)?
     var scrollBottomInset: CGFloat = 62
     var extendsToBottomSafeArea: Bool = false
 
@@ -230,6 +231,9 @@ struct TransactionListView: View {
         }
         .onChange(of: monthKey) { _, _ in
             closeSearch()
+        }
+        .onChange(of: isSearching) { _, isActive in
+            onSearchActiveChange?(isActive)
         }
         .task {
             await categoryStore.load()
