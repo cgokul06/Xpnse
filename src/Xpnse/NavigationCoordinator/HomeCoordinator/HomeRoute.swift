@@ -14,6 +14,7 @@ enum HomeRoute: Route {
     case settings
 //    case profile
     case billScanner
+    case insights
 }
 
 //enum HomeSheet: Route {

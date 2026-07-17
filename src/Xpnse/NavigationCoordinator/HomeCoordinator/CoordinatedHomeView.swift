@@ -28,6 +28,8 @@ struct CoordinatedHomeView: View {
                         Settings()
                     case .billScanner:
                         BillScannerView(billScannerService: billScannerService)
+                    case .insights:
+                        InsightsView()
                     }
                 }
         }

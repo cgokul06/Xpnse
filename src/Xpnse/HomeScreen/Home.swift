@@ -103,6 +103,9 @@ struct Home: View {
         .overlay(alignment: .bottom) {
             bottomActionBar
         }
+        .overlay(alignment: .bottomTrailing) {
+            insightsFloatingButton
+        }
         .onChange(of: homeCoordinator.path.count) { oldCount, newCount in
             guard newCount < oldCount else { return }
             resetBottomActionBar()
@@ -111,6 +114,27 @@ struct Home: View {
 
     private func resetBottomActionBar() {
         bottomBarHiddenAmount = 0
+    }
+
+    private var insightsFloatingButton: some View {
+        Button {
+            homeCoordinator.push(.insights)
+        } label: {
+            Image(systemName: "chart.bar.xaxis")
+        }
+        .buttonStyle(
+            XpnseSquareIconButtonStyle.defaultButton(
+                bgColor: XpnseColorKey.secondaryButtonBGColor,
+                isDisabled: .constant(false),
+                isLoading: .constant(false)
+            )
+        )
+        .accessibilityLabel("SnapLedger Insights")
+        .padding(.trailing, 16)
+        .padding(.bottom, contentBottomInset + 8)
+        .offset(y: displayedBottomBarHiddenAmount)
+        .opacity(1 - bottomBarHideProgress)
+        .allowsHitTesting(bottomBarHideProgress < 1)
     }
 
     private var bottomActionBar: some View {
@@ -354,9 +378,9 @@ struct Home: View {
             onListAppear: key == homeViewModel.currentKey
                 ? resetBottomActionBar
                 : nil,
-            onSearchActiveChange: key == homeViewModel.currentKey
-                ? { isTransactionSearchActive = $0 }
-                : nil,
+            isSearching: key == homeViewModel.currentKey
+                ? $isTransactionSearchActive
+                : .constant(false),
             scrollBottomInset: listScrollBottomInset,
             extendsToBottomSafeArea: displayedBottomBarHiddenAmount > 0
         )

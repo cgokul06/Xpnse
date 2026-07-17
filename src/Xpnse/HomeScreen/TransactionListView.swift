@@ -74,7 +74,7 @@ struct TransactionListView: View {
     var onScrollAnchorChange: (TransactionListPersistedAnchor) -> Void
     var onScrollOffsetChange: ((TransactionListScrollUpdate) -> Void)?
     var onListAppear: (() -> Void)?
-    var onSearchActiveChange: ((Bool) -> Void)?
+    @Binding var isSearching: Bool
     var scrollBottomInset: CGFloat = 62
     var extendsToBottomSafeArea: Bool = false
 
@@ -93,7 +93,6 @@ struct TransactionListView: View {
     @State private var pendingScrollMetrics: TransactionListScrollMetrics?
     @State private var isTransactionsHeaderPinned = false
     @State private var pendingProgrammaticScroll: TransactionListPersistedAnchor?
-    @State private var isSearching = false
     @State private var searchText = ""
     @State private var debouncedSearchQuery = ""
     @State private var searchDebounceTask: Task<Void, Never>?
@@ -117,6 +116,10 @@ struct TransactionListView: View {
 
     private var isSearchActive: Bool {
         !debouncedSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var hasSearchQuery: Bool {
+        !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private var filteredSearchResults: [Transaction] {
@@ -233,7 +236,12 @@ struct TransactionListView: View {
             closeSearch()
         }
         .onChange(of: isSearching) { _, isActive in
-            onSearchActiveChange?(isActive)
+            if !isActive {
+                clearSearchInput()
+            }
+        }
+        .dismissKeyboardOnOutsideTap(isEnabled: isSearching) {
+            handleSearchDismissInteraction()
         }
         .task {
             await categoryStore.load()
@@ -262,14 +270,45 @@ struct TransactionListView: View {
     }
 
     private func closeSearch() {
-        searchDebounceTask?.cancel()
-        searchDebounceTask = nil
         withAnimation(.easeInOut(duration: 0.25)) {
             isSearching = false
-            searchText = ""
-            debouncedSearchQuery = ""
+        }
+        clearSearchInput()
+    }
+
+    private func clearSearchInput() {
+        searchDebounceTask?.cancel()
+        searchDebounceTask = nil
+        searchText = ""
+        debouncedSearchQuery = ""
+        isSearchFieldFocused = false
+    }
+
+    private func resignSearchKeyboard() {
+        guard isSearchFieldFocused else {
+            UIApplication.shared.sendAction(
+                #selector(UIResponder.resignFirstResponder),
+                to: nil,
+                from: nil,
+                for: nil
+            )
+            return
         }
         isSearchFieldFocused = false
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
+    }
+
+    /// Outside tap / scroll: keep an active query, otherwise close the search bar.
+    private func handleSearchDismissInteraction() {
+        guard isSearching else { return }
+        resignSearchKeyboard()
+        if hasSearchQuery { return }
+        closeSearch()
     }
 
     private func handleScrollGeometryChange(
@@ -298,6 +337,10 @@ struct TransactionListView: View {
 
         let previousOffsetY = scrollMetrics.offsetY
         scrollMetrics = newMetrics
+
+        if isSearching, abs(newMetrics.offsetY - previousOffsetY) > 0 {
+            handleSearchDismissInteraction()
+        }
 
         if newMetrics.isScrollable {
             onScrollOffsetChange?(
@@ -520,6 +563,7 @@ struct TransactionListView: View {
                 }
             }
             .scrollBounceBehavior(.basedOnSize, axes: .vertical)
+            .scrollDismissesKeyboard(.immediately)
             .ignoresSafeArea(.container, edges: extendsToBottomSafeArea ? .bottom : [])
             .onScrollGeometryChange(for: TransactionListScrollMetrics.self) { geometry in
                 TransactionListScrollMetrics.from(geometry)
