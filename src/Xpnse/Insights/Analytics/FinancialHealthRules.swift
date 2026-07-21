@@ -66,51 +66,19 @@ enum FinancialHealthRules {
         - Savings rate healthy band: \(Int(savingsRateHealthyMin * 100))–\(Int(savingsRateHealthyMax * 100))% of income.
         - Subscriptions ideally under \(Int(subscriptionsComfortableMax * 100))–\(Int(subscriptionsSoftMax * 100))% of expenses.
         - Category health uses each user's rolling average (below &lt;80%, near 80–105%, above 105–120%, well above &gt;120%).
+        - Financial health stars are computed deterministically from `healthBreakdown` (savings, spending discipline, subscriptions, stability, trend). Never invent or adjust the score — only explain it using `healthBreakdown.reasons`. Discuss the current focus month only; never cite prior months.
         - Detected events are rare / annual-style category spikes (festival, insurance), not recurring bills or mild overspend.
         - Respect event tags: seasonal, medical, capital, and bonus income are temporary — do not treat them as lasting habit changes.
-        - Every narrative must cover: what happened, why it matters, and what the user can do.
+        - Every narrative must cover: what happened, why it matters, and what you can do next — always in second person.
         - Celebrate genuine wins. Never invent merchants, amounts, or categories absent from the snapshot.
+        - Write to the reader as "you/your", never as "the user".
         """
     }
 }
 
 enum InsightsScoring {
-    /// Returns 1…5 star score from deterministic metrics.
+    /// Deprecated — use `FinancialHealthScoring` for the 5-component health model.
     static func score(snapshot: InsightsSnapshot) -> Int {
-        var points = 0.0
-
-        let rate = snapshot.savingsRate
-        if rate >= FinancialHealthRules.savingsRateHealthyMin {
-            points += 2.0
-            if rate <= FinancialHealthRules.savingsRateHealthyMax + 0.05 {
-                points += 0.5
-            }
-        } else if rate >= 0.10 {
-            points += 1.0
-        }
-
-        if snapshot.subscriptionShareOfExpense <= FinancialHealthRules.subscriptionsComfortableMax {
-            points += 1.0
-        } else if snapshot.subscriptionShareOfExpense <= FinancialHealthRules.subscriptionsSoftMax {
-            points += 0.5
-        }
-
-        let overCount = snapshot.categoryBaselines.filter { $0.status == .over }.count
-        let approachingCount = snapshot.categoryBaselines.filter { $0.status == .approaching }.count
-        if overCount == 0 {
-            points += 1.0
-        } else if overCount == 1 {
-            points += 0.4
-        }
-        if approachingCount <= 1 {
-            points += 0.5
-        }
-
-        if snapshot.events.filter(\.excludeFromLifestyle).isEmpty {
-            points += 0.3
-        }
-
-        let clamped = min(5.0, max(1.0, points.rounded()))
-        return Int(clamped)
+        snapshot.healthBreakdown.finalStars
     }
 }

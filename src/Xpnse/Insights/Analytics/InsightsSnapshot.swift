@@ -126,6 +126,7 @@ struct InsightsSnapshot: Codable, Equatable, Sendable {
     let events: [InsightsFinancialEvent]
     let categoryBaselines: [InsightsCategoryBaseline]
     let healthScore: Int
+    let healthBreakdown: FinancialHealthBreakdown
     let savingsRate: Double
     let subscriptionShareOfExpense: Double
     let lifestyleExpense: Double

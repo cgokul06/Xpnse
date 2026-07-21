@@ -8,22 +8,22 @@ import FoundationModels
 
 @Generable
 struct InsightsNarrativeResult {
-    @Guide(description: "1-3 sentence overall financial health summary covering what happened, why it matters, and a gentle next step.")
+    @Guide(description: "1-3 sentences in second person (you/your) about the current focus month only. Cover where you stand now, why it matters, and a gentle next step. Never mention prior months or say 'the user'.")
     var healthSummary: String
 
-    @Guide(description: "Short spending personality label e.g. planned spender, increasingly impulsive.")
+    @Guide(description: "Short second-person spending personality label, e.g. 'Planned spender' or 'You seem like a steady saver'. Never 'the user'.")
     var personalityLabel: String
 
-    @Guide(description: "1-2 sentence personality explanation grounded only in snapshot facts.")
+    @Guide(description: "1-2 sentences in second person explaining the personality label using only snapshot facts. Start with 'You' where natural.")
     var personalityBlurb: String
 
-    @Guide(description: "One line about top merchants. Empty if none.")
+    @Guide(description: "One line in second person about top spends. Empty if none. Use you/your, not the user.")
     var merchantGloss: String
 
-    @Guide(description: "Up to 3 concrete opportunity lines with approximate savings when numbers exist in the snapshot.")
+    @Guide(description: "Up to 3 second-person opportunity lines (you could…). Include approximate savings when numbers exist.")
     var opportunities: [String]
 
-    @Guide(description: "Up to 3 positive reinforcement lines celebrating real wins from the snapshot.")
+    @Guide(description: "Up to 3 second-person win lines celebrating real progress (you've…, your…).")
     var wins: [String]
 }
 
@@ -65,17 +65,19 @@ final class InsightsNarrativeService {
             appropriateFor: nil,
             create: true
         )) ?? fm.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        return base.appendingPathComponent("insights-narrative-cache.json")
+        return base.appendingPathComponent("insights-narrative-cache-v3.json")
     }
 
     func narratives(for snapshot: InsightsSnapshot) async -> InsightsNarratives {
         let key = snapshot.contentHash
-        if let cached = memoryCache[key] {
-            return cached
-        }
-        if let disk = loadDiskCache()[key] {
-            memoryCache[key] = disk
-            return disk
+        if InsightsResultCache.Policy.narrativeReadsEnabled {
+            if let cached = memoryCache[key] {
+                return cached
+            }
+            if let disk = loadDiskCache()[key] {
+                memoryCache[key] = disk
+                return disk
+            }
         }
 
         guard FoundationModelsAvailability.isAvailable else {
@@ -110,8 +112,18 @@ final class InsightsNarrativeService {
         else { return .empty }
 
         let prompt = """
-        You are a concise on-device financial coach for SnapLedger.
+        You are a concise on-device financial coach for SnapLedger, speaking directly to the person reading.
+        Voice rules (mandatory):
+        - Always use second person: "you", "your", "you're", "you've".
+        - Never write "the user", "user", "they", "their", or third-person observations about the reader.
+        - Prefer openings like "You are…", "You seem like…", "Your spending…", "You've…".
         Use ONLY the JSON snapshot below. Do not invent amounts, merchants, or categories.
+        The financial health star rating is already computed in `healthBreakdown.finalStars` and `healthBreakdown.totalScore`.
+        Do NOT change or recalculate the score. Explain it using `healthBreakdown.reasons`.
+        Financial health scope (mandatory):
+        - Discuss ONLY the current focus month (`focusMonthLabel`). Never mention prior months by name, past savings targets, or historical failures.
+        - All `healthBreakdown.reasons` refer to this month — keep the summary forward-looking and about where you stand now.
+        Example tone: "Your financial health is rated 4/5. You're on track with forecast savings this month, though shopping ran above your usual level."
         \(FinancialHealthRules.rulesPromptText())
         Snapshot JSON:
         \(json)

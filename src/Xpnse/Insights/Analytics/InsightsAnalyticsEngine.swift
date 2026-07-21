@@ -14,6 +14,7 @@ enum InsightsAnalyticsEngine {
     static func build(
         transactions: [Transaction],
         recurringItems: [RecurringTransaction],
+        discretionaryCategoryIds: Set<String>,
         focusDate: Date = Date(),
         calendar: Calendar = .current,
         currencySymbol: String = CurrencyManager.shared.selectedCurrency.symbol
@@ -118,6 +119,22 @@ enum InsightsAnalyticsEngine {
 
         let focusLabel = monthLabel(year: focusYear, month: focusMonth, calendar: calendar)
 
+        let healthBreakdown = FinancialHealthScoring.score(
+            FinancialHealthScoringInput(
+                forecast: forecast,
+                focusYear: focusYear,
+                focusMonth: focusMonth,
+                monthSummaries: monthSummaries,
+                completedBaselineMonths: baselineMonths.map { (year: $0.0, month: $0.1) },
+                transactions: transactions,
+                events: events,
+                subscriptionShareOfExpense: subscriptionShare,
+                subscriptions: subscriptions,
+                discretionaryCategoryIds: discretionaryCategoryIds,
+                calendar: calendar
+            )
+        )
+
         var draft = InsightsSnapshot(
             focusMonthLabel: focusLabel,
             focusYear: focusYear,
@@ -132,14 +149,14 @@ enum InsightsAnalyticsEngine {
             subscriptions: subscriptions,
             events: events,
             categoryBaselines: categoryBaselines,
-            healthScore: 3,
+            healthScore: healthBreakdown.finalStars,
+            healthBreakdown: healthBreakdown,
             savingsRate: savingsRate,
             subscriptionShareOfExpense: subscriptionShare,
             lifestyleExpense: lifestyleExpense,
             contentHash: ""
         )
 
-        let score = InsightsScoring.score(snapshot: draft)
         draft = InsightsSnapshot(
             focusMonthLabel: draft.focusMonthLabel,
             focusYear: draft.focusYear,
@@ -154,7 +171,8 @@ enum InsightsAnalyticsEngine {
             subscriptions: draft.subscriptions,
             events: draft.events,
             categoryBaselines: draft.categoryBaselines,
-            healthScore: score,
+            healthScore: draft.healthScore,
+            healthBreakdown: draft.healthBreakdown,
             savingsRate: draft.savingsRate,
             subscriptionShareOfExpense: draft.subscriptionShareOfExpense,
             lifestyleExpense: draft.lifestyleExpense,
@@ -229,19 +247,31 @@ enum InsightsAnalyticsEngine {
         expenses: [Transaction],
         total: Double
     ) -> [InsightsMerchantTotal] {
-        let resolver = MerchantDisplayResolver(expenses: expenses)
-        var totals: [String: Double] = [:]
+        let merchantBySeriesId = recurringSeriesMerchants(expenses: expenses)
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .medium
+        dateFormatter.timeStyle = .none
+        var totals: [String: (display: String, amount: Double)] = [:]
+
         for expense in expenses {
-            let key = resolver.key(for: expense)
-            guard !key.isEmpty else { continue }
-            totals[key, default: 0] += expense.totalAmount
+            let row = merchantRow(
+                for: expense,
+                merchantBySeriesId: merchantBySeriesId,
+                dateFormatter: dateFormatter
+            )
+            let existing = totals[row.key]
+            totals[row.key] = (
+                display: existing?.display ?? row.display,
+                amount: (existing?.amount ?? 0) + expense.totalAmount
+            )
         }
+
         return totals
-            .map { name, amount in
+            .map { _, value in
                 InsightsMerchantTotal(
-                    merchant: name,
-                    amount: amount,
-                    percentOfExpense: total > 0 ? (amount / total) * 100 : 0
+                    merchant: value.display,
+                    amount: value.amount,
+                    percentOfExpense: total > 0 ? (value.amount / total) * 100 : 0
                 )
             }
             .sorted { $0.amount > $1.amount }
@@ -249,63 +279,45 @@ enum InsightsAnalyticsEngine {
             .map { $0 }
     }
 
-    /// Groups payees so title-only rows (e.g. "Car loan") merge into the merchant
-    /// used on sibling transactions / the same recurring series (e.g. "Kotak Mahindra Bank").
-    private struct MerchantDisplayResolver {
-        private let merchantBySeriesId: [String: String]
-        private let merchantByNormalizedTitle: [String: String]
+    /// Merchant name from recurring series when the rule defines one.
+    private static func recurringSeriesMerchants(expenses: [Transaction]) -> [String: String] {
+        var map: [String: String] = [:]
+        for expense in expenses {
+            guard let seriesId = expense.recurringSeriesId,
+                  let merchant = normalizedMerchant(expense.merchant),
+                  map[seriesId] == nil
+            else { continue }
+            map[seriesId] = merchant
+        }
+        return map
+    }
 
-        init(expenses: [Transaction]) {
-            var seriesMap: [String: String] = [:]
-            var titleMerchants: [String: Set<String>] = [:]
-
-            for expense in expenses {
-                let merchant = Self.normalizedMerchant(expense.merchant)
-                let titleKey = SuggestionEngine.normalize(expense.title)
-
-                if let merchant {
-                    if let seriesId = expense.recurringSeriesId, seriesMap[seriesId] == nil {
-                        seriesMap[seriesId] = merchant
-                    }
-                    if !titleKey.isEmpty {
-                        titleMerchants[titleKey, default: []].insert(merchant)
-                    }
-                }
-            }
-
-            // Only remap a title → merchant when that title consistently maps to one merchant.
-            var titleMap: [String: String] = [:]
-            for (title, merchants) in titleMerchants where merchants.count == 1 {
-                titleMap[title] = merchants.first!
-            }
-
-            self.merchantBySeriesId = seriesMap
-            self.merchantByNormalizedTitle = titleMap
+    /// Aggregate key + label for Top merchants. Without an explicit merchant (or series
+    /// merchant), each transaction stays separate — we do not merge by title alone.
+    private static func merchantRow(
+        for transaction: Transaction,
+        merchantBySeriesId: [String: String],
+        dateFormatter: DateFormatter
+    ) -> (key: String, display: String) {
+        if let merchant = normalizedMerchant(transaction.merchant) {
+            return (merchant, merchant)
+        }
+        if let seriesId = transaction.recurringSeriesId,
+           let merchant = merchantBySeriesId[seriesId] {
+            return (merchant, merchant)
         }
 
-        func key(for transaction: Transaction) -> String {
-            if let merchant = Self.normalizedMerchant(transaction.merchant) {
-                return merchant
-            }
-            if let seriesId = transaction.recurringSeriesId,
-               let merchant = merchantBySeriesId[seriesId] {
-                return merchant
-            }
-            let titleKey = SuggestionEngine.normalize(transaction.title)
-            if let merchant = merchantByNormalizedTitle[titleKey] {
-                return merchant
-            }
-            let description = transaction.title.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !description.isEmpty else { return "Unknown" }
-            return "Unknown (\(description))"
-        }
+        let title = transaction.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let dateText = dateFormatter.string(from: Date(timeIntervalSince1970: transaction.date))
+        let display = title.isEmpty ? "Expense on \(dateText)" : "\(title) (\(dateText))"
+        return (transaction.id, display)
+    }
 
-        private static func normalizedMerchant(_ value: String?) -> String? {
-            guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines),
-                  !trimmed.isEmpty
-            else { return nil }
-            return trimmed
-        }
+    private static func normalizedMerchant(_ value: String?) -> String? {
+        guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !trimmed.isEmpty
+        else { return nil }
+        return trimmed
     }
 
     private static func buildBiggestChanges(
@@ -966,6 +978,7 @@ enum InsightsAnalyticsEngine {
             events: snapshot.events,
             categoryBaselines: snapshot.categoryBaselines,
             healthScore: snapshot.healthScore,
+            healthBreakdown: snapshot.healthBreakdown,
             savingsRate: snapshot.savingsRate,
             subscriptionShareOfExpense: snapshot.subscriptionShareOfExpense,
             lifestyleExpense: snapshot.lifestyleExpense,

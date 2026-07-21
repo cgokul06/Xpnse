@@ -49,7 +49,8 @@ final class InsightsViewModel: ObservableObject {
         self.year = calendar.component(.year, from: now)
 
         // Paint last known Insights immediately (verified against revision next).
-        if let cached = InsightsResultCache.loadAny() {
+        if InsightsResultCache.Policy.readsEnabledOnInit,
+           let cached = InsightsResultCache.loadAny() {
             applyCached(cached, markReady: true)
         }
 
@@ -90,26 +91,33 @@ final class InsightsViewModel: ObservableObject {
         let now = Date()
         year = calendar.component(.year, from: now)
 
+        await CategoryStore.shared.load()
+        let spendingRoles = await CategorySpendingClassificationService.shared.roles(
+            for: CategoryStore.shared.categories
+        )
+
         let revision: String
         do {
-            revision = try await currentRevision(now: now)
+            revision = try await currentRevision(now: now, categorySpendingRevision: spendingRoles.revision)
         } catch {
             revision = UUID().uuidString
         }
         guard !Task.isCancelled else { return }
 
-        if let cached = InsightsResultCache.load(matching: revision) {
+        let useCache = reason != .appear || InsightsResultCache.Policy.readsEnabledOnAppear
+
+        if useCache, let cached = InsightsResultCache.load(matching: revision) {
             applyCached(cached, markReady: true)
             lastRevision = revision
             return
         }
 
         // Same revision we already published this session — nothing to do.
-        if lastRevision == revision, hasCompletedInitialLoad, hasContent {
+        if useCache, lastRevision == revision, hasCompletedInitialLoad, hasContent {
             return
         }
 
-        if !hasCompletedInitialLoad {
+        if !hasCompletedInitialLoad || !useCache {
             phase = .loading
         }
 
@@ -120,7 +128,7 @@ final class InsightsViewModel: ObservableObject {
         guard !Task.isCancelled else { return }
 
         // Re-check after yield in case a concurrent change landed.
-        if let cached = InsightsResultCache.load(matching: revision) {
+        if useCache, let cached = InsightsResultCache.load(matching: revision) {
             applyCached(cached, markReady: true)
             lastRevision = revision
             return
@@ -160,6 +168,7 @@ final class InsightsViewModel: ObservableObject {
             let builtSnapshot = InsightsAnalyticsEngine.build(
                 transactions: transactions,
                 recurringItems: recurringItems,
+                discretionaryCategoryIds: spendingRoles.discretionaryIds,
                 focusDate: now,
                 calendar: calendar
             )
@@ -175,7 +184,7 @@ final class InsightsViewModel: ObservableObject {
         }
     }
 
-    private func currentRevision(now: Date) async throws -> String {
+    private func currentRevision(now: Date, categorySpendingRevision: String) async throws -> String {
         async let txUpdated = transactionRepository.updatedAtById()
         async let recurringUpdated = recurringRepository.updatedAtById()
         return InsightsResultCache.revision(
@@ -183,6 +192,7 @@ final class InsightsViewModel: ObservableObject {
             recurringUpdatedAtById: try await recurringUpdated,
             focusDay: now,
             currencyCode: CurrencyManager.shared.selectedCurrency.code,
+            categorySpendingRevision: categorySpendingRevision,
             calendar: calendar
         )
     }

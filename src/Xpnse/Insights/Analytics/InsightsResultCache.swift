@@ -21,6 +21,33 @@ enum InsightsResultCache {
     private static let fileName = "insights-result-cache.json"
     private static var memory: InsightsCachedResult?
 
+    /// DEBUG builds skip cache reads on Insights appear so analytics always recompute.
+    enum Policy {
+        static var readsEnabledOnAppear: Bool {
+            #if DEBUG
+            return false
+            #else
+            return true
+            #endif
+        }
+
+        static var readsEnabledOnInit: Bool {
+            #if DEBUG
+            return false
+            #else
+            return true
+            #endif
+        }
+
+        static var narrativeReadsEnabled: Bool {
+            #if DEBUG
+            return false
+            #else
+            return true
+            #endif
+        }
+    }
+
     private static var cacheURL: URL {
         let fm = FileManager.default
         let base = (try? fm.url(
@@ -38,6 +65,7 @@ enum InsightsResultCache {
         recurringUpdatedAtById: [UUID: Date],
         focusDay: Date,
         currencyCode: String,
+        categorySpendingRevision: String,
         calendar: Calendar = .current
     ) -> String {
         let day = calendar.dateComponents([.year, .month, .day], from: focusDay)
@@ -45,8 +73,10 @@ enum InsightsResultCache {
 
         var lines: [String] = [
             "schema:category-health-v2",
+            "schema:financial-health-v4",
             "day:\(dayKey)",
-            "currency:\(currencyCode)"
+            "currency:\(currencyCode)",
+            "categoryRoles:\(categorySpendingRevision)"
         ]
         for (id, updatedAt) in transactionUpdatedAtById.sorted(by: { $0.key < $1.key }) {
             lines.append("t:\(id):\(updatedAt.timeIntervalSince1970)")

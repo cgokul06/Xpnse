@@ -38,8 +38,7 @@ struct ExpenseTrendChart: View {
                 subtitle: "Cumulative by day · \(model.year)"
             )
 
-            chart
-                .frame(height: Self.chartHeight)
+            chartScrollViewport
                 .padding(.vertical, 8)
                 .padding(.trailing, 8)
                 .xpnseOutlinedPanel()
@@ -48,6 +47,17 @@ struct ExpenseTrendChart: View {
         }
         .padding(.horizontal, 4)
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var chartScrollViewport: some View {
+        GeometryReader { geometry in
+            chart
+                .frame(width: geometry.size.width, height: geometry.size.height, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: Self.chartHeight)
+        .clipped()
+        .contentShape(Rectangle())
     }
 
     private var chart: some View {

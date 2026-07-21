@@ -39,7 +39,7 @@ struct InsightsView: View {
     }
 
     private var insightsContent: some View {
-        ScrollView {
+        ScrollView(.vertical, showsIndicators: true) {
             VStack(spacing: 16) {
                 if !viewModel.expenseTrend.points.isEmpty {
                     ExpenseTrendChart(model: viewModel.expenseTrend)
@@ -47,8 +47,11 @@ struct InsightsView: View {
 
                 if let snapshot = viewModel.snapshot, snapshot.hasMeaningfulData {
                     InsightHealthCard(
-                        score: snapshot.healthScore,
-                        savingsRate: snapshot.savingsRate,
+                        score: snapshot.healthBreakdown.finalStars,
+                        totalScore: snapshot.healthBreakdown.totalScore,
+                        savingsRate: snapshot.forecast.expectedIncome > 0
+                            ? snapshot.forecast.expectedSavings / snapshot.forecast.expectedIncome
+                            : snapshot.savingsRate,
                         summary: viewModel.narratives.healthSummary,
                         personalityLabel: viewModel.narratives.personalityLabel,
                         personalityBlurb: viewModel.narratives.personalityBlurb
@@ -89,9 +92,12 @@ struct InsightsView: View {
                     )
                 }
             }
+            .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 16)
             .padding(.vertical, 16)
         }
+        .scrollBounceBehavior(.basedOnSize, axes: .vertical)
+        .scrollClipDisabled(false)
     }
 
     private var emptyState: some View {

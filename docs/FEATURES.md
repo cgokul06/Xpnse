@@ -312,7 +312,7 @@ When Foundation Models are unavailable, numeric cards still appear; narrative se
 ### Charts & cards (Phase 1)
 
 - **Expense trend** — cumulative daily expenses by month for the current year, with optional current-month projection
-- **Financial health** — star score + savings rate + AI summary / spending personality
+- **Financial health** — deterministic 5-component score (savings, spending discipline, subscriptions, stability, trend) shown as stars plus `X.X/5.0`; AI only explains the precomputed `healthBreakdown`
 - **Biggest changes** — category spend vs recent average (↑ ↓ ≈)
 - **Top merchants** — ranked by amount (+ optional AI gloss)
 - **Category health** — this month vs **usual** (average monthly spend in that category across recent *complete* lookback months). Status bands: below &lt;80% (green), near 80–105% (yellow), above 105–120% (orange), well above &gt;120% (red). Bars fill to 100% at usual.

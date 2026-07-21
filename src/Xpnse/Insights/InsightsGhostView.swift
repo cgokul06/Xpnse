@@ -10,7 +10,7 @@ struct InsightsGhostView: View {
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        ScrollView {
+        ScrollView(.vertical, showsIndicators: false) {
             VStack(spacing: 16) {
                 chartGhost
                 cardGhost(lines: 3, barHeights: [12, 12])
@@ -19,9 +19,11 @@ struct InsightsGhostView: View {
                 cardGhost(lines: 4, barHeights: [8, 8, 8, 8])
                 cardGhost(lines: 3, barHeights: [12, 12, 12])
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 16)
             .padding(.vertical, 16)
         }
+        .scrollBounceBehavior(.basedOnSize, axes: .vertical)
         .scrollDisabled(true)
         .accessibilityLabel("Loading insights")
     }

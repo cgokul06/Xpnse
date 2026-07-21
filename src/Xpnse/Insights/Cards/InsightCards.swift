@@ -9,6 +9,7 @@ struct InsightHealthCard: View {
     @Environment(\.colorScheme) private var colorScheme
 
     let score: Int
+    let totalScore: Double
     let savingsRate: Double
     let summary: String
     let personalityLabel: String
@@ -29,9 +30,14 @@ struct InsightHealthCard: View {
                         .font(.system(size: 16))
                 }
                 Spacer()
-                Text("\(Int((savingsRate * 100).rounded()))% savings rate")
-                    .font(.system(size: 13, weight: .medium))
-                    .xpnseAdaptiveForeground(muted: true)
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(String(format: "%.1f/5.0", totalScore))
+                        .font(.system(size: 13, weight: .semibold))
+                        .xpnseAdaptiveForeground()
+                    Text("\(Int((savingsRate * 100).rounded()))% forecast savings")
+                        .font(.system(size: 12, weight: .medium))
+                        .xpnseAdaptiveForeground(muted: true)
+                }
             }
 
             if !summary.isEmpty {
@@ -133,7 +139,7 @@ struct InsightTopMerchantsCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            XpnsePanelHeader(title: "Top merchants", subtitle: nil)
+            XpnsePanelHeader(title: "Top spends", subtitle: nil)
 
             if merchants.isEmpty {
                 Text("Add merchant names on transactions to see rankings.")
@@ -213,6 +219,7 @@ struct InsightCategoryHealthCard: View {
                         )
                         .font(.system(size: 12))
                         .xpnseAdaptiveForeground(muted: true)
+                        .fixedSize(horizontal: false, vertical: true)
                     }
                 }
 
