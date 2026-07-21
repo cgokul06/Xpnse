@@ -127,7 +127,10 @@ struct TransactionListView: View {
         guard !query.isEmpty else { return [] }
 
         return allTransactions
-            .filter { $0.title.localizedCaseInsensitiveContains(query) }
+            .filter {
+                $0.title.localizedCaseInsensitiveContains(query)
+                    || ($0.merchant?.localizedCaseInsensitiveContains(query) ?? false)
+            }
             .sorted { $0.date > $1.date }
     }
 
@@ -630,7 +633,7 @@ struct TransactionListView: View {
                 .font(.system(size: 14, weight: .medium))
                 .xpnseAdaptiveForeground(muted: true)
 
-            TextField("Search by description", text: $searchText)
+            TextField("Search by description or merchant", text: $searchText)
                 .font(.system(size: 15, weight: .medium))
                 .foregroundStyle(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
                 .textInputAutocapitalization(.never)
