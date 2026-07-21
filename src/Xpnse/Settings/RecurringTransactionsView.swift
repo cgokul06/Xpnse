@@ -398,9 +398,12 @@ private struct EditRecurringTransactionView: View {
             startDate: recurringStartDate,
             endDate: computedEndDate,
             recurrence: recurrence,
-            nextOccurrence: original.state == .active
-                ? recurrence.firstOccurrence(onOrAfter: recurringStartDate)
-                : nil,
+            nextOccurrence: resolvedNextOccurrence(
+                original: original,
+                startDate: recurringStartDate,
+                endDate: computedEndDate,
+                recurrence: recurrence
+            ),
             lastTransactionAddedOn: original.lastTransactionAddedOn,
             state: original.state,
             notificationReminderEnabled: remindRecurring,
@@ -421,6 +424,53 @@ private struct EditRecurringTransactionView: View {
         await MainActor.run {
             onSaved()
             dismiss()
+        }
+    }
+
+    /// Avoid resetting `nextOccurrence` to the series start on every edit — that caused
+    /// `processPending` to re-walk history and create duplicate occurrences.
+    private func resolvedNextOccurrence(
+        original: RecurringTransaction,
+        startDate: Date,
+        endDate: Date?,
+        recurrence: RecurrenceFrequency,
+        calendar: Calendar = .current
+    ) -> Date? {
+        guard original.state == .active else { return nil }
+
+        let scheduleUnchanged =
+            original.recurrence == recurrence
+            && calendar.isDate(original.startDate, inSameDayAs: startDate)
+            && sameOptionalDay(original.endDate, endDate, calendar: calendar)
+
+        if scheduleUnchanged, let existing = original.nextOccurrence {
+            if let endDate, existing > endDate { return nil }
+            return existing
+        }
+
+        let next: Date?
+        if let lastAdded = original.lastTransactionAddedOn {
+            if startDate > lastAdded {
+                next = recurrence.firstOccurrence(onOrAfter: startDate, calendar: calendar)
+            } else {
+                next = recurrence.nextOccurrence(after: lastAdded, calendar: calendar)
+            }
+        } else {
+            next = recurrence.firstOccurrence(onOrAfter: startDate, calendar: calendar)
+        }
+
+        if let endDate, let next, next > endDate { return nil }
+        return next
+    }
+
+    private func sameOptionalDay(_ lhs: Date?, _ rhs: Date?, calendar: Calendar) -> Bool {
+        switch (lhs, rhs) {
+        case (nil, nil):
+            return true
+        case let (l?, r?):
+            return calendar.isDate(l, inSameDayAs: r)
+        default:
+            return false
         }
     }
 

@@ -105,22 +105,27 @@ final class RecurringTransactionManager {
             }
             let endDate = items[i].endDate
             while next <= now, endDate.map({ next <= $0 }) ?? true {
-                if let lastAdded = items[i].lastTransactionAddedOn,
-                   calendar.isDate(lastAdded, inSameDayAs: next) {
-                    guard let newNext = items[i].recurrence.nextOccurrence(after: next, calendar: calendar) else {
-                        items[i].nextOccurrence = nil
+                // Never re-materialize on or before the last added day. Editing a rule
+                // can reset `nextOccurrence` earlier in the series; only advance past those days.
+                if let lastAdded = items[i].lastTransactionAddedOn {
+                    let nextDay = calendar.startOfDay(for: next)
+                    let lastDay = calendar.startOfDay(for: lastAdded)
+                    if nextDay <= lastDay {
+                        guard let newNext = items[i].recurrence.nextOccurrence(after: next, calendar: calendar) else {
+                            items[i].nextOccurrence = nil
+                            changed = true
+                            break
+                        }
+                        if let end = endDate, newNext > end {
+                            items[i].nextOccurrence = nil
+                            changed = true
+                            break
+                        }
+                        items[i].nextOccurrence = newNext
+                        next = newNext
                         changed = true
-                        break
+                        continue
                     }
-                    if let end = endDate, newNext > end {
-                        items[i].nextOccurrence = nil
-                        changed = true
-                        break
-                    }
-                    items[i].nextOccurrence = newNext
-                    next = newNext
-                    changed = true
-                    continue
                 }
 
                 await sink.addTransaction(
@@ -152,7 +157,7 @@ final class RecurringTransactionManager {
                 changed = true
             }
         }
-        
+
         if changed {
             for item in items {
                 try? await repository.upsert(item)

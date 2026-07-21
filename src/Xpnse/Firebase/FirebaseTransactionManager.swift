@@ -142,7 +142,34 @@ final class FirebaseTransactionManager {
 
     func updateRecurringTransaction(_ recurring: RecurringTransaction) async {
         await recurringTransactionManager.update(recurring)
+        await backfillGeneratedTransactions(from: recurring)
         await RecurringReminderScheduler.shared.handleRecurringSaved(recurring)
+    }
+
+    /// Propagate rule title/merchant onto already-materialized occurrences so Insights
+    /// (and lists) do not split one series across "description" and "merchant" payees.
+    private func backfillGeneratedTransactions(from recurring: RecurringTransaction) async {
+        let seriesId = recurring.id.uuidString
+        do {
+            let all = try await transactionRepository.fetchAll()
+            for transaction in all where transaction.recurringSeriesId == seriesId {
+                var updated = transaction
+                var changed = false
+                if updated.title != recurring.title {
+                    updated.title = recurring.title
+                    changed = true
+                }
+                if updated.merchant != recurring.merchant {
+                    updated.merchant = recurring.merchant
+                    changed = true
+                }
+                if changed {
+                    try await transactionRepository.update(updated)
+                }
+            }
+        } catch {
+            print("Failed to backfill recurring series transactions: \(error.localizedDescription)")
+        }
     }
 
     func cancelRecurringTransaction(id: UUID) async {
