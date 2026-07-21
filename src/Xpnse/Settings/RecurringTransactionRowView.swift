@@ -38,12 +38,12 @@ struct RecurringTransactionRowView: View {
             Image(systemName: transactionType.displayIcon)
                 .resizable()
                 .frame(width: 16, height: 16)
-                .foregroundStyle(transactionType.iconFGColor.color)
+                .foregroundStyle(transactionType.brandColor)
 
             VStack(alignment: .leading, spacing: 8) {
                 Text(item.title)
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(XpnseColorKey.white.color)
+                    .xpnseAdaptiveForeground()
                     .lineLimit(1)
 
                 HStack(spacing: 8) {
@@ -54,14 +54,14 @@ struct RecurringTransactionRowView: View {
                     )
                     Text(category.name)
                         .font(.system(size: 12, weight: .light))
-                        .foregroundStyle(XpnseColorKey.white.color.opacity(0.85))
+                        .xpnseAdaptiveForeground(muted: true)
 
                     Text("·")
-                        .foregroundStyle(XpnseColorKey.white.color.opacity(0.5))
+                        .xpnseAdaptiveForeground(muted: true)
 
                     Text(item.recurrence.displayName)
                         .font(.system(size: 12, weight: .light))
-                        .foregroundStyle(XpnseColorKey.white.color.opacity(0.85))
+                        .xpnseAdaptiveForeground(muted: true)
 
                     if item.state == .paused {
                         Text("Paused")
@@ -76,7 +76,7 @@ struct RecurringTransactionRowView: View {
                     if item.notificationReminderEnabled {
                         Image(systemName: "bell.fill")
                             .font(.system(size: 10))
-                            .foregroundStyle(XpnseColorKey.white.color.opacity(0.7))
+                            .xpnseAdaptiveForeground(muted: true)
                     }
                 }
             }
@@ -86,18 +86,17 @@ struct RecurringTransactionRowView: View {
             VStack(alignment: .trailing, spacing: 4) {
                 Text(amountText)
                     .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(XpnseColorKey.white.color)
+                    .xpnseAdaptiveForeground()
 
                 Text("Next \(nextOccurrenceText)")
                     .font(.system(size: 11, weight: .regular))
-                    .foregroundStyle(XpnseColorKey.white.color.opacity(0.7))
+                    .xpnseAdaptiveForeground(muted: true)
             }
         }
         .padding(.vertical, 10)
         .padding(.horizontal, 12)
         .frame(maxWidth: .infinity)
-        .background(XpnseColorKey.transactionListBGColor.color)
-        .xpnseRoundedCorner()
+        .xpnseOutlinedPanel()
         .opacity(item.state == .paused ? 0.72 : 1)
     }
 }

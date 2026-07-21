@@ -87,12 +87,12 @@ struct SummaryCardView: View {
 
                 Text(type.displayName)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(.gray)
+                    .xpnseAdaptiveForeground(muted: true)
             }
 
             Text("\(currencySymbol)\(amount.abbreviatedFloor())")
                 .font(.system(size: 20, weight: .bold))
-                .foregroundColor(.white)
+                .xpnseAdaptiveForeground()
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
         }
@@ -105,22 +105,22 @@ struct SummaryCardView: View {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text("\(currencySymbol) \(totalBalance, specifier: "%.2f")")
                     .font(.system(size: 28, weight: .bold))
-                    .foregroundColor(.white)
+                    .xpnseAdaptiveForeground()
 
                 Text("/")
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(.gray)
+                    .xpnseAdaptiveForeground(muted: true)
 
                 Text("\(currencySymbol)\(income.abbreviatedFloor())")
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.gray)
+                    .xpnseAdaptiveForeground(muted: true)
             }
             .lineLimit(1)
             .minimumScaleFactor(0.7)
         } else {
             Text("\(currencySymbol) \(totalBalance, specifier: "%.2f")")
                 .font(.system(size: 28, weight: .bold))
-                .foregroundColor(.white)
+                .xpnseAdaptiveForeground()
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }

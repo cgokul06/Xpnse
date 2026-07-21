@@ -7,38 +7,79 @@ import SwiftUI
 import WidgetKit
 
 enum WidgetStyle {
-    static let summaryCard = Color(red: 0x47 / 255, green: 0x54 / 255, blue: 0xD3 / 255)
     static let income = Color(XpnseColorKey.incomePrimary.rawValue)
     static let savings = Color(XpnseColorKey.savingsPrimary.rawValue)
     static let expense = Color(XpnseColorKey.expensePrimary.rawValue)
-    static let secondaryButton = Color(red: 0x5E / 255, green: 0x5C / 255, blue: 0xE6 / 255)
-    static let mutedText = Color.white.opacity(0.72)
-    static let divider = Color.white.opacity(0.22)
 
-    static var primaryGradient: LinearGradient {
-        LinearGradient(
-            colors: [
-                Color(red: 0.4, green: 0.2, blue: 0.8),
-                Color(red: 0.6, green: 0.3, blue: 0.9),
-                Color(red: 0.8, green: 0.4, blue: 1.0)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
+    static let cornerRadius: CGFloat = 16
+    static let borderWidth: CGFloat = 1.5
+
+    static var panelShape: RoundedRectangle {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
     }
 
-    static func cardBackground<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        content()
-            .containerBackground(for: .widget) {
-                summaryCard
-            }
+    /// Uses App Group preference synced from the main app. WidgetKit's own
+    /// `colorScheme` / `systemBackground` often follow wallpaper luminance and
+    /// can stay dark while the phone is in Light Mode.
+    static var prefersDark: Bool {
+        WidgetAppearanceStore.prefersDark
     }
 
-    static func gradientBackground<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+    static func canvas(for colorScheme: ColorScheme) -> Color {
+        prefersDark
+            ? Color(red: 0, green: 0, blue: 0)
+            : Color(red: 1, green: 1, blue: 1)
+    }
+
+    static func primaryText(for colorScheme: ColorScheme) -> Color {
+        prefersDark ? .white : .black
+    }
+
+    static func mutedText(for colorScheme: ColorScheme) -> Color {
+        prefersDark
+            ? Color.white.opacity(0.72)
+            : Color.black.opacity(0.55)
+    }
+
+    static func elevatedFill(for colorScheme: ColorScheme) -> Color {
+        prefersDark
+            ? Color.white.opacity(0.08)
+            : Color.black.opacity(0.04).opacity(0.55)
+    }
+
+    static func border(for colorScheme: ColorScheme) -> Color {
+        prefersDark ? Color.white.opacity(0.3) : Color.black.opacity(0.12)
+    }
+
+    static func divider(for colorScheme: ColorScheme) -> Color {
+        prefersDark ? Color.white.opacity(0.22) : Color.black.opacity(0.12)
+    }
+
+    /// Full-bleed adaptive canvas matching the in-app surfaces (no inset border).
+    static func outlinedBackground<Content: View>(
+        @ViewBuilder content: @escaping () -> Content
+    ) -> some View {
+        AdaptiveWidgetChrome(content: content)
+    }
+}
+
+private struct AdaptiveWidgetChrome<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+
+    private var prefersDark: Bool {
+        WidgetAppearanceStore.prefersDark
+    }
+
+    var body: some View {
         content()
+            .padding(16)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .containerBackground(for: .widget) {
-                primaryGradient
+                prefersDark
+                    ? Color(red: 0, green: 0, blue: 0)
+                    : Color(red: 1, green: 1, blue: 1)
             }
+            .environment(\.colorScheme, prefersDark ? .dark : .light)
     }
 }
 
@@ -71,6 +112,8 @@ enum WidgetAbbreviation {
 }
 
 struct WidgetSectionHeader: View {
+    @Environment(\.colorScheme) private var colorScheme
+
     let title: String
     let subtitle: String?
 
@@ -78,12 +121,12 @@ struct WidgetSectionHeader: View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
                 .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(WidgetStyle.primaryText(for: colorScheme))
 
             if let subtitle, !subtitle.isEmpty {
                 Text(subtitle)
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(WidgetStyle.mutedText)
+                    .foregroundStyle(WidgetStyle.mutedText(for: colorScheme))
             }
         }
     }

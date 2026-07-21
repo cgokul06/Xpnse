@@ -26,21 +26,29 @@ struct AddTransactionWidgetProvider: TimelineProvider {
 }
 
 struct AddTransactionWidgetView: View {
-    var body: some View {
-        VStack(spacing: 10) {
-            ZStack {
-                Circle()
-                    .fill(WidgetStyle.secondaryButton)
-                    .frame(width: 52, height: 52)
+    @Environment(\.colorScheme) private var colorScheme
 
-                Image(systemName: "plus")
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundStyle(.white)
-            }
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "plus")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundStyle(WidgetStyle.primaryText(for: colorScheme))
+                .frame(width: 52, height: 52)
+                .background {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(WidgetStyle.elevatedFill(for: colorScheme))
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(
+                            WidgetStyle.border(for: colorScheme),
+                            lineWidth: WidgetStyle.borderWidth
+                        )
+                }
 
             Text("Add transaction")
                 .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(WidgetStyle.primaryText(for: colorScheme))
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
                 .minimumScaleFactor(0.8)
@@ -55,7 +63,7 @@ struct AddTransactionWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: AddTransactionWidgetProvider()) { _ in
-            WidgetStyle.gradientBackground {
+            WidgetStyle.outlinedBackground {
                 AddTransactionWidgetView()
             }
         }

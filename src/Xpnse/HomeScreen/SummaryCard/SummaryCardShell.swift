@@ -31,6 +31,6 @@ struct SummaryCardShell<Content: View>: View {
         .padding(.vertical, SummaryCardMetrics.verticalPadding)
         .frame(height: SummaryCardMetrics.height, alignment: .top)
         .frame(maxWidth: .infinity, alignment: .top)
-        .summaryCardFaceBackground()
+        .xpnseOutlinedPanel()
     }
 }

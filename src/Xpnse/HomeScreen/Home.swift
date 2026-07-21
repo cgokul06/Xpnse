@@ -391,13 +391,23 @@ struct Home: View {
 
     private func dateSwitchBar(pageWidth: CGFloat) -> some View {
         let canGoForward = homeViewModel.currentKey < homeViewModel.maxFuturisticRange
+        let canChangeMonth = monthDragOffset == 0 && monthDragAxis == nil
 
         return HStack(spacing: 12) {
-            Image(systemName: "arrowtriangle.left.fill")
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .foregroundStyle(XpnseColorKey.black.color)
-                .frame(width: 12)
+            Button {
+                guard canChangeMonth else { return }
+                commitMonthChange(direction: -1, pageWidth: pageWidth)
+            } label: {
+                Image(systemName: "arrowtriangle.left.fill")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .xpnseAdaptiveForeground()
+                    .frame(width: 12, height: 12)
+                    .frame(width: 36, height: 36)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Previous month")
 
             GeometryReader { geometry in
                 let textWidth = geometry.size.width
@@ -416,21 +426,36 @@ struct Home: View {
             }
             .frame(height: 20)
 
-            Image(systemName: "arrowtriangle.right.fill")
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .foregroundStyle(canGoForward ? XpnseColorKey.black.color : XpnseColorKey.disabled.color)
-                .frame(width: 12)
+            Button {
+                guard canChangeMonth, canGoForward else { return }
+                commitMonthChange(direction: 1, pageWidth: pageWidth)
+            } label: {
+                Image(systemName: "arrowtriangle.right.fill")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .foregroundStyle(
+                        canGoForward
+                            ? AdaptiveBrandSurface.primaryForeground(for: colorScheme)
+                            : AdaptiveBrandSurface.mutedForeground(for: colorScheme).opacity(0.45)
+                    )
+                    .frame(width: 12, height: 12)
+                    .frame(width: 36, height: 36)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(!canGoForward)
+            .accessibilityLabel("Next month")
         }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .xpnseOutlinedPanel()
         .padding(.horizontal, 16)
-        .padding(.vertical, 6)
-        .background(XpnseColorKey.secondaryButtonBGColor.color)
     }
 
     private func monthYearLabel(for key: Int, width: CGFloat) -> some View {
         Text(homeViewModel.transactionSummaryDict[key]?.dateRangeText ?? "")
             .font(.system(size: 16, weight: .medium))
-            .foregroundStyle(XpnseColorKey.black.color)
+            .xpnseAdaptiveForeground()
             .frame(width: width)
     }
 }

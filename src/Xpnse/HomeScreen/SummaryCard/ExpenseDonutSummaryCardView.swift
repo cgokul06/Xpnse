@@ -8,6 +8,7 @@ import SwiftUI
 
 struct ExpenseDonutSummaryCardView: View {
     @ObservedObject private var currencyManager = CurrencyManager.shared
+    @Environment(\.colorScheme) private var colorScheme
 
     let summary: TransactionSummary?
     let onFlip: () -> Void
@@ -98,7 +99,7 @@ struct ExpenseDonutSummaryCardView: View {
         ZStack {
             if chartSlices.isEmpty {
                 Circle()
-                    .stroke(Color.white.opacity(0.2), lineWidth: 20)
+                    .stroke(AdaptiveBrandSurface.mutedForeground(for: colorScheme).opacity(0.25), lineWidth: 20)
             } else {
                 Chart(chartSlices) { slice in
                     SectorMark(
@@ -135,20 +136,20 @@ struct ExpenseDonutSummaryCardView: View {
 
             Text(slice.name)
                 .font(.system(size: 13, weight: .medium))
-                .foregroundColor(.white)
+                .xpnseAdaptiveForeground()
                 .lineLimit(1)
 
             Spacer(minLength: 4)
 
             Text("\(currencyManager.selectedCurrency.symbol)\(AmountFormatter.format(slice.amount))")
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(.white.opacity(0.85))
+                .xpnseAdaptiveForeground(muted: true)
         }
     }
 
     private func sliceColor(for slice: ExpenseDonutSlice) -> Color {
         if slice.isRemainder {
-            return Color.white.opacity(0.2)
+            return AdaptiveBrandSurface.mutedForeground(for: colorScheme).opacity(0.25)
         }
         return Color(hex: slice.colorHex)
     }
@@ -156,7 +157,7 @@ struct ExpenseDonutSummaryCardView: View {
     private func emptyState(message: String) -> some View {
         Text(message)
             .font(.system(size: 14, weight: .medium))
-            .foregroundColor(.gray)
+            .xpnseAdaptiveForeground(muted: true)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }
 }

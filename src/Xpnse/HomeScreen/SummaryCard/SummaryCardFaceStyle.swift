@@ -7,15 +7,12 @@ import SwiftUI
 
 extension View {
     func summaryCardFaceBackground() -> some View {
-        background(
-            XpnseColorKey.summaryCard.color,
-            in: RoundedRectangle(cornerRadius: SummaryCardMetrics.cornerRadius)
-        )
+        // POC: home summary cards use the Insights outlined panel language.
+        xpnseOutlinedPanel()
     }
 
     func summaryCardShadow() -> some View {
-        compositingGroup()
-            .shadow(color: .black.opacity(0.14), radius: 2, x: 0, y: 2)
-            .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 6)
+        // Shadow is applied inside `xpnseOutlinedPanel()`.
+        self
     }
 }

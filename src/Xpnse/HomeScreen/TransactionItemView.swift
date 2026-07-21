@@ -28,12 +28,14 @@ struct TransactionItemView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(transaction.title)
                     .font(.system(size: 16, weight: .medium))
+                    .xpnseAdaptiveForeground()
 
                 HStack(spacing: 12) {
                     switch subtitle {
                     case .date:
                         Text(transaction.formattedDate)
                             .font(.system(size: 12, weight: .light))
+                            .xpnseAdaptiveForeground(muted: true)
                     case .category:
                         HStack(spacing: 6) {
                             CategoryIconBadge(
@@ -43,6 +45,7 @@ struct TransactionItemView: View {
                             )
                             Text(transaction.categoryDisplayName)
                                 .font(.system(size: 12, weight: .light))
+                                .xpnseAdaptiveForeground(muted: true)
                         }
                     }
 
@@ -62,25 +65,18 @@ struct TransactionItemView: View {
 
             Text(transaction.currency.symbol + " " + transaction.formattedAmount)
                 .font(.system(size: 20, weight: .medium))
+                .xpnseAdaptiveForeground()
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, 10)
         .padding(.horizontal, 12)
         .frame(maxWidth: .infinity)
-        .background(XpnseColorKey.transactionListBGColor.color)
-        .xpnseRoundedCorner()
-        .shadow(
-            color: .black.opacity(isTapped ? 0.3 : 0),
-            radius: isTapped ? 8 : 0,
-            x: 0,
-            y: 4
-        )
-        .scaleEffect(isTapped ? 0.95 : 1.0)
+        .xpnseOutlinedPanel()
+        .scaleEffect(isTapped ? 0.97 : 1.0)
         .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isTapped)
         .onTapGesture {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
                 isTapped = true
             }
-            // simulate tap animation duration before navigation
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
                     isTapped = false

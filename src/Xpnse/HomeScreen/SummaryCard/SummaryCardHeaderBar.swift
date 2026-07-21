@@ -14,7 +14,7 @@ struct SummaryCardHeaderBar: View {
         HStack(alignment: .center, spacing: 8) {
             Text(title)
                 .font(.system(size: 16, weight: .medium))
-                .foregroundColor(.gray)
+                .xpnseAdaptiveForeground(muted: true)
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
                 .frame(maxWidth: .infinity, alignment: .leading)

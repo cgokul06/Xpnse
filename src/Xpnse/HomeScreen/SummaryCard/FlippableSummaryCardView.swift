@@ -29,7 +29,6 @@ struct FlippableSummaryCardView: View {
             .rotation3DEffect(.degrees(180), axis: (x: 0, y: 1, z: 0))
         }
         .frame(height: SummaryCardMetrics.height)
-        .summaryCardShadow()
         .rotation3DEffect(
             .degrees(isShowingDonut ? 180 : 0),
             axis: (x: 0, y: 1, z: 0),

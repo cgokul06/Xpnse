@@ -15,14 +15,9 @@ struct ExpenseTrendChart: View {
     private static let visibleDayCount: Double = 12
     private static let lineWidth: CGFloat = 3.5
     private static let chartHeight: CGFloat = 260
-    private static let borderWidth: CGFloat = 2.5
 
     private var currencySymbol: String {
         currencyManager.selectedCurrency.symbol
-    }
-
-    private var borderColor: Color {
-        AdaptiveBrandSurface.fieldBorder(for: colorScheme)
     }
 
     private var gridColor: Color {
@@ -37,25 +32,17 @@ struct ExpenseTrendChart: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Expense trend")
-                    .font(.system(size: 18, weight: .semibold))
-                    .xpnseAdaptiveForeground()
-
-                Text("Cumulative by day · \(model.year)")
-                    .font(.system(size: 13, weight: .medium))
-                    .xpnseAdaptiveForeground(muted: true)
-            }
+        VStack(alignment: .leading, spacing: XpnseOutlinedPanelMetrics.headerToContentSpacing) {
+            XpnsePanelHeader(
+                title: "Expense trend",
+                subtitle: "Cumulative by day · \(model.year)"
+            )
 
             chart
                 .frame(height: Self.chartHeight)
                 .padding(.vertical, 8)
                 .padding(.trailing, 8)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(borderColor, lineWidth: Self.borderWidth)
-                )
+                .xpnseOutlinedPanel()
 
             legend
         }

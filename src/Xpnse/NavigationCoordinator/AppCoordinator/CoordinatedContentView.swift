@@ -6,11 +6,13 @@
 //
 
 import SwiftUI
+import WidgetKit
 
 struct CoordinatedContentView: View {
     @StateObject private var appCoordinator = AppCoordinator()
     @StateObject private var homeCoordinator = NavigationCoordinator<HomeRoute>()
     @ObservedObject private var deepLinkRouter = AppDeepLinkRouter.shared
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         Group {
@@ -51,12 +53,21 @@ struct CoordinatedContentView: View {
                 homeCoordinator: homeCoordinator
             )
         }
+        .onChange(of: colorScheme) { _, newScheme in
+            syncWidgetAppearance(newScheme)
+        }
         .onAppear {
+            syncWidgetAppearance(colorScheme)
             deepLinkRouter.consumePendingLink(
                 appCoordinator: appCoordinator,
                 homeCoordinator: homeCoordinator
             )
         }
+    }
+
+    private func syncWidgetAppearance(_ scheme: ColorScheme) {
+        WidgetAppearanceStore.sync(prefersDark: scheme == .dark)
+        WidgetCenter.shared.reloadAllTimelines()
     }
 }
 

@@ -10,6 +10,8 @@ struct SummaryCardFlipButton: View {
     let iconName: String
     let action: () -> Void
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -17,9 +19,9 @@ struct SummaryCardFlipButton: View {
         } label: {
             Image(systemName: iconName)
                 .font(.system(size: 15, weight: .medium))
-                .foregroundColor(.white)
+                .xpnseAdaptiveForeground()
                 .frame(width: 36, height: 36)
-                .background(XpnseColorKey.transactionsButton.color)
+                .background(AdaptiveBrandSurface.rowBackground(for: colorScheme))
                 .clipShape(Circle())
         }
     }

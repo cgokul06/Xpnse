@@ -47,6 +47,7 @@ struct BalanceWidgetProvider: TimelineProvider {
 struct BalanceWidgetView: View {
     let entry: BalanceWidgetEntry
     @Environment(\.widgetFamily) private var family
+    @Environment(\.colorScheme) private var colorScheme
 
     private var isSmall: Bool {
         family == .systemSmall
@@ -85,7 +86,7 @@ struct BalanceWidgetView: View {
 
             bottomStatsRow
         }
-        .padding(16)
+        .padding(0)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .widgetURL(URL(string: "\(AppGroupConstants.urlScheme)://home"))
     }
@@ -121,7 +122,7 @@ struct BalanceWidgetView: View {
                     )
 
                     RoundedRectangle(cornerRadius: 1)
-                        .fill(Color.gray.opacity(0.45))
+                        .fill(WidgetStyle.divider(for: colorScheme))
                         .frame(width: 2, height: 30)
                         .padding(.horizontal, 12)
 
@@ -151,22 +152,22 @@ struct BalanceWidgetView: View {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(formattedBalance(entry.snapshot.totalBalance))
                     .font(.system(size: isSmall ? 22 : 28, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(WidgetStyle.primaryText(for: colorScheme))
 
                 Text("/")
                     .font(.system(size: isSmall ? 14 : 16, weight: .medium))
-                    .foregroundStyle(WidgetStyle.mutedText)
+                    .foregroundStyle(WidgetStyle.mutedText(for: colorScheme))
 
                 Text("\(currencySymbol)\(WidgetAbbreviation.format(entry.snapshot.totalIncome))")
                     .font(.system(size: isSmall ? 14 : 16, weight: .semibold))
-                    .foregroundStyle(WidgetStyle.mutedText)
+                    .foregroundStyle(WidgetStyle.mutedText(for: colorScheme))
             }
             .lineLimit(1)
             .minimumScaleFactor(0.7)
         } else {
             Text(formattedBalance(entry.snapshot.totalBalance))
                 .font(.system(size: isSmall ? 22 : 28, weight: .bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(WidgetStyle.primaryText(for: colorScheme))
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }
@@ -196,7 +197,7 @@ struct BalanceWidgetView: View {
 
                     Text("\(currencySymbol)\(WidgetAbbreviation.format(amount))")
                         .font(.system(size: amountFontSize, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(WidgetStyle.primaryText(for: colorScheme))
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                 }
@@ -212,12 +213,12 @@ struct BalanceWidgetView: View {
 
                         Text(title)
                             .font(.system(size: titleFontSize, weight: .medium))
-                            .foregroundStyle(WidgetStyle.mutedText)
+                            .foregroundStyle(WidgetStyle.mutedText(for: colorScheme))
                     }
 
                     Text("\(currencySymbol)\(WidgetAbbreviation.format(amount))")
                         .font(.system(size: amountFontSize, weight: .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(WidgetStyle.primaryText(for: colorScheme))
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                 }
@@ -232,7 +233,7 @@ struct BalanceWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: BalanceWidgetProvider()) { entry in
-            WidgetStyle.cardBackground {
+            WidgetStyle.outlinedBackground {
                 BalanceWidgetView(entry: entry)
             }
         }
