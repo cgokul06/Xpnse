@@ -13,8 +13,8 @@ enum ExportImportError: Error {
 }
 
 struct ExportImportService {
-    /// 6: includes user-editable category catalog in backup (`colorHex` as `#RRGGBB`).
-    private static let currentSchemaVersion = 6
+    /// 7: optional `merchant` on transactions and recurring rules.
+    private static let currentSchemaVersion = 7
 
     private let transactionRepository: TransactionRepository
     private let recurringRepository: RecurringRepository
@@ -142,6 +142,7 @@ struct ExportImportService {
                         amount: transaction.amount,
                         date: transaction.date,
                         title: transaction.title,
+                        merchant: transaction.merchant,
                         notes: transaction.notes,
                         items: transaction.items,
                         location: transaction.location,
@@ -158,6 +159,7 @@ struct ExportImportService {
                     amount: transaction.amount,
                     date: transaction.date,
                     title: transaction.title,
+                    merchant: transaction.merchant,
                     notes: transaction.notes,
                     items: transaction.items,
                     location: transaction.location,
@@ -194,6 +196,7 @@ struct ExportImportService {
                 let merged = RecurringTransaction(
                     id: copy.id,
                     title: recurring.title,
+                    merchant: recurring.merchant,
                     type: recurring.type,
                     categoryIdentifier: recurring.categoryIdentifier,
                     amount: recurring.amount,
@@ -254,6 +257,7 @@ struct ExportImportService {
             "\(transaction.amount)",
             "\(transaction.date)",
             transaction.title,
+            transaction.merchant ?? "",
             transaction.notes ?? "",
             transaction.location ?? "",
             tags,
@@ -263,6 +267,7 @@ struct ExportImportService {
     }
 
     private func recurringMergeSignature(_ recurring: RecurringTransaction) -> String {
+        let iso = ISO8601DateFormatter()
         let recurrenceRaw: String = {
             guard let data = try? JSONEncoder().encode(recurring.recurrence),
                   let text = String(data: data, encoding: .utf8) else {
@@ -274,21 +279,29 @@ struct ExportImportService {
             .sorted { $0.key < $1.key }
             .map { "\($0.key)=\($0.value)" }
             .joined(separator: "|")
-        return [
+        let startDate = iso.string(from: recurring.startDate)
+        let endDate = recurring.endDate.map { iso.string(from: $0) } ?? ""
+        let nextOccurrence = recurring.nextOccurrence.map { iso.string(from: $0) } ?? ""
+        let reminderOffset = recurring.notificationReminderOffsetFromEndOfDay.map { String($0) } ?? ""
+        let scheduledFor = recurring.notificationScheduledForOccurrenceDate.map { iso.string(from: $0) } ?? ""
+        let amount = NSDecimalNumber(decimal: recurring.amount).stringValue
+        let parts: [String] = [
             recurring.title,
+            recurring.merchant ?? "",
             recurring.type,
             recurring.categoryIdentifier ?? "",
-            NSDecimalNumber(decimal: recurring.amount).stringValue,
-            ISO8601DateFormatter().string(from: recurring.startDate),
-            recurring.endDate.map { ISO8601DateFormatter().string(from: $0) } ?? "",
+            amount,
+            startDate,
+            endDate,
             recurrenceRaw,
-            recurring.nextOccurrence.map { ISO8601DateFormatter().string(from: $0) } ?? "",
+            nextOccurrence,
             recurring.state.rawValue,
             "\(recurring.notificationReminderEnabled)",
-            recurring.notificationReminderOffsetFromEndOfDay.map { String($0) } ?? "",
-            recurring.notificationScheduledForOccurrenceDate.map { ISO8601DateFormatter().string(from: $0) } ?? "",
+            reminderOffset,
+            scheduledFor,
             metadata
-        ].joined(separator: "||")
+        ]
+        return parts.joined(separator: "||")
     }
 
     private func scheduleSuggestionRebuildAfterImport() {
@@ -298,9 +311,16 @@ struct ExportImportService {
             }
 
             await MainActor.run {
-                let engine = SuggestionEngine()
-                engine.load()
-                engine.rebuildFromRecentTransactions(
+                let descriptionEngine = SuggestionEngine()
+                descriptionEngine.load()
+                descriptionEngine.rebuildFromRecentTransactions(
+                    transactions,
+                    monthsBack: SuggestionEngine.importRebuildLookbackMonths
+                )
+
+                let merchantEngine = SuggestionEngine(storeFileName: SuggestionEngine.merchantStoreFileName)
+                merchantEngine.load()
+                merchantEngine.rebuildFromRecentMerchants(
                     transactions,
                     monthsBack: SuggestionEngine.importRebuildLookbackMonths
                 )

@@ -9,6 +9,7 @@ import SwiftUI
 
 fileprivate enum AddTransactionViewFocusField {
     case description
+    case merchant
     case cost
     case category
     case date
@@ -26,14 +27,23 @@ struct AddTransactionView: View {
     @State private var categoryStore = CategoryStore.shared
     @State private var selectedCategoryId: String = BuiltinCategories.otherCategoryId
     @State private var description: String = ""
+    @State private var merchant: String = ""
     @State private var selectedDate = Date()
     @State private var isLoading = false
     @State private var showDeleteAlert: Bool = false
     @State private var isDeleting: Bool = false
     @State private var suggestionEngine = SuggestionEngine()
+    @State private var merchantSuggestionEngine = SuggestionEngine(
+        storeFileName: SuggestionEngine.merchantStoreFileName
+    )
     @State private var suggestions: [SuggestionItem] = []
+    @State private var merchantSuggestions: [SuggestionItem] = []
     @State private var showSuggestions: Bool = false
+    @State private var showMerchantSuggestions: Bool = false
     @State private var isDescriptionChangeBecauseOfSelection: Bool = false
+    @State private var isMerchantChangeBecauseOfSelection: Bool = false
+    @State private var isMerchantChangeFromInference: Bool = false
+    @State private var didManuallyEditMerchant = false
     @State private var showDropdownForCategory: Bool = false
     @State private var isRecurring: Bool = false
     @State private var recurrenceFrequency: RecurrenceFrequency = .daily
@@ -44,8 +54,10 @@ struct AddTransactionView: View {
     @State private var showReminderPermissionAlert: Bool = false
     @State private var didManuallySelectCategory = false
     @State private var lastNormalizedDescription = ""
+    @State private var lastNormalizedMerchant = ""
     private let transactionManager: FirebaseTransactionManager = .shared
     private let categoryClassifier = CategoryClassificationService()
+    private let merchantClassifier = MerchantClassificationService()
     private var transaction: Transaction?
     private let isEditing: Bool
 
@@ -55,6 +67,11 @@ struct AddTransactionView: View {
 
     private var isFormValid: Bool {
         !(amount.isEmpty) && !description.isEmpty
+    }
+
+    private var normalizedMerchantOrNil: String? {
+        let trimmed = merchant.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 
     private var recurringDateRangeValid: Bool {
@@ -103,6 +120,7 @@ struct AddTransactionView: View {
         self.amount = "\(txn.amount)"
         self.selectedDate = Date(timeIntervalSince1970: txn.date)
         self.description = txn.title
+        self.merchant = txn.merchant ?? ""
         self.selectedCategoryId = txn.categoryId
         self.transactionType = txn.type
     }
@@ -122,6 +140,9 @@ struct AddTransactionView: View {
 
                         // Description Input
                         descriptionInputSection
+
+                        // Merchant Input (optional)
+                        merchantInputSection
 
                         // Amount Input
                         amountInputSection
@@ -161,6 +182,12 @@ struct AddTransactionView: View {
                     if normalized != lastNormalizedDescription {
                         didManuallySelectCategory = false
                         lastNormalizedDescription = normalized
+                        // Allow AI merchant re-inference when description changes,
+                        // unless the user edited merchant themselves.
+                        if !didManuallyEditMerchant {
+                            isMerchantChangeFromInference = true
+                            merchant = ""
+                        }
                     }
 
                     let shouldShowSuggestions: Bool = {
@@ -184,9 +211,49 @@ struct AddTransactionView: View {
                         self.showSuggestions = false
                     }
                 }
+                .onChange(of: merchant) { _, newValue in
+                    if isMerchantChangeFromInference {
+                        lastNormalizedMerchant = SuggestionEngine.normalize(newValue)
+                        showMerchantSuggestions = false
+                        isMerchantChangeFromInference = false
+                        return
+                    }
+
+                    if isMerchantChangeBecauseOfSelection {
+                        lastNormalizedMerchant = SuggestionEngine.normalize(newValue)
+                        showMerchantSuggestions = false
+                        isMerchantChangeBecauseOfSelection = false
+                        didManuallyEditMerchant = true
+                        return
+                    }
+
+                    didManuallyEditMerchant = true
+                    lastNormalizedMerchant = SuggestionEngine.normalize(newValue)
+
+                    let shouldShowSuggestions: Bool = {
+                        guard isEditing else { return true }
+                        return newValue != (self.transaction?.merchant ?? "")
+                    }()
+
+                    guard shouldShowSuggestions else { return }
+
+                    if newValue.count > 2 {
+                        merchantSuggestionEngine.queryDebounced(newValue, limit: 2) { results in
+                            self.merchantSuggestions = results
+                            self.showMerchantSuggestions = !results.isEmpty
+                        }
+                    } else {
+                        self.showMerchantSuggestions = false
+                    }
+                }
                 .onChange(of: self.showSuggestions) { _, show in
                     if !show {
                         self.suggestions = []
+                    }
+                }
+                .onChange(of: self.showMerchantSuggestions) { _, show in
+                    if !show {
+                        self.merchantSuggestions = []
                     }
                 }
                 .onChange(of: selectedDate) { _, newValue in
@@ -208,6 +275,7 @@ struct AddTransactionView: View {
                     Button(action: {
                         self.dismiss()
                         self.showSuggestions = false
+                        self.showMerchantSuggestions = false
                     }, label: {
                         Image(systemName: "xmark")
                             .xpnseAdaptiveForeground()
@@ -240,10 +308,13 @@ struct AddTransactionView: View {
                 self.mapEditableDatas()
                 self.applyExtractedTransactionIfNeeded()
                 lastNormalizedDescription = SuggestionEngine.normalize(description)
+                lastNormalizedMerchant = SuggestionEngine.normalize(merchant)
                 suggestionEngine.load()
+                merchantSuggestionEngine.load()
             }
             .onDisappear {
                 categoryClassifier.cancel()
+                merchantClassifier.cancel()
             }
             .task {
                 await categoryStore.load()
@@ -513,11 +584,71 @@ struct AddTransactionView: View {
             if newVal != .description {
                 self.showSuggestions = false
             }
+            if newVal != .merchant {
+                self.showMerchantSuggestions = false
+            }
             if oldVal == .description, newVal != .description {
                 classifyCategoryAfterDescriptionBlur()
+                inferMerchantFromDescriptionIfNeeded()
             }
             if newVal != nil {
                 self.showDropdownForCategory = false
+            }
+        }
+    }
+
+    // MARK: - Merchant Input Section
+    private var merchantInputSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Merchant")
+                .font(.system(size: 18, weight: .semibold))
+                .xpnseAdaptiveForeground()
+
+            VStack(alignment: .leading, spacing: 0) {
+                TextField("Merchant (optional)", text: $merchant)
+                    .font(.system(size: 20, weight: .bold))
+                    .textFieldStyle(XpnseTextFieldStyle())
+                    .focused(self.$focussedField, equals: .merchant)
+
+                if showMerchantSuggestions {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Suggestions:")
+                            .font(.system(size: 16, weight: .semibold))
+                            .xpnseAdaptiveForeground()
+                            .padding(.top, 12)
+                            .padding(.leading, 8)
+
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(Array(merchantSuggestions.enumerated()), id: \.offset) { idx, item in
+                                Button {
+                                    merchantSuggestionEngine.cancelPendingQuery()
+                                    isMerchantChangeBecauseOfSelection = true
+                                    merchant = item.title
+                                    showMerchantSuggestions = false
+                                } label: {
+                                    HStack {
+                                        Text(item.title)
+                                            .xpnseAdaptiveForeground()
+                                            .font(.system(size: 16, weight: .medium))
+                                        Spacer()
+                                    }
+                                    .padding(.vertical, 8)
+                                    .padding(.horizontal, 12)
+                                }
+
+                                if idx != self.merchantSuggestions.count - 1 {
+                                    Rectangle()
+                                        .fill(AdaptiveBrandSurface.fieldBorder(for: colorScheme))
+                                        .frame(maxWidth: .infinity)
+                                        .frame(height: 1)
+                                        .padding(.horizontal, 12)
+                                }
+                            }
+                        }
+                    }
+                    .background(AdaptiveBrandSurface.elevatedSurfaceBackground(for: colorScheme))
+                    .xpnseRoundedCorner()
+                }
             }
         }
     }
@@ -608,7 +739,8 @@ struct AddTransactionView: View {
             categoryId: self.selectedCategoryId,
             amount: Double(amount) ?? 0.0,
             date: selectedDate.timeIntervalSince1970,
-            title: description
+            title: description,
+            merchant: normalizedMerchantOrNil
         )
 
         Task {
@@ -620,6 +752,15 @@ struct AddTransactionView: View {
                         date: Date(timeIntervalSince1970: transaction.date)
                     )
                 )
+                if let merchantName = normalizedMerchantOrNil {
+                    merchantSuggestionEngine.upsert(
+                        from: TransactionAdapter(
+                            title: merchantName,
+                            categoryIdentifier: nil,
+                            date: Date(timeIntervalSince1970: transaction.date)
+                        )
+                    )
+                }
                 let computedEndDate = hasRecurringEndDate ? recurringEndDate : nil
                 let reminderOffset: TimeInterval? = {
                     guard remindRecurring else { return nil }
@@ -630,6 +771,7 @@ struct AddTransactionView: View {
                 }()
                 let recurring = RecurringTransaction(
                     title: description,
+                    merchant: normalizedMerchantOrNil,
                     type: transactionType.rawValue,
                     categoryIdentifier: selectedCategoryId,
                     amount: Decimal(Double(amount) ?? 0.0),
@@ -655,6 +797,15 @@ struct AddTransactionView: View {
                         date: Date(timeIntervalSince1970: transaction.date)
                     )
                 )
+                if let merchantName = normalizedMerchantOrNil {
+                    merchantSuggestionEngine.upsert(
+                        from: TransactionAdapter(
+                            title: merchantName,
+                            categoryIdentifier: nil,
+                            date: Date(timeIntervalSince1970: transaction.date)
+                        )
+                    )
+                }
                 await transactionManager.addTransaction(transaction)
             }
 
@@ -694,6 +845,23 @@ struct AddTransactionView: View {
         }
     }
 
+    /// Infers merchant via Foundation Models from the description.
+    /// Never prefills from past description→merchant history (unlike category exact-title mapping).
+    private func inferMerchantFromDescriptionIfNeeded() {
+        guard !isEditing else { return }
+        guard !didManuallyEditMerchant else { return }
+
+        let trimmed = description.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 3 else { return }
+
+        Task {
+            guard let inferred = await merchantClassifier.infer(from: description) else { return }
+            guard !didManuallyEditMerchant else { return }
+            isMerchantChangeFromInference = true
+            merchant = inferred
+        }
+    }
+
     private func applyExtractedTransactionIfNeeded() {
         guard !isEditing, let data = billScannerService.extractedTransaction else { return }
         applyExtractedTransaction(data)
@@ -702,9 +870,14 @@ struct AddTransactionView: View {
     private func applyExtractedTransaction(_ data: ScannedTransaction) {
         self.amount = AmountFormatter.format(data.amount)
         self.description = data.title
+        // Leave merchant for on-device inference from the description (not a history lookup).
+        self.didManuallyEditMerchant = false
+        self.isMerchantChangeFromInference = true
+        self.merchant = ""
         self.transactionType = data.type
         self.selectedCategoryId = data.categoryId
         self.selectedDate = data.formattedDate
+        inferMerchantFromDescriptionIfNeeded()
     }
 
     private func scanBill() {
@@ -715,6 +888,9 @@ struct AddTransactionView: View {
         guard let transaction else { return }
         await self.transactionManager.deleteTransaction(transaction)
         suggestionEngine.decrement(title: transaction.title)
+        if let merchantName = transaction.merchant {
+            merchantSuggestionEngine.decrement(title: merchantName)
+        }
         self.dismiss()
     }
 

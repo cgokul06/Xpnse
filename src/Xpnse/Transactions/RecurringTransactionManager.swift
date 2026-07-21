@@ -131,6 +131,7 @@ final class RecurringTransactionManager {
                         amount: Double(truncating: items[i].amount as NSNumber),
                         date: next.timeIntervalSince1970,
                         title: items[i].title,
+                        merchant: items[i].merchant,
                         recurringSeriesId: items[i].id.uuidString,
                         recurringOccurrenceDate: next.timeIntervalSince1970
                     )

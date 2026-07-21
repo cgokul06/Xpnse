@@ -33,7 +33,7 @@ SnapLedger is a native iOS expense-tracking app that helps you record income and
 | Expense & income tracking | Log transactions with amount, description, category, date, and type |
 | Period summaries | View balance, income, and expenses for each month |
 | Category breakdown | Flip the summary card to see an expense donut chart by category |
-| Smart suggestions | Description autocomplete from past transactions |
+| Smart suggestions | Description and merchant autocomplete from past transactions |
 | AI category hints | On-device classification suggests a category from the description |
 | Receipt scanning | Extract amount, merchant, and date from bill photos (Apple Intelligence) |
 | Recurring schedules | Automate repeating transactions with optional reminders |
@@ -117,6 +117,7 @@ The transaction form supports:
 | Date | Calendar picker |
 | Amount | Numeric entry in selected currency |
 | Description | Free text with live suggestions |
+| Merchant | Optional free text with live suggestions |
 | Category | Dropdown of expense or income categories |
 | Recurring | Optional recurrence schedule (see below) |
 | Reminder | Optional local notification for recurring items |
@@ -128,6 +129,21 @@ The transaction form supports:
 - Selecting a suggestion can pre-fill the category from past usage
 - Suggestions rebuild after data import
 
+### Merchant suggestions
+
+- Optional merchant / payee field on each transaction and recurring rule
+- As you type in the merchant field, SnapLedger suggests merchant names from past usage (frequency + recency)
+- Selecting a merchant suggestion fills only the merchant field (does not change category)
+- Merchant suggestions rebuild after data import
+
+### AI merchant detection
+
+When Apple Intelligence is available and the description is at least 3 characters:
+
+- An on-device language model infers a short merchant/brand from the description (e.g. “YouTube Premium” → YouTube, “Amazon Prime subscription” → Amazon)
+- Runs automatically when you leave the description field (and after a receipt scan), unless you already edited the merchant yourself
+- Does **not** prefill merchant from past description→merchant mappings the way category does for known titles
+
 ### AI category classification
 
 When Apple Intelligence is available and the description is at least 3 characters:
@@ -135,6 +151,7 @@ When Apple Intelligence is available and the description is at least 3 character
 - An on-device language model suggests the best matching category
 - Classification runs automatically unless you manually pick a category
 - Works separately for expense and income category lists
+- Unlike merchant detection, a previously used description can still map to its known category without calling the model
 
 ### Delete
 
@@ -179,10 +196,10 @@ Create repeating transactions from the add-transaction form or manage them under
 
 - Optional **end date**
 - **Pause** or **resume** active schedules
-- **Edit** amount, category, description, and schedule
+- **Edit** amount, category, description, merchant, and schedule
 - **Remind me** — schedules a local notification aligned to the recurrence
 
-Recurring rules are processed automatically on app launch and when the app returns to the foreground, materializing due transactions into your history.
+Recurring rules are processed automatically on app launch and when the app returns to the foreground, materializing due transactions into your history (including merchant when set).
 
 ---
 
@@ -233,11 +250,11 @@ Open **Settings** from the home screen gear icon.
 ### Data portability
 
 - **Export All Data** — generates a pretty-printed JSON backup (`snapledger_backup.json`) containing:
-  - Transactions
-  - Recurring rules
+  - Transactions (including optional merchant)
+  - Recurring rules (including optional merchant)
   - Custom categories
   - Currency preference
-  - Schema version and timestamps
+  - Schema version and timestamps (current schema version **7**)
 - **Import All Data** — restores from a compatible JSON backup (supports schema versions up to current)
 
 ### Categories & recurring
@@ -365,6 +382,8 @@ When unavailable, bill scanner entry point is hidden and classification is skipp
 | Month browsing & summaries | Yes | No |
 | Category donut chart | Yes | No |
 | Description suggestions | Yes | No |
+| Merchant suggestions | Yes | No |
+| AI merchant detection | Yes* | Yes |
 | AI category classification | Yes* | Yes |
 | Bill scanner | Yes* | Yes |
 | Recurring transactions | Yes | No |

@@ -18,6 +18,7 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case id
         case title
+        case merchant
         case type
         case categoryIdentifier
         case amount
@@ -37,6 +38,8 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
     public var id: UUID
     /// Title or description of the transaction.
     public var title: String
+    /// Optional merchant / payee name.
+    public var merchant: String?
     /// Type of transaction
     public var type: String
     /// Optional category identifier.
@@ -68,6 +71,7 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
     public init(
         id: UUID,
         title: String,
+        merchant: String? = nil,
         type: String,
         categoryIdentifier: String?,
         amount: Decimal,
@@ -84,6 +88,7 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
     ) {
         self.id = id
         self.title = title
+        self.merchant = merchant
         self.type = type
         self.categoryIdentifier = categoryIdentifier
         self.amount = amount
@@ -102,6 +107,7 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
     /// Convenience initializer that generates `id` and computes the first `nextOccurrence`.
     public init(
         title: String,
+        merchant: String? = nil,
         type: String,
         categoryIdentifier: String? = nil,
         amount: Decimal,
@@ -118,6 +124,7 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
     ) {
         self.id = UUID()
         self.title = title
+        self.merchant = merchant
         self.type = type
         self.categoryIdentifier = categoryIdentifier
         self.amount = amount
@@ -137,6 +144,7 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.id = try container.decode(UUID.self, forKey: .id)
         self.title = try container.decode(String.self, forKey: .title)
+        self.merchant = try container.decodeIfPresent(String.self, forKey: .merchant)
         self.type = try container.decode(String.self, forKey: .type)
         self.categoryIdentifier = try container.decodeIfPresent(String.self, forKey: .categoryIdentifier)
         self.amount = try container.decode(Decimal.self, forKey: .amount)
@@ -166,6 +174,7 @@ public struct RecurringTransaction: Codable, Identifiable, Hashable, Sendable {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
         try container.encode(title, forKey: .title)
+        try container.encodeIfPresent(merchant, forKey: .merchant)
         try container.encode(type, forKey: .type)
         try container.encodeIfPresent(categoryIdentifier, forKey: .categoryIdentifier)
         try container.encode(amount, forKey: .amount)

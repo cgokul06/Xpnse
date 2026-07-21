@@ -16,6 +16,7 @@ final class TransactionEntity {
     var amount: Double
     var date: Double
     var title: String
+    var merchant: String?
     var notes: String?
     var location: String?
     var tagsData: Data
@@ -36,6 +37,7 @@ final class TransactionEntity {
         self.amount = transaction.amount
         self.date = transaction.date
         self.title = transaction.title
+        self.merchant = transaction.merchant
         self.notes = transaction.notes
         self.location = transaction.location
         self.tagsData = (try? JSONEncoder().encode(transaction.tags)) ?? Data()
@@ -56,6 +58,7 @@ final class TransactionEntity {
         self.amount = transaction.amount
         self.date = transaction.date
         self.title = transaction.title
+        self.merchant = transaction.merchant
         self.notes = transaction.notes
         self.location = transaction.location
         self.tagsData = (try? JSONEncoder().encode(transaction.tags)) ?? Data()
@@ -88,6 +91,7 @@ final class TransactionEntity {
             amount: amount,
             date: date,
             title: title,
+            merchant: merchant,
             notes: notes,
             items: items,
             location: location,

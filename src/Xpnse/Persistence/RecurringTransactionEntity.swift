@@ -12,6 +12,7 @@ import SwiftData
 final class RecurringTransactionEntity {
     @Attribute(.unique) var id: UUID
     var title: String
+    var merchant: String?
     var type: String
     var categoryIdentifier: String?
     var amountString: String
@@ -32,6 +33,7 @@ final class RecurringTransactionEntity {
     init(from recurringTransaction: RecurringTransaction) {
         self.id = recurringTransaction.id
         self.title = recurringTransaction.title
+        self.merchant = recurringTransaction.merchant
         self.type = recurringTransaction.type
         self.categoryIdentifier = recurringTransaction.categoryIdentifier
         self.amountString = NSDecimalNumber(decimal: recurringTransaction.amount).stringValue
@@ -51,6 +53,7 @@ final class RecurringTransactionEntity {
 
     func update(from recurringTransaction: RecurringTransaction) {
         self.title = recurringTransaction.title
+        self.merchant = recurringTransaction.merchant
         self.type = recurringTransaction.type
         self.categoryIdentifier = recurringTransaction.categoryIdentifier
         self.amountString = NSDecimalNumber(decimal: recurringTransaction.amount).stringValue
@@ -94,6 +97,7 @@ final class RecurringTransactionEntity {
         return RecurringTransaction(
             id: id,
             title: title,
+            merchant: merchant,
             type: type,
             categoryIdentifier: categoryIdentifier,
             amount: amount,

@@ -154,6 +154,7 @@ private struct EditRecurringTransactionView: View {
     @State private var categoryStore = CategoryStore.shared
     @State private var selectedCategoryId: String
     @State private var description: String
+    @State private var merchant: String
     @State private var initialTransactionDate: Date
     @State private var recurringStartDate: Date
     @State private var recurrence: RecurrenceFrequency
@@ -162,6 +163,12 @@ private struct EditRecurringTransactionView: View {
     @State private var remindRecurring: Bool
     @State private var reminderDateTime: Date
     @State private var showReminderPermissionAlert: Bool = false
+    @State private var merchantSuggestionEngine = SuggestionEngine(
+        storeFileName: SuggestionEngine.merchantStoreFileName
+    )
+    @State private var merchantSuggestions: [SuggestionItem] = []
+    @State private var showMerchantSuggestions: Bool = false
+    @State private var isMerchantChangeBecauseOfSelection: Bool = false
 
     private let original: RecurringTransaction
     private let onSaved: () -> Void
@@ -191,6 +198,11 @@ private struct EditRecurringTransactionView: View {
         )
     }
 
+    private var normalizedMerchantOrNil: String? {
+        let trimmed = merchant.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
     init(item: RecurringTransaction, onSaved: @escaping () -> Void) {
         self.original = item
         let type = TransactionType(rawValue: item.type) ?? .expense
@@ -200,6 +212,7 @@ private struct EditRecurringTransactionView: View {
             initialValue: item.categoryIdentifier ?? BuiltinCategories.otherCategoryId
         )
         self._description = State(initialValue: item.title)
+        self._merchant = State(initialValue: item.merchant ?? "")
         self._initialTransactionDate = State(initialValue: item.startDate)
         self._recurringStartDate = State(initialValue: item.startDate)
         self._recurrence = State(initialValue: item.recurrence)
@@ -264,6 +277,7 @@ private struct EditRecurringTransactionView: View {
                         transactionTypeSelector
                         initialDateSection
                         descriptionInputSection
+                        merchantInputSection
                         amountInputSection
                         categorySelectionSection
                         recurrenceSection
@@ -273,6 +287,34 @@ private struct EditRecurringTransactionView: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 20)
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    showMerchantSuggestions = false
+                }
+                .onChange(of: merchant) { _, newValue in
+                    if isMerchantChangeBecauseOfSelection {
+                        showMerchantSuggestions = false
+                        isMerchantChangeBecauseOfSelection = false
+                        return
+                    }
+
+                    let shouldShow: Bool = newValue != (original.merchant ?? "")
+                    guard shouldShow else { return }
+
+                    if newValue.count > 2 {
+                        merchantSuggestionEngine.queryDebounced(newValue, limit: 2) { results in
+                            merchantSuggestions = results
+                            showMerchantSuggestions = !results.isEmpty
+                        }
+                    } else {
+                        showMerchantSuggestions = false
+                    }
+                }
+                .onChange(of: showMerchantSuggestions) { _, show in
+                    if !show {
+                        merchantSuggestions = []
+                    }
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -323,6 +365,9 @@ private struct EditRecurringTransactionView: View {
                 }
                 clampReminderDateTimeToTransactionDay(newValue)
             }
+            .onAppear {
+                merchantSuggestionEngine.load()
+            }
             .task {
                 await categoryStore.load()
             }
@@ -346,6 +391,7 @@ private struct EditRecurringTransactionView: View {
         let updated = RecurringTransaction(
             id: original.id,
             title: description,
+            merchant: normalizedMerchantOrNil,
             type: transactionType.rawValue,
             categoryIdentifier: selectedCategoryId,
             amount: Decimal(string: amount) ?? original.amount,
@@ -362,6 +408,15 @@ private struct EditRecurringTransactionView: View {
             notificationScheduledForOccurrenceDate: nil,
             metadata: original.metadata
         )
+        if let merchantName = normalizedMerchantOrNil {
+            merchantSuggestionEngine.upsert(
+                from: TransactionAdapter(
+                    title: merchantName,
+                    categoryIdentifier: nil,
+                    date: Date()
+                )
+            )
+        }
         await transactionManager.updateRecurringTransaction(updated)
         await MainActor.run {
             onSaved()
@@ -425,6 +480,60 @@ private struct EditRecurringTransactionView: View {
             TextField("Add a description", text: $description)
                 .font(.system(size: 20, weight: .bold))
                 .textFieldStyle(XpnseTextFieldStyle())
+        }
+    }
+
+    private var merchantInputSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Merchant")
+                .font(.system(size: 18, weight: .semibold))
+                .xpnseAdaptiveForeground()
+
+            VStack(alignment: .leading, spacing: 0) {
+                TextField("Merchant (optional)", text: $merchant)
+                    .font(.system(size: 20, weight: .bold))
+                    .textFieldStyle(XpnseTextFieldStyle())
+
+                if showMerchantSuggestions {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Suggestions:")
+                            .font(.system(size: 16, weight: .semibold))
+                            .xpnseAdaptiveForeground()
+                            .padding(.top, 12)
+                            .padding(.leading, 8)
+
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(Array(merchantSuggestions.enumerated()), id: \.offset) { idx, item in
+                                Button {
+                                    merchantSuggestionEngine.cancelPendingQuery()
+                                    isMerchantChangeBecauseOfSelection = true
+                                    merchant = item.title
+                                    showMerchantSuggestions = false
+                                } label: {
+                                    HStack {
+                                        Text(item.title)
+                                            .xpnseAdaptiveForeground()
+                                            .font(.system(size: 16, weight: .medium))
+                                        Spacer()
+                                    }
+                                    .padding(.vertical, 8)
+                                    .padding(.horizontal, 12)
+                                }
+
+                                if idx != merchantSuggestions.count - 1 {
+                                    Rectangle()
+                                        .fill(AdaptiveBrandSurface.fieldBorder(for: colorScheme))
+                                        .frame(maxWidth: .infinity)
+                                        .frame(height: 1)
+                                        .padding(.horizontal, 12)
+                                }
+                            }
+                        }
+                    }
+                    .background(AdaptiveBrandSurface.elevatedSurfaceBackground(for: colorScheme))
+                    .xpnseRoundedCorner()
+                }
+            }
         }
     }
 

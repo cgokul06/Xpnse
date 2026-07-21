@@ -17,6 +17,7 @@ struct Transaction: Identifiable, Codable, Equatable, Hashable {
         case amount
         case date
         case title
+        case merchant
         case notes
         case items
         case location
@@ -32,6 +33,7 @@ struct Transaction: Identifiable, Codable, Equatable, Hashable {
     var amount: Double
     var date: Double
     var title: String
+    var merchant: String?
     var notes: String?
     var items: [TransactionItem]
     var location: String?
@@ -83,6 +85,7 @@ struct Transaction: Identifiable, Codable, Equatable, Hashable {
         amount: Double,
         date: Double = Date().timeIntervalSince1970,
         title: String,
+        merchant: String? = nil,
         notes: String? = nil,
         items: [TransactionItem] = [],
         location: String? = nil,
@@ -97,6 +100,7 @@ struct Transaction: Identifiable, Codable, Equatable, Hashable {
         self.amount = amount
         self.date = date
         self.title = title
+        self.merchant = merchant
         self.notes = notes
         self.items = items
         self.location = location
@@ -120,6 +124,7 @@ struct Transaction: Identifiable, Codable, Equatable, Hashable {
         amount = try container.decode(Double.self, forKey: .amount)
         date = try container.decode(Double.self, forKey: .date)
         title = try container.decode(String.self, forKey: .title)
+        merchant = try container.decodeIfPresent(String.self, forKey: .merchant)
         notes = try container.decodeIfPresent(String.self, forKey: .notes)
         items = try container.decodeIfPresent([TransactionItem].self, forKey: .items) ?? []
         location = try container.decodeIfPresent(String.self, forKey: .location)
@@ -137,6 +142,7 @@ struct Transaction: Identifiable, Codable, Equatable, Hashable {
         try container.encode(amount, forKey: .amount)
         try container.encode(date, forKey: .date)
         try container.encode(title, forKey: .title)
+        try container.encodeIfPresent(merchant, forKey: .merchant)
         try container.encodeIfPresent(notes, forKey: .notes)
         try container.encode(items, forKey: .items)
         try container.encodeIfPresent(location, forKey: .location)
@@ -160,6 +166,10 @@ struct Transaction: Identifiable, Codable, Equatable, Hashable {
             "currency_id": currency.id,
             "currency_symbol": currency.symbol
         ]
+
+        if let merchant = merchant {
+            data["merchant"] = merchant
+        }
 
         if let notes = notes {
             data["notes"] = notes
@@ -216,6 +226,7 @@ struct Transaction: Identifiable, Codable, Equatable, Hashable {
             amount: amount,
             date: date.timeIntervalSince1970,
             title: title,
+            merchant: data["merchant"] as? String,
             notes: data["notes"] as? String,
             items: items,
             location: data["location"] as? String,

@@ -29,19 +29,22 @@ public final class SuggestionEngine {
     /// Configurable lookback (in months) for suggestion rebuild after import.
     public static var importRebuildLookbackMonths: Int = 3
 
+    public static let descriptionStoreFileName = "suggestions.json"
+    public static let merchantStoreFileName = "merchant-suggestions.json"
+
     private var suggestions: [SuggestionItem] = []
     private var buckets: [String: [SuggestionItem]] = [:]
     
     private var debounceTask: Task<Void, Never>? = nil
     
-    private let persistenceURL: URL = {
+    private let persistenceURL: URL
+    
+    public init(storeFileName: String = SuggestionEngine.descriptionStoreFileName) {
         let fm = FileManager.default
         let base = try? fm.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
         let dir = (base ?? fm.urls(for: .documentDirectory, in: .userDomainMask).first!)
-        return dir.appendingPathComponent("suggestions.json")
-    }()
-    
-    public init() {}
+        self.persistenceURL = dir.appendingPathComponent(storeFileName)
+    }
     
     // MARK: - Public API
     
@@ -244,6 +247,30 @@ public final class SuggestionEngine {
                 )
             }
             .filter { $0.date >= cutoff }
+
+        build(from: adapters)
+    }
+
+    /// Rebuilds merchant suggestions from recent transactions that have a merchant set.
+    func rebuildFromRecentMerchants(_ transactions: [Transaction], monthsBack: Int) {
+        let sanitizedMonths = max(1, monthsBack)
+        let now = Date()
+        let calendar = Calendar.current
+        let cutoff = calendar.date(byAdding: .month, value: -sanitizedMonths, to: now) ?? now
+
+        let adapters: [TransactionAdapter] = transactions.compactMap { transaction in
+            guard let merchant = transaction.merchant?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+                  !merchant.isEmpty
+            else { return nil }
+            let date = Date(timeIntervalSince1970: transaction.date)
+            guard date >= cutoff else { return nil }
+            return TransactionAdapter(
+                title: merchant,
+                categoryIdentifier: nil,
+                date: date
+            )
+        }
 
         build(from: adapters)
     }
