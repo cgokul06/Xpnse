@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-struct ExpenseTrendPoint: Identifiable, Equatable {
+struct ExpenseTrendPoint: Identifiable, Equatable, Codable, Sendable {
     var id: String { "\(month)-\(day)-\(isProjected ? "p" : "a")" }
     let day: Int
     let month: Int
@@ -14,7 +14,7 @@ struct ExpenseTrendPoint: Identifiable, Equatable {
     let isProjected: Bool
 }
 
-struct ExpenseTrendChartModel: Equatable {
+struct ExpenseTrendChartModel: Equatable, Codable, Sendable {
     let points: [ExpenseTrendPoint]
     let year: Int
     let projectedMonth: Int?

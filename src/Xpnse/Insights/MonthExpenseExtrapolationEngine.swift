@@ -44,6 +44,7 @@ enum MonthExpenseExtrapolationEngine {
         historicalExpenses: [Transaction],
         recurringItems: [RecurringTransaction],
         lookbackMonths: Int = defaultLookbackMonths,
+        allowedLookbackMonthKeys: Set<String>? = nil,
         calendar: Calendar = .current
     ) -> MonthExpenseExtrapolationResult {
         let lastDay = daysInMonth(month: month, year: year, calendar: calendar)
@@ -72,6 +73,7 @@ enum MonthExpenseExtrapolationEngine {
             fromDay: asOfDay + 1,
             throughDay: lastDay,
             lookbackMonths: lookbackMonths,
+            allowedLookbackMonthKeys: allowedLookbackMonthKeys,
             calendar: calendar
         )
 
@@ -162,6 +164,7 @@ enum MonthExpenseExtrapolationEngine {
         fromDay: Int,
         throughDay: Int,
         lookbackMonths: Int = defaultLookbackMonths,
+        allowedLookbackMonthKeys: Set<String>? = nil,
         calendar: Calendar = .current
     ) -> [Int: Double] {
         guard fromDay <= throughDay,
@@ -179,6 +182,12 @@ enum MonthExpenseExtrapolationEngine {
             else { continue }
             let components = calendar.dateComponents([.year, .month], from: monthDate)
             guard let priorYear = components.year, let priorMonth = components.month else { continue }
+
+            let key = "\(priorYear)-\(priorMonth)"
+            if let allowed = allowedLookbackMonthKeys, !allowed.contains(key) {
+                continue
+            }
+
             let priorLastDay = daysInMonth(month: priorMonth, year: priorYear, calendar: calendar)
 
             var dailyNonRecurring: [Int: Double] = [:]

@@ -19,10 +19,11 @@ SnapLedger is a native iOS expense-tracking app that helps you record income and
 8. [Currency](#currency)
 9. [Settings & data management](#settings--data-management)
 10. [Home screen widgets](#home-screen-widgets)
-11. [Notifications](#notifications)
-12. [Deep links](#deep-links)
-13. [Architecture & data storage](#architecture--data-storage)
-14. [Requirements & dependencies](#requirements--dependencies)
+11. [Insights](#insights)
+12. [Notifications](#notifications)
+13. [Deep links](#deep-links)
+14. [Architecture & data storage](#architecture--data-storage)
+15. [Requirements & dependencies](#requirements--dependencies)
 
 ---
 
@@ -41,6 +42,7 @@ SnapLedger is a native iOS expense-tracking app that helps you record income and
 | Multi-currency | 100+ currencies with searchable selection |
 | Backup & restore | Export and import full JSON backups |
 | Widgets | Balance snapshot and quick-add shortcuts on the Home Screen |
+| Insights | Deterministic analytics + on-device AI coaching cards |
 
 ---
 
@@ -289,6 +291,41 @@ Tapping the widget opens the app home screen (`snapledger://home`).
 
 ---
 
+## Insights
+
+Open **SnapLedger Insights** from the floating chart button on Home.
+
+### Architecture
+
+Insights uses a **deterministic analytics engine first**, then (when Apple Intelligence is available) a Foundation Model for narrative coaching:
+
+1. Transactions + recurring rules → compact `InsightsSnapshot` (totals, merchants, deltas, forecast, events, baselines)
+2. Cards render trustworthy numbers from the snapshot
+3. On-device model receives only the snapshot JSON — never raw transaction lists — and writes short explainable prose (what / why / what to do)
+
+Baselines and comparisons use up to the **three calendar months before the current month**. A lookback month is treated as **incomplete** (and excluded from analysis) when its data volume is under **70%** of peer months in that window—so thinly logged months cannot skew averages, forecasts, or category health.
+
+Insights analytics (trend + cards + narratives) are **cached** and reused until transactions/recurring rules change (or the calendar day / currency changes). Reopening Insights with unchanged data shows the cache immediately.
+
+When Foundation Models are unavailable, numeric cards still appear; narrative sections stay empty or show a soft fallback.
+
+### Charts & cards (Phase 1)
+
+- **Expense trend** — cumulative daily expenses by month for the current year, with optional current-month projection
+- **Financial health** — star score + savings rate + AI summary / spending personality
+- **Biggest changes** — category spend vs recent average (↑ ↓ ≈)
+- **Top merchants** — ranked by amount (+ optional AI gloss)
+- **Category health** — this month vs **usual** (average monthly spend in that category across recent *complete* lookback months). Status bands: below &lt;80% (green), near 80–105% (yellow), above 105–120% (orange), well above &gt;120% (red). Bars fill to 100% at usual.
+- **Predicted month end** — expected income, spending, savings, confidence
+- **Detected events** — rare category-month spikes and annual-style one-offs (festival shopping, insurance). Recurring materializations and mild overspend are ignored (those belong in Category health).
+- **Opportunities & wins** — AI tips constrained to snapshot facts, plus positive reinforcement
+
+### Soft rules
+
+Savings-rate and subscription guidance use soft bands; category “budgets” are derived from **your own history**, not hardcoded universal shopping caps.
+
+---
+
 ## Notifications
 
 Recurring transactions can schedule **local reminders**:
@@ -391,6 +428,8 @@ When unavailable, bill scanner entry point is hidden and classification is skipp
 | Custom categories | Yes | No |
 | Currency search | Yes | No |
 | Export / import | Yes | No |
+| Insights analytics cards | Yes | No |
+| Insights AI narratives | Yes* | Yes |
 | Widgets | Yes** | No |
 
 \*Feature hidden or degraded when Foundation Models are unavailable.  
