@@ -63,7 +63,9 @@ enum FinancialHealthRules {
     static func rulesPromptText() -> String {
         """
         Soft guidance (evaluate against the snapshot; do not invent numbers):
-        - Savings rate healthy band: \(Int(savingsRateHealthyMin * 100))–\(Int(savingsRateHealthyMax * 100))% of income.
+        - Savings rate guide band: \(Int(savingsRateHealthyMin * 100))–\(Int(savingsRateHealthyMax * 100))% of income (a scoring sweet spot, not a ceiling).
+        - Rates above \(Int(savingsRateHealthyMax * 100))% are strong savings — say "above" the guide, never "below".
+        - Use `healthBreakdown.savingsRateAssessment` as the authoritative savings-rate comparison; do not contradict it.
         - Subscriptions ideally under \(Int(subscriptionsComfortableMax * 100))–\(Int(subscriptionsSoftMax * 100))% of expenses.
         - Category health uses each user's rolling average (below &lt;80%, near 80–105%, above 105–120%, well above &gt;120%).
         - Financial health stars are computed deterministically from `healthBreakdown` (savings, spending discipline, subscriptions, stability, trend). Never invent or adjust the score — only explain it using `healthBreakdown.reasons`. Discuss the current focus month only; never cite prior months.

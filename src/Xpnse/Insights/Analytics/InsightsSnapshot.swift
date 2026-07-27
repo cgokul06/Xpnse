@@ -38,7 +38,8 @@ struct InsightsCategoryShare: Codable, Equatable, Sendable, Identifiable {
 }
 
 struct InsightsMerchantTotal: Codable, Equatable, Sendable, Identifiable {
-    var id: String { merchant }
+    let id: String
+    /// Display label for the spend (title + date).
     let merchant: String
     let amount: Double
     let percentOfExpense: Double

@@ -247,31 +247,18 @@ enum InsightsAnalyticsEngine {
         expenses: [Transaction],
         total: Double
     ) -> [InsightsMerchantTotal] {
-        let merchantBySeriesId = recurringSeriesMerchants(expenses: expenses)
         let dateFormatter = DateFormatter()
         dateFormatter.dateStyle = .medium
         dateFormatter.timeStyle = .none
-        var totals: [String: (display: String, amount: Double)] = [:]
 
-        for expense in expenses {
-            let row = merchantRow(
-                for: expense,
-                merchantBySeriesId: merchantBySeriesId,
-                dateFormatter: dateFormatter
-            )
-            let existing = totals[row.key]
-            totals[row.key] = (
-                display: existing?.display ?? row.display,
-                amount: (existing?.amount ?? 0) + expense.totalAmount
-            )
-        }
-
-        return totals
-            .map { _, value in
-                InsightsMerchantTotal(
-                    merchant: value.display,
-                    amount: value.amount,
-                    percentOfExpense: total > 0 ? (value.amount / total) * 100 : 0
+        return expenses
+            .map { expense in
+                let display = spendDisplayLabel(for: expense, dateFormatter: dateFormatter)
+                return InsightsMerchantTotal(
+                    id: expense.id,
+                    merchant: display,
+                    amount: expense.totalAmount,
+                    percentOfExpense: total > 0 ? (expense.totalAmount / total) * 100 : 0
                 )
             }
             .sorted { $0.amount > $1.amount }
@@ -279,45 +266,17 @@ enum InsightsAnalyticsEngine {
             .map { $0 }
     }
 
-    /// Merchant name from recurring series when the rule defines one.
-    private static func recurringSeriesMerchants(expenses: [Transaction]) -> [String: String] {
-        var map: [String: String] = [:]
-        for expense in expenses {
-            guard let seriesId = expense.recurringSeriesId,
-                  let merchant = normalizedMerchant(expense.merchant),
-                  map[seriesId] == nil
-            else { continue }
-            map[seriesId] = merchant
-        }
-        return map
-    }
-
-    /// Aggregate key + label for Top merchants. Without an explicit merchant (or series
-    /// merchant), each transaction stays separate — we do not merge by title alone.
-    private static func merchantRow(
+    /// Unique label per expense: spend name + date (never merges same titles).
+    private static func spendDisplayLabel(
         for transaction: Transaction,
-        merchantBySeriesId: [String: String],
         dateFormatter: DateFormatter
-    ) -> (key: String, display: String) {
-        if let merchant = normalizedMerchant(transaction.merchant) {
-            return (merchant, merchant)
-        }
-        if let seriesId = transaction.recurringSeriesId,
-           let merchant = merchantBySeriesId[seriesId] {
-            return (merchant, merchant)
-        }
-
-        let title = transaction.title.trimmingCharacters(in: .whitespacesAndNewlines)
+    ) -> String {
         let dateText = dateFormatter.string(from: Date(timeIntervalSince1970: transaction.date))
-        let display = title.isEmpty ? "Expense on \(dateText)" : "\(title) (\(dateText))"
-        return (transaction.id, display)
-    }
-
-    private static func normalizedMerchant(_ value: String?) -> String? {
-        guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !trimmed.isEmpty
-        else { return nil }
-        return trimmed
+        let title = transaction.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if title.isEmpty {
+            return "Expense on \(dateText)"
+        }
+        return "\(title) (\(dateText))"
     }
 
     private static func buildBiggestChanges(

@@ -11,6 +11,8 @@ struct ExpenseTrendPoint: Identifiable, Equatable, Codable, Sendable {
     let month: Int
     let monthLabel: String
     let cumulativeAmount: Double
+    /// Spend recorded on this calendar day (0 when none). Used for chart markers.
+    let dayAmount: Double
     let isProjected: Bool
 }
 
@@ -30,6 +32,11 @@ struct ExpenseTrendChartModel: Equatable, Codable, Sendable {
 
     var projectedPoints: [ExpenseTrendPoint] {
         points.filter(\.isProjected)
+    }
+
+    /// Days with a real expense — used for chart dots.
+    var actualExpenseMarkers: [ExpenseTrendPoint] {
+        actualPoints.filter { $0.dayAmount > 0.01 }
     }
 }
 
@@ -118,13 +125,15 @@ enum ExpenseTrendBuilder {
             let label = ExpenseTrendMonthPalette.shortLabel(forMonth: month, calendar: calendar)
 
             for day in 1...actualLastDay {
-                cumulative += monthDaily[day] ?? 0
+                let daySpend = monthDaily[day] ?? 0
+                cumulative += daySpend
                 points.append(
                     ExpenseTrendPoint(
                         day: day,
                         month: month,
                         monthLabel: label,
                         cumulativeAmount: cumulative,
+                        dayAmount: daySpend,
                         isProjected: false
                     )
                 )
@@ -155,6 +164,7 @@ enum ExpenseTrendBuilder {
                     month: month,
                     monthLabel: label,
                     cumulativeAmount: cumulative,
+                    dayAmount: 0,
                     isProjected: true
                 )
             )
@@ -167,6 +177,7 @@ enum ExpenseTrendBuilder {
                         month: month,
                         monthLabel: label,
                         cumulativeAmount: cumulative,
+                        dayAmount: dayAmount.total,
                         isProjected: true
                     )
                 )

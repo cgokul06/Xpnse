@@ -15,6 +15,7 @@ struct ExpenseTrendChart: View {
     private static let visibleDayCount: Double = 12
     private static let lineWidth: CGFloat = 3.5
     private static let chartHeight: CGFloat = 260
+    private static let markerSize: CGFloat = 36
 
     private var currencySymbol: String {
         currencyManager.selectedCurrency.symbol
@@ -31,6 +32,12 @@ struct ExpenseTrendChart: View {
         return ExpenseTrendMonthPalette.color(forMonth: month)
     }
 
+    /// Headroom so the top Y-axis label isn't clipped at the plot edge.
+    private var yDomainMax: Double {
+        let peak = model.points.map(\.cumulativeAmount).max() ?? 0
+        return max(peak * 1.12, 1)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: XpnseOutlinedPanelMetrics.headerToContentSpacing) {
             XpnsePanelHeader(
@@ -39,7 +46,8 @@ struct ExpenseTrendChart: View {
             )
 
             chartScrollViewport
-                .padding(.vertical, 8)
+                .padding(.top, 14)
+                .padding(.bottom, 8)
                 .padding(.trailing, 8)
                 .xpnseOutlinedPanel()
 
@@ -75,6 +83,15 @@ struct ExpenseTrendChart: View {
                 )
             }
 
+            ForEach(model.actualExpenseMarkers) { point in
+                PointMark(
+                    x: .value("Day", point.day),
+                    y: .value("Amount", point.cumulativeAmount)
+                )
+                .foregroundStyle(ExpenseTrendMonthPalette.color(forMonth: point.month))
+                .symbolSize(Self.markerSize)
+            }
+
             ForEach(model.projectedPoints) { point in
                 LineMark(
                     x: .value("Day", point.day),
@@ -96,6 +113,7 @@ struct ExpenseTrendChart: View {
         .chartScrollableAxes(.horizontal)
         .chartXVisibleDomain(length: Self.visibleDayCount)
         .chartXScale(domain: 1...31)
+        .chartYScale(domain: 0...yDomainMax)
         .chartXAxis {
             AxisMarks(values: Array(1...31)) { value in
                 AxisGridLine(stroke: StrokeStyle(lineWidth: 1, dash: [3, 4]))

@@ -13,6 +13,10 @@ struct FinancialHealthBreakdown: Codable, Equatable, Sendable {
     let trendScore: Double
     let totalScore: Double
     let finalStars: Int
+    /// Forecast savings rate as a whole percent (e.g. 38 for 38%).
+    let forecastSavingsRatePercent: Int
+    /// Plain-English comparison vs the 20–30% guide — use this in narratives.
+    let savingsRateAssessment: String
     let reasons: [String]
 }
 
@@ -44,6 +48,14 @@ enum FinancialHealthScoring {
         let total = savings + spending + subscription + stability + trend
         let stars = Int(min(5.0, max(1.0, total.rounded())))
 
+        let forecastRate = input.forecast.expectedIncome > 0.01
+            ? input.forecast.expectedSavings / input.forecast.expectedIncome
+            : 0
+        let forecastSavingsRatePercent = Int((forecastRate * 100).rounded())
+        let savingsRateAssessment = savingsRateAssessment(for: forecastRate)
+
+        reasons.insert(savingsRateAssessment, at: 0)
+
         reasons.append(
             String(
                 format: "Total score %.2f/5.0 → %d stars (savings %.2f, discipline %.2f, subscriptions %.2f, stability %.2f, trend %.2f).",
@@ -59,8 +71,31 @@ enum FinancialHealthScoring {
             trendScore: trend,
             totalScore: total,
             finalStars: stars,
+            forecastSavingsRatePercent: forecastSavingsRatePercent,
+            savingsRateAssessment: savingsRateAssessment,
             reasons: reasons
         )
+    }
+
+    /// Deterministic savings-rate wording for narratives — avoids FM misreading comparisons.
+    static func savingsRateAssessment(for rate: Double) -> String {
+        let pct = Int((rate * 100).rounded())
+        let band = "\(Int(FinancialHealthRules.savingsRateHealthyMin * 100))–\(Int(FinancialHealthRules.savingsRateHealthyMax * 100))%"
+
+        switch rate {
+        case ..<0:
+            return "Forecast savings rate is \(pct)% (spending exceeds income this month)."
+        case 0..<0.05:
+            return "Forecast savings rate is \(pct)% — well below the \(band) guide."
+        case 0.05..<0.20:
+            return "Forecast savings rate is \(pct)% — below the \(band) guide."
+        case 0.20...0.30:
+            return "Forecast savings rate is \(pct)% — within the \(band) guide."
+        case 0.30..<0.40:
+            return "Forecast savings rate is \(pct)% — above the \(band) guide (strong savings)."
+        default:
+            return "Forecast savings rate is \(pct)% — well above the \(band) guide (very strong savings)."
+        }
     }
 
     // MARK: - 1. Savings (2.0)

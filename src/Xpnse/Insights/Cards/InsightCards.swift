@@ -142,18 +142,18 @@ struct InsightTopMerchantsCard: View {
             XpnsePanelHeader(title: "Top spends", subtitle: nil)
 
             if merchants.isEmpty {
-                Text("Add merchant names on transactions to see rankings.")
+                Text("Top spends appear once you log expenses this month.")
                     .font(.system(size: 13))
                     .xpnseAdaptiveForeground(muted: true)
             } else {
-                ForEach(merchants) { merchant in
+                ForEach(merchants) { spend in
                     HStack {
-                        Text(merchant.merchant)
+                        Text(spend.merchant)
                             .font(.system(size: 14, weight: .medium))
                             .xpnseAdaptiveForeground()
                             .lineLimit(1)
                         Spacer()
-                        Text("\(currencySymbol)\(AmountFormatter.format(merchant.amount))")
+                        Text("\(currencySymbol)\(AmountFormatter.format(spend.amount))")
                             .font(.system(size: 14, weight: .semibold))
                             .xpnseAdaptiveForeground()
                     }

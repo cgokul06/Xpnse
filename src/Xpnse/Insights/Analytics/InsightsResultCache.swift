@@ -73,7 +73,9 @@ enum InsightsResultCache {
 
         var lines: [String] = [
             "schema:category-health-v2",
-            "schema:financial-health-v4",
+            "schema:financial-health-v5",
+            "schema:top-spends-v3",
+            "schema:expense-trend-v2",
             "day:\(dayKey)",
             "currency:\(currencyCode)",
             "categoryRoles:\(categorySpendingRevision)"

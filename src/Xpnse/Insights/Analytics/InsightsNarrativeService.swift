@@ -65,7 +65,7 @@ final class InsightsNarrativeService {
             appropriateFor: nil,
             create: true
         )) ?? fm.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        return base.appendingPathComponent("insights-narrative-cache-v3.json")
+        return base.appendingPathComponent("insights-narrative-cache-v4.json")
     }
 
     func narratives(for snapshot: InsightsSnapshot) async -> InsightsNarratives {
@@ -120,6 +120,7 @@ final class InsightsNarrativeService {
         Use ONLY the JSON snapshot below. Do not invent amounts, merchants, or categories.
         The financial health star rating is already computed in `healthBreakdown.finalStars` and `healthBreakdown.totalScore`.
         Do NOT change or recalculate the score. Explain it using `healthBreakdown.reasons`.
+        For savings rate, use `healthBreakdown.savingsRateAssessment` verbatim — it already states whether the rate is below, within, or above the guide. Never say a higher percent is "below" a lower range (e.g. 38% is above 20–30%, not below).
         Financial health scope (mandatory):
         - Discuss ONLY the current focus month (`focusMonthLabel`). Never mention prior months by name, past savings targets, or historical failures.
         - All `healthBreakdown.reasons` refer to this month — keep the summary forward-looking and about where you stand now.
