@@ -26,6 +26,8 @@ final class InsightsViewModel: ObservableObject {
     @Published private(set) var year: Int
     /// Ghost until analytics are ready; content appears all at once.
     @Published private(set) var phase: Phase = .loading
+    /// When true, Top Spends ranks only non-recurring-generated expenses.
+    @Published private(set) var excludeRecurringFromTopSpends: Bool
 
     private let transactionRepository: TransactionRepository
     private let recurringRepository: RecurringRepository
@@ -47,6 +49,9 @@ final class InsightsViewModel: ObservableObject {
         self.recurringRepository = recurringRepository
         self.calendar = calendar
         self.year = calendar.component(.year, from: now)
+        self.excludeRecurringFromTopSpends = UserDefaultsHelper.shared.bool(
+            forKey: .excludeRecurringFromTopSpends
+        )
 
         // Paint last known Insights immediately (verified against revision next).
         if InsightsResultCache.Policy.readsEnabledOnInit,
@@ -75,9 +80,17 @@ final class InsightsViewModel: ObservableObject {
         narrativeService.cancel()
     }
 
+    func setExcludeRecurringFromTopSpends(_ exclude: Bool) {
+        guard exclude != excludeRecurringFromTopSpends else { return }
+        excludeRecurringFromTopSpends = exclude
+        UserDefaultsHelper.shared.set(exclude, forKey: .excludeRecurringFromTopSpends)
+        scheduleReload(reason: .preferenceChange)
+    }
+
     private enum ReloadReason {
         case appear
         case dataChange
+        case preferenceChange
     }
 
     private func scheduleReload(reason: ReloadReason) {
@@ -117,7 +130,8 @@ final class InsightsViewModel: ObservableObject {
             return
         }
 
-        if !hasCompletedInitialLoad || !useCache {
+        // Prefer keeping current content visible while preference-driven rebuilds run.
+        if !hasCompletedInitialLoad || (!useCache && reason != .preferenceChange) {
             phase = .loading
         }
 
@@ -170,7 +184,8 @@ final class InsightsViewModel: ObservableObject {
                 recurringItems: recurringItems,
                 discretionaryCategoryIds: spendingRoles.discretionaryIds,
                 focusDate: now,
-                calendar: calendar
+                calendar: calendar,
+                excludeRecurringFromTopSpends: excludeRecurringFromTopSpends
             )
 
             guard !Task.isCancelled else { return }
@@ -193,6 +208,7 @@ final class InsightsViewModel: ObservableObject {
             focusDay: now,
             currencyCode: CurrencyManager.shared.selectedCurrency.code,
             categorySpendingRevision: categorySpendingRevision,
+            excludeRecurringFromTopSpends: excludeRecurringFromTopSpends,
             calendar: calendar
         )
     }

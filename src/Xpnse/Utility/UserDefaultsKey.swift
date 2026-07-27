@@ -11,6 +11,8 @@ import Foundation
 enum UserDefaultsKey: String {
     case selectedCurrencyCode
     case calendarAggregator
+    /// When true, Insights Top Spends ranks only non-recurring-generated expenses.
+    case excludeRecurringFromTopSpends
 }
 
 /// Wrapper for UserDefaults
@@ -51,7 +53,11 @@ class UserDefaultsHelper {
 
     private func migrateFromStandardIfNeeded(to groupDefaults: UserDefaults) {
         let standard = UserDefaults.standard
-        let keys: [UserDefaultsKey] = [.selectedCurrencyCode, .calendarAggregator]
+        let keys: [UserDefaultsKey] = [
+            .selectedCurrencyCode,
+            .calendarAggregator,
+            .excludeRecurringFromTopSpends
+        ]
 
         for key in keys {
             guard groupDefaults.object(forKey: key.rawValue) == nil,

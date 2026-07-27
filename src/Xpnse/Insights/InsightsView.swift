@@ -65,7 +65,11 @@ struct InsightsView: View {
                     InsightTopMerchantsCard(
                         merchants: snapshot.topMerchants,
                         currencySymbol: snapshot.currencySymbol,
-                        gloss: viewModel.narratives.merchantGloss
+                        gloss: viewModel.narratives.merchantGloss,
+                        excludeRecurring: Binding(
+                            get: { viewModel.excludeRecurringFromTopSpends },
+                            set: { viewModel.setExcludeRecurringFromTopSpends($0) }
+                        )
                     )
 
                     InsightCategoryHealthCard(

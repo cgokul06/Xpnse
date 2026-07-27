@@ -17,7 +17,8 @@ enum InsightsAnalyticsEngine {
         discretionaryCategoryIds: Set<String>,
         focusDate: Date = Date(),
         calendar: Calendar = .current,
-        currencySymbol: String = CurrencyManager.shared.selectedCurrency.symbol
+        currencySymbol: String = CurrencyManager.shared.selectedCurrency.symbol,
+        excludeRecurringFromTopSpends: Bool = false
     ) -> InsightsSnapshot {
         let focusComps = calendar.dateComponents([.year, .month], from: focusDate)
         let focusYear = focusComps.year ?? calendar.component(.year, from: Date())
@@ -44,9 +45,13 @@ enum InsightsAnalyticsEngine {
             total: focusExpenseTotal
         )
 
+        let topSpendExpenses = excludeRecurringFromTopSpends
+            ? focusExpenses.filter { !$0.isRecurringGenerated }
+            : focusExpenses
+        let topSpendTotal = topSpendExpenses.reduce(0.0) { $0 + $1.totalAmount }
         let topMerchants = buildTopMerchants(
-            expenses: focusExpenses,
-            total: focusExpenseTotal
+            expenses: topSpendExpenses,
+            total: topSpendTotal
         )
 
         let candidateBaselineMonths = priorMonthKeys(

@@ -136,13 +136,26 @@ struct InsightTopMerchantsCard: View {
     let merchants: [InsightsMerchantTotal]
     let currencySymbol: String
     let gloss: String
+    @Binding var excludeRecurring: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             XpnsePanelHeader(title: "Top spends", subtitle: nil)
 
+            Toggle(isOn: $excludeRecurring) {
+                Text("Exclude recurring")
+                    .font(.system(size: 13, weight: .medium))
+                    .xpnseAdaptiveForeground(muted: true)
+            }
+            .toggleStyle(.switch)
+            .tint(XpnseColorKey.secondaryButtonBGColor.color)
+
             if merchants.isEmpty {
-                Text("Top spends appear once you log expenses this month.")
+                Text(
+                    excludeRecurring
+                        ? "No non-recurring spends this month."
+                        : "Top spends appear once you log expenses this month."
+                )
                     .font(.system(size: 13))
                     .xpnseAdaptiveForeground(muted: true)
             } else {
