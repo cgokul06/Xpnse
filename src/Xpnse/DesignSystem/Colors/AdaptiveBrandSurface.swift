@@ -36,8 +36,17 @@ enum AdaptiveBrandSurface {
     }
 
     static func dropdownExpandedBackground(for colorScheme: ColorScheme) -> Color {
-        // Match field / elevated surfaces — no legacy purple brand tint.
-        colorScheme == .dark ? Color.white.opacity(0.15) : Color.black.opacity(0.08)
+        // Opaque fill so underlying form rows never show through the open menu.
+        colorScheme == .dark
+            ? Color(red: 0.14, green: 0.14, blue: 0.14)
+            : Color(red: 0.97, green: 0.97, blue: 0.97)
+    }
+
+    /// Solid surface for dropdown chrome (closed or open).
+    static func dropdownSurfaceBackground(for colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark
+            ? Color(red: 0.14, green: 0.14, blue: 0.14)
+            : Color(red: 0.97, green: 0.97, blue: 0.97)
     }
 
     static func rowBackground(for colorScheme: ColorScheme, emphasized: Bool = false) -> Color {

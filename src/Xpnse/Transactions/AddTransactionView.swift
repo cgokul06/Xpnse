@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 fileprivate enum AddTransactionViewFocusField {
     case description
@@ -130,40 +131,64 @@ struct AddTransactionView: View {
             ZStack {
                 PrimaryGradient()
 
-                ScrollView {
-                    VStack(spacing: 24) {
-                        // Transaction Type Selector
-                        transactionTypeSelector
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(spacing: 24) {
+                            // Transaction Type Selector
+                            transactionTypeSelector
 
-                        // Date input
-                        dateInputSection
+                            // Date input
+                            dateInputSection
 
-                        // Description Input
-                        descriptionInputSection
+                            // Description Input
+                            descriptionInputSection
 
-                        // Merchant Input (optional)
-                        merchantInputSection
+                            // Merchant Input (optional)
+                            merchantInputSection
 
-                        // Amount Input
-                        amountInputSection
+                            // Amount Input
+                            amountInputSection
 
-                        // Category Selection (as a square scrollable box)
-                        categorySelectionSection
+                            // Category Selection (as a square scrollable box)
+                            categorySelectionSection
+                                .id("categorySection")
 
-                        if !isEditing {
-                            recurringSection
+                            if !isEditing {
+                                recurringSection
+                            }
+
+                            // Extra scroll height while the category menu is open so the full
+                            // dropdown can sit above the bottom Save / Scan bar.
+                            Color.clear
+                                .frame(
+                                    height: showDropdownForCategory
+                                        ? DropDownMenu.scrollPadding(
+                                            optionCount: categories.count,
+                                            maxItemDisplayed: 4
+                                        )
+                                        : 16
+                                )
+                                .id("categoryDropdownEnd")
                         }
-
-                        // Spacer for bottom buttons
-                        Spacer()
+                        .padding(.horizontal, 20)
+                        .padding(.top, 20)
+                        .padding(.bottom, 8)
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.top, 20)
-                }
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    self.focussedField = nil
-                    self.showDropdownForCategory = false
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        self.focussedField = nil
+                        self.showDropdownForCategory = false
+                    }
+                    .onChange(of: showDropdownForCategory) { _, isOpen in
+                        guard isOpen else { return }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                            withAnimation(.easeInOut(duration: 0.28)) {
+                                // Bring the end of the open-menu clearance into view so the
+                                // full dropdown sits above the bottom action bar.
+                                proxy.scrollTo("categoryDropdownEnd", anchor: .bottom)
+                            }
+                        }
+                    }
                 }
                 .onChange(of: billScannerService.extractedTransaction) { _, extractedData in
                     if let data = extractedData {
@@ -424,17 +449,19 @@ struct AddTransactionView: View {
 
     // MARK: - Category Selection Section (Square Scrollable Box)
     private var categorySelectionSection: some View {
-        HStack(spacing: 16) {
+        HStack(alignment: .top, spacing: 16) {
             Text("Category")
                 .font(.system(size: 18, weight: .semibold))
                 .xpnseAdaptiveForeground()
+                // Keep label centered on the closed dropdown header (64pt), not the expanded list.
+                .frame(height: 64, alignment: .center)
 
             Spacer(minLength: 0)
 
             DropDownMenu(
                 options: categories,
                 menuWdith: 250,
-                maxItemDisplayed: 6,
+                maxItemDisplayed: 4,
                 selectedCategoryId: categorySelectionBinding,
                 showDropdown: self.$showDropdownForCategory
             )

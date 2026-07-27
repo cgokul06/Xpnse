@@ -607,10 +607,11 @@ private struct EditRecurringTransactionView: View {
     }
 
     private var categorySelectionSection: some View {
-        HStack(spacing: 16) {
+        HStack(alignment: .top, spacing: 16) {
             Text("Category")
                 .font(.system(size: 18, weight: .semibold))
                 .xpnseAdaptiveForeground()
+                .frame(height: 64, alignment: .center)
 
             Spacer(minLength: 0)
 
