@@ -46,11 +46,13 @@ struct DropDownMenu: View {
 
                             Text(selectedCategory.name)
                                 .font(.system(size: 20, weight: .bold))
+                                .xpnseAdaptiveForeground()
                         }
 
                         Spacer()
 
                         Image(systemName: "chevron.down")
+                            .xpnseAdaptiveForeground(muted: true)
                             .rotationEffect(.degrees((showDropdown ? -180 : 0)))
                     }
                 })
@@ -64,7 +66,7 @@ struct DropDownMenu: View {
                         : (buttonHeight * CGFloat(options.count))
                     ScrollView {
                         LazyVStack(spacing: 0) {
-                            ForEach(options) { option in
+                            ForEach(Array(options.enumerated()), id: \.element.id) { index, option in
                                 Button(action: {
                                     withAnimation(.easeInOut) {
                                         selectedCategoryId = option.id
@@ -81,17 +83,29 @@ struct DropDownMenu: View {
 
                                             Text(option.name)
                                                 .font(.system(size: 18, weight: .semibold))
+                                                .xpnseAdaptiveForeground()
                                         }
 
                                         Spacer()
 
                                         if option.id == selectedCategoryId {
                                             Image(systemName: "checkmark.circle.fill")
+                                                .foregroundStyle(
+                                                    AdaptiveBrandSurface.primaryForeground(for: colorScheme)
+                                                )
                                         }
                                     }
                                 })
-                                .padding(.horizontal, 20)
+                                .padding(.horizontal, 12)
                                 .frame(width: menuWdith, height: buttonHeight, alignment: .leading)
+
+                                if index != options.count - 1 {
+                                    Rectangle()
+                                        .fill(AdaptiveBrandSurface.fieldBorder(for: colorScheme))
+                                        .frame(maxWidth: .infinity)
+                                        .frame(height: 1)
+                                        .padding(.horizontal, 12)
+                                }
                             }
                         }
                         .scrollTargetLayout()
@@ -104,7 +118,6 @@ struct DropDownMenu: View {
                     }
                 }
             }
-            .foregroundStyle(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
             .background(
                 RoundedRectangle(cornerRadius: 16)
                     .fill(

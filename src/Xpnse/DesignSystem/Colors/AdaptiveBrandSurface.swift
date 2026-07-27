@@ -36,9 +36,8 @@ enum AdaptiveBrandSurface {
     }
 
     static func dropdownExpandedBackground(for colorScheme: ColorScheme) -> Color {
-        colorScheme == .dark
-            ? Color(red: 0.6, green: 0.3, blue: 0.9)
-            : Color.black.opacity(0.08)
+        // Match field / elevated surfaces — no legacy purple brand tint.
+        colorScheme == .dark ? Color.white.opacity(0.15) : Color.black.opacity(0.08)
     }
 
     static func rowBackground(for colorScheme: ColorScheme, emphasized: Bool = false) -> Color {
