@@ -18,16 +18,29 @@ struct CoordinatedContentView: View {
         Group {
             switch appCoordinator.currentRoute {
             case .splash:
-                LinearGradient(
-                    gradient: Gradient(colors: [
-                        Color(red: 0.4, green: 0.2, blue: 0.8),
-                        Color(red: 0.6, green: 0.3, blue: 0.9),
-                        Color(red: 0.8, green: 0.4, blue: 1.0)
-                    ]),
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                .ignoresSafeArea()
+                ZStack {
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color(red: 0x03 / 255, green: 0x1B / 255, blue: 0x2E / 255),
+                            Color(red: 0x0A / 255, green: 0x34 / 255, blue: 0x52 / 255)
+                        ]),
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .ignoresSafeArea()
+
+                    VStack(spacing: 20) {
+                        Image("SplashIcon")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 120, height: 120)
+                            .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+
+                        Text("SnapLedger")
+                            .font(.custom("ArialRoundedMTBold", size: 32))
+                            .foregroundStyle(.white)
+                    }
+                }
 //            case .authentication:
 //                CoordinatedHomeView()
             case .currencySetup:

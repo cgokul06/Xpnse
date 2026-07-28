@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="24128" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="01J-lp-oVM">
-    <device id="retina6_12" orientation="portrait" appearance="light"/>
+    <device id="retina6_3" orientation="portrait" appearance="light"/>
     <dependencies>
         <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="24063"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
-        <capability name="System colors in document resources" minToolsVersion="11.0"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <scenes>
@@ -13,41 +12,39 @@
             <objects>
                 <viewController id="01J-lp-oVM" sceneMemberID="viewController">
                     <view key="view" contentMode="scaleToFill" id="MA6-rH-rrd">
-                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <rect key="frame" x="0.0" y="0.0" width="402" height="874"/>
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                         <subviews>
-                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="SplashBG" translatesAutoresizingMaskIntoConstraints="NO" id="K3A-gf-8vf">
-                                <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
-                            </imageView>
-                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="SnapLedger" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="UWM-nh-gB7">
-                                <rect key="frame" x="149" y="407.33333333333331" width="95.333333333333314" height="37.333333333333314"/>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="SnapLedger" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="titleLabel">
+                                <rect key="frame" x="106" y="485" width="190" height="37"/>
                                 <fontDescription key="fontDescription" name="ArialRoundedMTBold" family="Arial Rounded MT Bold" pointSize="32"/>
                                 <color key="textColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                 <nil key="highlightedColor"/>
-                                <size key="shadowOffset" width="0.0" height="5"/>
                             </label>
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="SplashIcon" translatesAutoresizingMaskIntoConstraints="NO" id="Bsp-1D-v5k">
+                                <rect key="frame" x="126" y="315" width="150" height="150"/>
+                                <constraints>
+                                    <constraint firstAttribute="height" constant="150" id="3SH-P7-Fd0"/>
+                                    <constraint firstAttribute="width" constant="150" id="u4o-VT-cIE"/>
+                                </constraints>
+                            </imageView>
                         </subviews>
-                        <viewLayoutGuide key="safeArea" id="iWw-cG-41U"/>
-                        <color key="backgroundColor" systemColor="systemBackgroundColor"/>
+                        <viewLayoutGuide key="safeArea" id="safeArea"/>
+                        <color key="backgroundColor" red="0.011764705882352941" green="0.10588235294117647" blue="0.1803921568627451" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                         <constraints>
-                            <constraint firstItem="K3A-gf-8vf" firstAttribute="width" secondItem="MA6-rH-rrd" secondAttribute="width" id="1t2-mV-hys"/>
-                            <constraint firstItem="UWM-nh-gB7" firstAttribute="centerX" secondItem="K3A-gf-8vf" secondAttribute="centerX" id="6Rc-te-ytZ"/>
-                            <constraint firstItem="UWM-nh-gB7" firstAttribute="centerY" secondItem="K3A-gf-8vf" secondAttribute="centerY" id="CvU-h2-xtA"/>
-                            <constraint firstItem="K3A-gf-8vf" firstAttribute="centerY" secondItem="MA6-rH-rrd" secondAttribute="centerY" id="SRO-QW-8U7"/>
-                            <constraint firstItem="K3A-gf-8vf" firstAttribute="height" secondItem="MA6-rH-rrd" secondAttribute="height" id="k27-vd-Vnm"/>
-                            <constraint firstItem="K3A-gf-8vf" firstAttribute="centerX" secondItem="MA6-rH-rrd" secondAttribute="centerX" id="qLR-J5-9fZ"/>
+                            <constraint firstItem="Bsp-1D-v5k" firstAttribute="centerY" secondItem="safeArea" secondAttribute="centerY" constant="-75" id="94o-ba-GEk"/>
+                            <constraint firstItem="titleLabel" firstAttribute="top" secondItem="Bsp-1D-v5k" secondAttribute="bottom" constant="20" id="Hdc-LZ-Ftu"/>
+                            <constraint firstItem="Bsp-1D-v5k" firstAttribute="centerX" secondItem="MA6-rH-rrd" secondAttribute="centerX" id="eS6-B7-FJo"/>
+                            <constraint firstItem="titleLabel" firstAttribute="centerX" secondItem="MA6-rH-rrd" secondAttribute="centerX" id="titleCX"/>
                         </constraints>
                     </view>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="iYj-Kq-Ea1" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="53" y="375"/>
+            <point key="canvasLocation" x="52.238805970149251" y="374.14187643020591"/>
         </scene>
     </scenes>
     <resources>
-        <image name="SplashBG" width="1024" height="1536"/>
-        <systemColor name="systemBackgroundColor">
-            <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-        </systemColor>
+        <image name="SplashIcon" width="341.33334350585938" height="341.33334350585938"/>
     </resources>
 </document>
