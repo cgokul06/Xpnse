@@ -720,9 +720,9 @@ struct TransactionListView: View {
     }
 
     private func dateSectionHeader(date: Date, transactions: [Transaction]) -> some View {
-        HStack(alignment: .firstTextBaseline) {
+        HStack(alignment: .center, spacing: 8) {
             Text(date.formattedDate())
-                .font(.system(size: 12, weight: .regular))
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
 
             Spacer(minLength: 0)
