@@ -266,7 +266,7 @@ final class CategoryStore {
         }
         return CategoryDefinition(
             id: canonicalId,
-            name: "Unknown",
+            name: L10n.tr("category.unknown"),
             symbolName: CategoryIcon.unknownFallbackEmoji,
             colorHex: CategoryColorPalette.defaultHex,
             transactionType: .expense,
@@ -276,7 +276,18 @@ final class CategoryStore {
     }
 
     func categoryDisplayName(for id: String) -> String {
-        resolve(id: id).name
+        let category = resolve(id: id)
+        if BuiltinCategories.builtInCategoryIds.contains(category.id) {
+            return L10n.tr("category.builtin.\(category.id)")
+        }
+        return category.name
+    }
+
+    func localizedName(for category: CategoryDefinition) -> String {
+        if BuiltinCategories.builtInCategoryIds.contains(category.id) {
+            return L10n.tr("category.builtin.\(category.id)")
+        }
+        return category.name
     }
 
     func categorySymbolName(for id: String) -> String {
@@ -413,7 +424,7 @@ final class CategoryStore {
 
     func categoryGuideDescription(for transactionType: TransactionType) -> String {
         let active = categories(for: transactionType)
-        let list = active.map { "\($0.id)=\($0.name)" }.joined(separator: ", ")
+        let list = active.map { "\($0.id)=\(localizedName(for: $0))" }.joined(separator: ", ")
         let fallback = BuiltinCategories.defaultCategoryId(for: transactionType)
         return "Category id. Must be one of: \(list). Use '\(fallback)' if unsure."
     }
@@ -426,9 +437,9 @@ enum CategoryStoreError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .cannotDeleteProtected:
-            return "This category cannot be deleted."
+            return L10n.tr("category.error.cannot_delete")
         case .emptyName:
-            return "Category name cannot be empty."
+            return L10n.tr("category.error.empty_name")
         }
     }
 }
@@ -447,9 +458,9 @@ enum CategoryTypeChangeRestriction: Equatable {
         case .allowed:
             return nil
         case .builtIn:
-            return "Built-in categories keep their expense, savings, or income type."
+            return L10n.tr("category.type_locked_message")
         case .notFound:
-            return "This category could not be found."
+            return L10n.tr("category.not_found")
         }
     }
 }

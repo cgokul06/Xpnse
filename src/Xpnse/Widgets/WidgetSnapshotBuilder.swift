@@ -48,6 +48,7 @@ enum WidgetSnapshotBuilder {
             totalExpenses: summary.totalExpenses,
             totalSavings: summary.totalSavings,
             currencySymbol: currencyManager.selectedCurrency.symbol,
+            currencyCode: currencyManager.selectedCurrency.code,
             donutSlices: chartSlices,
             expenseCategories: legendSlices,
             donutCenterTitle: DonutChartSliceBuilder.centerTitle(income: summary.totalIncome),

@@ -17,8 +17,8 @@ struct ExpenseTrendChart: View {
     private static let chartHeight: CGFloat = 260
     private static let markerSize: CGFloat = 36
 
-    private var currencySymbol: String {
-        currencyManager.selectedCurrency.symbol
+    private var currencyCode: String {
+        currencyManager.selectedCurrency.code
     }
 
     private var gridColor: Color {
@@ -134,7 +134,7 @@ struct ExpenseTrendChart: View {
                     .foregroundStyle(gridColor)
                 AxisValueLabel {
                     if let amount = value.as(Double.self) {
-                        Text("\(currencySymbol)\(amount.abbreviatedFloor())")
+                        Text(AmountFormatter.formatCompact(amount, currencyCode: currencyCode))
                             .font(.system(size: 10, weight: .medium))
                     }
                 }

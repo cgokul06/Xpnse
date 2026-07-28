@@ -37,7 +37,7 @@ struct ExpenseComponent: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
 
-                Text("\(currencyManager.selectedCurrency.symbol)\(cash.abbreviatedFloor())")
+                Text(AmountFormatter.formatCompact(cash, currencyCode: currencyManager.selectedCurrency.code))
                     .font(.system(size: amountFontSize, weight: amountWeight))
                     .foregroundColor(.white)
                     .lineLimit(1)

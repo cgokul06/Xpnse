@@ -31,17 +31,13 @@ struct SummaryCardView: View {
         self.onFlip = onFlip
     }
 
-    private var currencySymbol: String {
-        currencyManager.selectedCurrency.symbol
-    }
-
     private var showsIncomeRatio: Bool {
         income > 0
     }
 
     var body: some View {
         SummaryCardShell(
-            title: "Current Balance",
+            title: L10n.tr("home.current_balance"),
             flipIconName: "chart.pie.fill",
             onFlip: onFlip
         ) {
@@ -59,6 +55,10 @@ struct SummaryCardView: View {
                     .frame(height: SummaryCardMetrics.compactRowHeight, alignment: .center)
             }
         }
+    }
+
+    private var currencyCode: String {
+        currencyManager.selectedCurrency.code
     }
 
     private var bottomStatsRow: some View {
@@ -90,7 +90,7 @@ struct SummaryCardView: View {
                     .xpnseAdaptiveForeground(muted: true)
             }
 
-            Text("\(currencySymbol)\(amount.abbreviatedFloor())")
+            Text(AmountFormatter.formatCompact(amount, currencyCode: currencyCode))
                 .font(.system(size: 20, weight: .bold))
                 .xpnseAdaptiveForeground()
                 .lineLimit(1)
@@ -103,7 +103,7 @@ struct SummaryCardView: View {
     private var balanceAmountView: some View {
         if showsIncomeRatio {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text("\(currencySymbol) \(totalBalance, specifier: "%.2f")")
+                Text(AmountFormatter.format(totalBalance, currencyCode: currencyCode))
                     .font(.system(size: 28, weight: .bold))
                     .xpnseAdaptiveForeground()
 
@@ -111,14 +111,14 @@ struct SummaryCardView: View {
                     .font(.system(size: 16, weight: .medium))
                     .xpnseAdaptiveForeground(muted: true)
 
-                Text("\(currencySymbol)\(income.abbreviatedFloor())")
+                Text(AmountFormatter.formatCompact(income, currencyCode: currencyCode))
                     .font(.system(size: 16, weight: .semibold))
                     .xpnseAdaptiveForeground(muted: true)
             }
             .lineLimit(1)
             .minimumScaleFactor(0.7)
         } else {
-            Text("\(currencySymbol) \(totalBalance, specifier: "%.2f")")
+            Text(AmountFormatter.format(totalBalance, currencyCode: currencyCode))
                 .font(.system(size: 28, weight: .bold))
                 .xpnseAdaptiveForeground()
                 .lineLimit(1)

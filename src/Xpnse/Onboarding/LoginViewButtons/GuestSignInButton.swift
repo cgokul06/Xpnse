@@ -20,7 +20,7 @@ struct GuestSignInButton<AuthManager: AuthManagerProtocol>: View {
                 Image(systemName: "person.crop.circle.badge.questionmark")
                     .font(.system(size: 20, weight: .bold))
                     .foregroundColor(.white)
-                Text("Continue as Guest")
+                Text("auth.continue_guest")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(.white)
             }

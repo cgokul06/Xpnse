@@ -65,11 +65,12 @@ final class InsightsNarrativeService {
             appropriateFor: nil,
             create: true
         )) ?? fm.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        return base.appendingPathComponent("insights-narrative-cache-v4.json")
+        let lang = L10n.preferredLanguageCode
+        return base.appendingPathComponent("insights-narrative-cache-v5-\(lang).json")
     }
 
     func narratives(for snapshot: InsightsSnapshot) async -> InsightsNarratives {
-        let key = snapshot.contentHash
+        let key = "\(snapshot.contentHash)|\(L10n.preferredLanguageCode)"
         if InsightsResultCache.Policy.narrativeReadsEnabled {
             if let cached = memoryCache[key] {
                 return cached
@@ -111,12 +112,14 @@ final class InsightsNarrativeService {
               let json = String(data: data, encoding: .utf8)
         else { return .empty }
 
+        let languageName = L10n.preferredLanguageNameForPrompts
+        let languageCode = L10n.preferredLanguageCode
         let prompt = """
         You are a concise on-device financial coach for SnapLedger, speaking directly to the person reading.
+        Language (mandatory): Write ALL user-facing output (healthSummary, personalityLabel, personalityBlurb, merchantGloss, opportunities, wins) in \(languageName) (BCP-47: \(languageCode)). Do not mix languages.
         Voice rules (mandatory):
-        - Always use second person: "you", "your", "you're", "you've".
-        - Never write "the user", "user", "they", "their", or third-person observations about the reader.
-        - Prefer openings like "You are…", "You seem like…", "Your spending…", "You've…".
+        - Always use second person appropriate for \(languageName).
+        - Never write "the user", "user", or third-person observations about the reader.
         Use ONLY the JSON snapshot below. Do not invent amounts, merchants, or categories.
         The financial health star rating is already computed in `healthBreakdown.finalStars` and `healthBreakdown.totalScore`.
         Do NOT change or recalculate the score. Explain it using `healthBreakdown.reasons`.
@@ -124,7 +127,7 @@ final class InsightsNarrativeService {
         Financial health scope (mandatory):
         - Discuss ONLY the current focus month (`focusMonthLabel`). Never mention prior months by name, past savings targets, or historical failures.
         - All `healthBreakdown.reasons` refer to this month — keep the summary forward-looking and about where you stand now.
-        Example tone: "Your financial health is rated 4/5. You're on track with forecast savings this month, though shopping ran above your usual level."
+        Example tone (adapt into \(languageName)): "Your financial health is rated 4/5. You're on track with forecast savings this month, though shopping ran above your usual level."
         \(FinancialHealthRules.rulesPromptText())
         Snapshot JSON:
         \(json)

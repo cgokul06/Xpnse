@@ -16,7 +16,7 @@ struct EmailSignInButton: View {
                 Image(systemName: "envelope.fill")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(.white)
-                Text("Continue with Email")
+                Text("auth.continue_email")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(.white)
             }

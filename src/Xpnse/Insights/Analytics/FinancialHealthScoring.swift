@@ -57,8 +57,8 @@ enum FinancialHealthScoring {
         reasons.insert(savingsRateAssessment, at: 0)
 
         reasons.append(
-            String(
-                format: "Total score %.2f/5.0 → %d stars (savings %.2f, discipline %.2f, subscriptions %.2f, stability %.2f, trend %.2f).",
+            L10n.tr(
+                "health.stars.total",
                 total, stars, savings, spending, subscription, stability, trend
             )
         )
@@ -84,17 +84,17 @@ enum FinancialHealthScoring {
 
         switch rate {
         case ..<0:
-            return "Forecast savings rate is \(pct)% (spending exceeds income this month)."
+            return L10n.tr("health.rate.negative", pct)
         case 0..<0.05:
-            return "Forecast savings rate is \(pct)% — well below the \(band) guide."
+            return L10n.tr("health.rate.well_below", pct, band)
         case 0.05..<0.20:
-            return "Forecast savings rate is \(pct)% — below the \(band) guide."
+            return L10n.tr("health.rate.below", pct, band)
         case 0.20...0.30:
-            return "Forecast savings rate is \(pct)% — within the \(band) guide."
+            return L10n.tr("health.rate.within", pct, band)
         case 0.30..<0.40:
-            return "Forecast savings rate is \(pct)% — above the \(band) guide (strong savings)."
+            return L10n.tr("health.rate.above", pct, band)
         default:
-            return "Forecast savings rate is \(pct)% — well above the \(band) guide (very strong savings)."
+            return L10n.tr("health.rate.well_above", pct, band)
         }
     }
 
@@ -105,7 +105,7 @@ enum FinancialHealthScoring {
         reasons: inout [String]
     ) -> Double {
         guard forecast.expectedIncome > 0.01 else {
-            reasons.append("No forecast income available for savings score (+0.0 / 2.0).")
+            reasons.append(L10n.tr("health.savings.no_income"))
             return 0
         }
 
@@ -116,25 +116,25 @@ enum FinancialHealthScoring {
         switch rate {
         case ..<0.05:
             points = 0
-            reasons.append("Forecast savings rate \(pct)% is below 5% (+0.0 / 2.0).")
+            reasons.append(L10n.tr("health.savings.below_5", pct))
         case 0.05..<0.10:
             points = 0.5
-            reasons.append("Forecast savings rate \(pct)% is 5–10% (+0.5 / 2.0).")
+            reasons.append(L10n.tr("health.savings.band_5_10", pct))
         case 0.10..<0.15:
             points = 1.0
-            reasons.append("Forecast savings rate \(pct)% is 10–15% (+1.0 / 2.0).")
+            reasons.append(L10n.tr("health.savings.band_10_15", pct))
         case 0.15..<0.20:
             points = 1.5
-            reasons.append("Forecast savings rate \(pct)% is 15–20% (+1.5 / 2.0).")
+            reasons.append(L10n.tr("health.savings.band_15_20", pct))
         case 0.20...0.30:
             points = 2.0
-            reasons.append("Forecast savings rate \(pct)% is in the optimal 20–30% band (+2.0 / 2.0).")
+            reasons.append(L10n.tr("health.savings.optimal", pct))
         case 0.30..<0.40:
             points = 1.9
-            reasons.append("Forecast savings rate \(pct)% is 30–40% (+1.9 / 2.0).")
+            reasons.append(L10n.tr("health.savings.band_30_40", pct))
         default:
             points = 1.8
-            reasons.append("Forecast savings rate \(pct)% is above 40% (+1.8 / 2.0).")
+            reasons.append(L10n.tr("health.savings.above_40", pct))
         }
         return points
     }
@@ -146,7 +146,7 @@ enum FinancialHealthScoring {
         reasons: inout [String]
     ) -> Double {
         guard !input.discretionaryCategoryIds.isEmpty else {
-            reasons.append("No discretionary categories classified (+1.0 / 1.0 spending discipline).")
+            reasons.append(L10n.tr("health.spending.no_discretionary"))
             return 1.0
         }
 
@@ -187,21 +187,16 @@ enum FinancialHealthScoring {
             totalDeduction += deduction
             let name = CategoryStore.shared.categoryDisplayName(for: categoryId)
             reasons.append(
-                String(
-                    format: "%@ is %.0f%% above your usual level this month (−%.1f spending discipline).",
-                    name, variancePct, deduction
-                )
+                L10n.tr("health.spending.above_usual", name, variancePct, deduction)
             )
         }
 
         let capped = min(1.0, totalDeduction)
         let score = max(0, 1.0 - capped)
         if totalDeduction == 0 {
-            reasons.append("Discretionary spending within normal variance (+1.0 / 1.0 spending discipline).")
+            reasons.append(L10n.tr("health.spending.within"))
         } else {
-            reasons.append(
-                String(format: "Spending discipline score %.1f / 1.0 after %.1f total deduction.", score, capped)
-            )
+            reasons.append(L10n.tr("health.spending.score", score, capped))
         }
         return score
     }
@@ -222,26 +217,21 @@ enum FinancialHealthScoring {
         input: FinancialHealthScoringInput,
         reasons: inout [String]
     ) -> Double {
-        let sharePct = input.subscriptionShareOfExpense * 100
+        let sharePct = Int((input.subscriptionShareOfExpense * 100).rounded())
         var points: Double
         switch input.subscriptionShareOfExpense {
         case ...0.05:
             points = 0.5
-            reasons.append("Subscriptions are \(Int(sharePct.rounded()))% of expenses (+0.5 / 0.5).")
         case 0.05..<0.08:
             points = 0.4
-            reasons.append("Subscriptions are \(Int(sharePct.rounded()))% of expenses (+0.4 / 0.5).")
         case 0.08..<0.10:
             points = 0.3
-            reasons.append("Subscriptions are \(Int(sharePct.rounded()))% of expenses (+0.3 / 0.5).")
         case 0.10..<0.15:
             points = 0.2
-            reasons.append("Subscriptions are \(Int(sharePct.rounded()))% of expenses (+0.2 / 0.5).")
         default:
             points = 0
-            reasons.append("Subscriptions are \(Int(sharePct.rounded()))% of expenses (+0.0 / 0.5).")
         }
-
+        reasons.append(L10n.tr("health.subscriptions.share", sharePct, points))
         return max(0, points)
     }
 
@@ -257,12 +247,12 @@ enum FinancialHealthScoring {
         if forecast.expectedIncome > 0.01 {
             if forecast.expectedSavings < 0 {
                 score -= 0.5
-                reasons.append("This month's forecast ends with negative savings (−0.5 stability).")
+                reasons.append(L10n.tr("health.stability.negative_savings"))
             } else {
                 let rate = forecast.expectedSavings / forecast.expectedIncome
                 if rate < 0.05 {
                     score -= 0.25
-                    reasons.append("Forecast month-end savings rate is below 5% (−0.25 stability).")
+                    reasons.append(L10n.tr("health.stability.low_rate"))
                 }
             }
         }
@@ -274,7 +264,7 @@ enum FinancialHealthScoring {
         let eventTotal = input.events.filter(\.excludeFromLifestyle).reduce(0.0) { $0 + $1.amount }
         if focusExpense > 0.01, eventTotal / focusExpense > 0.20 {
             score -= 0.2
-            reasons.append("Large one-time expenses this month reduce spending flexibility (−0.2 stability).")
+            reasons.append(L10n.tr("health.stability.large_events"))
         }
 
         if !input.discretionaryCategoryIds.isEmpty, !input.completedBaselineMonths.isEmpty {
@@ -301,17 +291,15 @@ enum FinancialHealthScoring {
             let priorAverage = priorTotals.reduce(0, +) / Double(priorTotals.count)
             if priorAverage > 0.01, focusDiscretionary > priorAverage * 1.25 {
                 score -= 0.2
-                reasons.append(
-                    "Discretionary spending this month is well above your usual level (−0.2 stability)."
-                )
+                reasons.append(L10n.tr("health.stability.discretionary_high"))
             }
         }
 
         let finalScore = max(0, score)
         if finalScore >= 1.0 {
-            reasons.append("This month's spending path looks stable (+1.0 / 1.0 stability).")
+            reasons.append(L10n.tr("health.stability.stable"))
         } else {
-            reasons.append(String(format: "Stability score %.1f / 1.0.", finalScore))
+            reasons.append(L10n.tr("health.stability.score", finalScore))
         }
         return finalScore
     }
@@ -329,16 +317,16 @@ enum FinancialHealthScoring {
             let rate = forecast.expectedSavings / forecast.expectedIncome
             if (0.20...0.30).contains(rate) {
                 bonus += 0.25
-                reasons.append("Forecast savings rate is in the optimal band this month (+0.25 trend).")
+                reasons.append(L10n.tr("health.trend.optimal_band"))
             } else if rate >= 0.15 {
                 bonus += 0.15
-                reasons.append("Forecast savings rate is healthy this month (+0.15 trend).")
+                reasons.append(L10n.tr("health.trend.healthy_rate"))
             }
         }
 
         if forecast.confidence >= 0.7 {
             bonus += 0.15
-            reasons.append("Month-end forecast confidence is high (+0.15 trend).")
+            reasons.append(L10n.tr("health.trend.high_confidence"))
         }
 
         if !input.discretionaryCategoryIds.isEmpty, !input.completedBaselineMonths.isEmpty {
@@ -365,20 +353,20 @@ enum FinancialHealthScoring {
             let priorAverage = priorTotals.reduce(0, +) / Double(priorTotals.count)
             if priorAverage > 0.01, focusDiscretionary <= priorAverage * 1.05 {
                 bonus += 0.1
-                reasons.append("Discretionary spending is near your usual level this month (+0.1 trend).")
+                reasons.append(L10n.tr("health.trend.discretionary_near"))
             }
         }
 
         if input.events.filter(\.excludeFromLifestyle).isEmpty {
             bonus += 0.1
-            reasons.append("No large one-off expenses detected this month (+0.1 trend).")
+            reasons.append(L10n.tr("health.trend.no_one_offs"))
         }
 
         let capped = min(0.5, bonus)
         if capped == 0 {
-            reasons.append("No current-month momentum bonuses (+0.0 / 0.5 trend).")
+            reasons.append(L10n.tr("health.trend.none"))
         } else {
-            reasons.append(String(format: "Trend bonus %.1f / 0.5.", capped))
+            reasons.append(L10n.tr("health.trend.bonus", capped))
         }
         return capped
     }

@@ -141,7 +141,7 @@ struct ExpenseDonutSummaryCardView: View {
 
             Spacer(minLength: 4)
 
-            Text("\(currencyManager.selectedCurrency.symbol)\(AmountFormatter.format(slice.amount))")
+            Text(AmountFormatter.format(slice.amount, currencyCode: currencyManager.selectedCurrency.code))
                 .font(.system(size: 13, weight: .semibold))
                 .xpnseAdaptiveForeground(muted: true)
         }

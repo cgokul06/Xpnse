@@ -68,14 +68,11 @@ struct Transaction: Identifiable, Codable, Equatable, Hashable {
     }
 
     var formattedDate: String {
-        let formattedDate = Date(timeIntervalSince1970: date)
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        return formatter.string(from: formattedDate)
+        Date(timeIntervalSince1970: date).formattedDate()
     }
 
     var formattedAmount: String {
-        AmountFormatter.format(totalAmount)
+        AmountFormatter.format(totalAmount, currencyCode: currency.code)
     }
 
     init(

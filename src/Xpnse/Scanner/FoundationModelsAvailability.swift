@@ -20,13 +20,13 @@ enum FoundationModelsAvailability {
 
         switch reason {
         case .appleIntelligenceNotEnabled:
-            return "Apple Intelligence is not enabled. Please enable it in Settings."
+            return L10n.tr("ai.unavailable.not_enabled")
         case .deviceNotEligible:
-            return "This device is not eligible for Apple Intelligence. Please use a compatible device."
+            return L10n.tr("ai.unavailable.device_not_eligible")
         case .modelNotReady:
-            return "The language model is not ready yet. Please try again later."
+            return L10n.tr("ai.unavailable.model_not_ready")
         @unknown default:
-            return "The language model is unavailable for an unknown reason."
+            return L10n.tr("ai.unavailable.unknown")
         }
     }
 }

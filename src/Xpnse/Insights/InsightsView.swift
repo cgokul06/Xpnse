@@ -59,12 +59,12 @@ struct InsightsView: View {
 
                     InsightBiggestChangesCard(
                         changes: snapshot.biggestChanges,
-                        currencySymbol: snapshot.currencySymbol
+                        currencyCode: CurrencyManager.shared.selectedCurrency.code
                     )
 
                     InsightTopMerchantsCard(
                         merchants: snapshot.topMerchants,
-                        currencySymbol: snapshot.currencySymbol,
+                        currencyCode: CurrencyManager.shared.selectedCurrency.code,
                         gloss: viewModel.narratives.merchantGloss,
                         excludeRecurring: Binding(
                             get: { viewModel.excludeRecurringFromTopSpends },
@@ -74,18 +74,18 @@ struct InsightsView: View {
 
                     InsightCategoryHealthCard(
                         baselines: snapshot.categoryBaselines,
-                        currencySymbol: snapshot.currencySymbol
+                        currencyCode: CurrencyManager.shared.selectedCurrency.code
                     )
 
                     InsightForecastCard(
                         forecast: snapshot.forecast,
-                        currencySymbol: snapshot.currencySymbol
+                        currencyCode: CurrencyManager.shared.selectedCurrency.code
                     )
 
                     if !snapshot.events.isEmpty {
                         InsightEventsCard(
                             events: snapshot.events,
-                            currencySymbol: snapshot.currencySymbol
+                            currencyCode: CurrencyManager.shared.selectedCurrency.code
                         )
                     }
 

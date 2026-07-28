@@ -33,11 +33,15 @@ struct EmailSignInView<AuthManager: AuthManagerProtocol>: View {
                 VStack(spacing: 24) {
                     // Header
                     VStack(spacing: 8) {
-                        Text(isSignUp ? "Create Account" : "Sign In")
+                        Text(isSignUp
+                             ? LocalizedStringKey("auth.create_account")
+                             : LocalizedStringKey("auth.sign_in"))
                             .font(.largeTitle)
                             .fontWeight(.bold)
 
-                        Text(isSignUp ? "Create your expense tracker account" : "Welcome back to your expense tracker")
+                        Text(isSignUp
+                             ? LocalizedStringKey("auth.create_subtitle")
+                             : LocalizedStringKey("auth.welcome_back"))
                             .font(.body)
                             .foregroundColor(XpnseColorKey.white.color)
                             .multilineTextAlignment(.center)
@@ -45,17 +49,17 @@ struct EmailSignInView<AuthManager: AuthManagerProtocol>: View {
 
                     // Form
                     VStack(alignment: .leading, spacing: 16) {
-                        TextField("Email", text: $email)
+                        TextField("auth.email", text: $email)
                             .keyboardType(.emailAddress)
                             .autocapitalization(.none)
                             .xpnseStyledTextField()
 
                         VStack(alignment: .leading, spacing: 8) {
-                            SecureField("Password", text: $password)
+                            SecureField("auth.password", text: $password)
                                 .xpnseStyledTextField()
 
                             if isSignUp {
-                                Text("Password must be at least 8 characters")
+                                Text("auth.password_hint")
                                     .font(.caption)
                                     .foregroundColor(XpnseColorKey.white.color)
                                     .padding(.leading, 6)
@@ -80,7 +84,9 @@ struct EmailSignInView<AuthManager: AuthManagerProtocol>: View {
                                         .progressViewStyle(CircularProgressViewStyle(tint: XpnseColorKey.white.color))
                                         .scaleEffect(0.8)
                                 }
-                                Text(isSignUp ? "Create Account" : "Sign In")
+                                Text(isSignUp
+                                     ? LocalizedStringKey("auth.create_account")
+                                     : LocalizedStringKey("auth.sign_in"))
                                     .fontWeight(.semibold)
                             }
                             .animation(.easeInOut, value: authManager.isLoading)
@@ -97,7 +103,7 @@ struct EmailSignInView<AuthManager: AuthManagerProtocol>: View {
                         )
 
                         if !isSignUp {
-                            Button("Forgot Password?") {
+                            Button("auth.forgot_password") {
 //                                authCoordinator.presentSheet(.forgotPassword)
                                 authCoordinator.push(.forgotPassword)
                             }
@@ -111,7 +117,9 @@ struct EmailSignInView<AuthManager: AuthManagerProtocol>: View {
                         isSignUp.toggle()
                         authManager.clearError()
                     }) {
-                        Text(isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up")
+                        Text(isSignUp
+                             ? LocalizedStringKey("auth.already_have_account")
+                             : LocalizedStringKey("auth.no_account"))
                             .font(.caption)
                             .foregroundColor(XpnseColorKey.white.color)
                     }
@@ -135,8 +143,8 @@ struct EmailSignInView<AuthManager: AuthManagerProtocol>: View {
                     .foregroundStyle(Color.black)
                 }
             }
-            .alert("Error", isPresented: .constant(authManager.errorMessage != nil)) {
-                Button("OK") {
+            .alert("common.error", isPresented: .constant(authManager.errorMessage != nil)) {
+                Button("common.ok") {
                     authManager.clearError()
                 }
             } message: {

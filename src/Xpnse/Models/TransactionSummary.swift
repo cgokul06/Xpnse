@@ -59,15 +59,11 @@ struct TransactionSummary {
         startDate: Date,
         endDate: Date
     ) -> String? {
-        let formatter = DateFormatter()
-
         switch currentCalendarComparator {
         case .monthly:
-            formatter.dateFormat = "MMM yyyy"
-            return formatter.string(from: startDate)
+            return startDate.formattedMonthYear()
         case .yearly:
-            formatter.dateFormat = "yyyy"
-            return formatter.string(from: startDate)
+            return startDate.formattedYear()
         }
     }
 

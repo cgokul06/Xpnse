@@ -35,9 +35,10 @@ struct BalanceWidgetProvider: TimelineProvider {
             totalExpenses: 1697.85,
             totalSavings: 800,
             currencySymbol: "$",
+            currencyCode: "USD",
             donutSlices: [],
             expenseCategories: [],
-            donutCenterTitle: "Balance",
+            donutCenterTitle: L10n.tr("common.balance"),
             donutCenterAmount: 3542.15,
             updatedAt: Date()
         )
@@ -64,11 +65,11 @@ struct BalanceWidgetView: View {
     @ViewBuilder
     private var balanceHeader: some View {
         if entry.snapshot.periodLabel.isEmpty {
-            WidgetSectionHeader(title: "Current Balance", subtitle: nil)
+            WidgetSectionHeader(title: L10n.tr("widget.balance.name"), subtitle: nil)
         } else {
             WidgetSectionHeader(
                 title: entry.snapshot.periodLabel,
-                subtitle: "Current Balance"
+                subtitle: L10n.tr("widget.balance.name")
             )
         }
     }
@@ -98,7 +99,7 @@ struct BalanceWidgetView: View {
                     centeredStat(
                         icon: "banknote",
                         color: WidgetStyle.savings,
-                        title: "Savings",
+                        title: L10n.tr("txn.type.savings"),
                         amount: entry.snapshot.totalSavings,
                         alignment: .leading
                     )
@@ -106,7 +107,7 @@ struct BalanceWidgetView: View {
                     centeredStat(
                         icon: "arrow.down",
                         color: WidgetStyle.expense,
-                        title: "Expense",
+                        title: L10n.tr("txn.type.expense"),
                         amount: entry.snapshot.totalExpenses,
                         alignment: .leading
                     )
@@ -116,7 +117,7 @@ struct BalanceWidgetView: View {
                     centeredStat(
                         icon: "banknote",
                         color: WidgetStyle.savings,
-                        title: "Savings",
+                        title: L10n.tr("txn.type.savings"),
                         amount: entry.snapshot.totalSavings,
                         alignment: .center
                     )
@@ -129,7 +130,7 @@ struct BalanceWidgetView: View {
                     centeredStat(
                         icon: "arrow.down",
                         color: WidgetStyle.expense,
-                        title: "Expense",
+                        title: L10n.tr("txn.type.expense"),
                         amount: entry.snapshot.totalExpenses,
                         alignment: .center
                     )
@@ -139,11 +140,13 @@ struct BalanceWidgetView: View {
         .frame(maxWidth: .infinity)
     }
 
+    private var currencyCode: String { entry.snapshot.currencyCode }
+
     private func formattedBalance(_ balance: Double) -> String {
         if isSmall {
-            return "\(currencySymbol)\(WidgetAbbreviation.format(balance))"
+            return AmountFormatter.formatCompact(balance, currencyCode: currencyCode)
         }
-        return "\(currencySymbol) \(AmountFormatter.format(balance))"
+        return AmountFormatter.format(balance, currencyCode: currencyCode)
     }
 
     @ViewBuilder
@@ -158,7 +161,7 @@ struct BalanceWidgetView: View {
                     .font(.system(size: isSmall ? 14 : 16, weight: .medium))
                     .foregroundStyle(WidgetStyle.mutedText(for: colorScheme))
 
-                Text("\(currencySymbol)\(WidgetAbbreviation.format(entry.snapshot.totalIncome))")
+                Text(AmountFormatter.formatCompact(entry.snapshot.totalIncome, currencyCode: currencyCode))
                     .font(.system(size: isSmall ? 14 : 16, weight: .semibold))
                     .foregroundStyle(WidgetStyle.mutedText(for: colorScheme))
             }
@@ -195,7 +198,7 @@ struct BalanceWidgetView: View {
                         .padding(2)
                         .background(Circle().fill(color))
 
-                    Text("\(currencySymbol)\(WidgetAbbreviation.format(amount))")
+                    Text(AmountFormatter.formatCompact(amount, currencyCode: currencyCode))
                         .font(.system(size: amountFontSize, weight: .bold))
                         .foregroundStyle(WidgetStyle.primaryText(for: colorScheme))
                         .lineLimit(1)
@@ -216,7 +219,7 @@ struct BalanceWidgetView: View {
                             .foregroundStyle(WidgetStyle.mutedText(for: colorScheme))
                     }
 
-                    Text("\(currencySymbol)\(WidgetAbbreviation.format(amount))")
+                    Text(AmountFormatter.formatCompact(amount, currencyCode: currencyCode))
                         .font(.system(size: amountFontSize, weight: .bold))
                         .foregroundStyle(WidgetStyle.primaryText(for: colorScheme))
                         .lineLimit(1)
@@ -237,8 +240,8 @@ struct BalanceWidget: Widget {
                 BalanceWidgetView(entry: entry)
             }
         }
-        .configurationDisplayName("Current Balance")
-        .description("Current period balance over income, with savings and expenses.")
+        .configurationDisplayName(LocalizedStringResource("widget.balance.name"))
+        .description(LocalizedStringResource("widget.balance.description"))
         .supportedFamilies([.systemSmall, .systemMedium])
         .contentMarginsDisabled()
     }

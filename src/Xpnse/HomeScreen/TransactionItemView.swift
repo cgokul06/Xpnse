@@ -59,7 +59,7 @@ struct TransactionItemView: View {
                         }
 
                         if transaction.isRecurringGenerated {
-                            Text("Recurring")
+                            Text(L10n.tr("common.recurring"))
                                 .font(.system(size: 10, weight: .semibold))
                                 .foregroundStyle(.white)
                                 .padding(.horizontal, 7)
@@ -72,7 +72,7 @@ struct TransactionItemView: View {
 
                 Spacer(minLength: 8)
 
-                Text(transaction.currency.symbol + " " + transaction.formattedAmount)
+                Text(transaction.formattedAmount)
                     .font(.system(size: 17, weight: .semibold, design: .rounded))
                     .xpnseAdaptiveForeground()
                     .lineLimit(1)

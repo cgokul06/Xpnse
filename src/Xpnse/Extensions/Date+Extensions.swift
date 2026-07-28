@@ -1,16 +1,25 @@
 //
-//  File.swift
+//  Date+Extensions.swift
 //  Xpnse
-//
-//  Created by Gokul C on 09/11/25.
 //
 
 import Foundation
 
 extension Date {
-    func formattedDate() -> String {
+    func formattedDate(dateStyle: DateFormatter.Style = .medium) -> String {
         let formatter = DateFormatter()
-        formatter.dateStyle = .medium
+        formatter.locale = .current
+        formatter.calendar = .current
+        formatter.dateStyle = dateStyle
+        formatter.timeStyle = .none
         return formatter.string(from: self)
+    }
+
+    func formattedMonthYear() -> String {
+        formatted(.dateTime.month(.abbreviated).year().locale(.current))
+    }
+
+    func formattedYear() -> String {
+        formatted(.dateTime.year().locale(.current))
     }
 }

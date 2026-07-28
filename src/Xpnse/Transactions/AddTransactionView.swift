@@ -310,7 +310,7 @@ struct AddTransactionView: View {
                 }
 
                 ToolbarItem(placement: .principal) {
-                    Text("Add Transaction")
+                    Text(isEditing ? "txn.edit.title" : "txn.add.title")
                         .font(.title2)
                         .fontWeight(.bold)
                         .xpnseAdaptiveForeground()
@@ -351,28 +351,28 @@ struct AddTransactionView: View {
             }
             .alert(isPresented: $showDeleteAlert) {
                 Alert(
-                    title: Text("Are you sure you want to delete this transaction?"),
+                    title: Text("txn.delete.confirm"),
                     primaryButton: .destructive(
-                        Text("Yes"),
+                        Text("common.yes"),
                         action: {
                         Task {
                             await self.deleteTransaction()
                         }
                     }),
                     secondaryButton: .default(
-                        Text("No"),
+                        Text("common.no"),
                         action: {
                         self.showDeleteAlert = false
                     })
                 )
             }
-            .alert("Notifications", isPresented: $showReminderPermissionAlert) {
-                Button("Open Settings") {
+            .alert("common.notifications", isPresented: $showReminderPermissionAlert) {
+                Button("common.open_settings") {
                     RecurringReminderScheduler.shared.openAppSettings()
                 }
-                Button("OK", role: .cancel) {}
+                Button("common.ok", role: .cancel) {}
             } message: {
-                Text("Turn on notifications for SnapLedger in Settings to get reminders for this recurring transaction.")
+                Text("txn.notifications_settings")
             }
             .onChange(of: remindRecurring) { _, newValue in
                 guard newValue, isRecurring else { return }
@@ -429,7 +429,7 @@ struct AddTransactionView: View {
     // MARK: - Amount Input Section
     private var amountInputSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Amount")
+            Text("common.amount")
                 .font(.system(size: 18, weight: .semibold))
                 .xpnseAdaptiveForeground()
 
@@ -438,7 +438,7 @@ struct AddTransactionView: View {
                     .font(.system(size: 24, weight: .bold))
                     .xpnseAdaptiveForeground()
 
-                TextField("0.00", text: $amount)
+                TextField("txn.field.amount_placeholder", text: $amount)
                     .font(.system(size: 24, weight: .bold))
                     .keyboardType(.decimalPad)
                     .xpnseStyledTextField()
@@ -450,7 +450,7 @@ struct AddTransactionView: View {
     // MARK: - Category Selection Section (Square Scrollable Box)
     private var categorySelectionSection: some View {
         HStack(alignment: .top, spacing: 16) {
-            Text("Category")
+            Text("common.category")
                 .font(.system(size: 18, weight: .semibold))
                 .xpnseAdaptiveForeground()
                 // Keep label centered on the closed dropdown header (64pt), not the expanded list.
@@ -473,7 +473,7 @@ struct AddTransactionView: View {
     private var recurringSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Toggle(isOn: $isRecurring) {
-                Text("Recurring")
+                Text("common.recurring")
                     .font(.system(size: 18, weight: .semibold))
                     .xpnseAdaptiveForeground()
             }
@@ -482,13 +482,13 @@ struct AddTransactionView: View {
 
             if isRecurring {
                 HStack {
-                    Text("Frequency")
+                    Text("txn.frequency")
                         .font(.system(size: 16, weight: .medium))
                         .xpnseAdaptiveForeground()
 
                     Spacer(minLength: 0)
 
-                    Picker("Frequency", selection: $recurrenceFrequency) {
+                    Picker("txn.frequency", selection: $recurrenceFrequency) {
                         ForEach(recurrenceOptions, id: \.self) { option in
                             Text(option.displayName).tag(option)
                         }
@@ -497,7 +497,7 @@ struct AddTransactionView: View {
                 }
 
                 Toggle(isOn: $hasRecurringEndDate) {
-                    Text("Set end date")
+                    Text("txn.set_end_date")
                         .font(.system(size: 16, weight: .medium))
                         .xpnseAdaptiveForeground()
                 }
@@ -506,7 +506,7 @@ struct AddTransactionView: View {
 
                 if hasRecurringEndDate {
                     DatePicker(
-                        "End date",
+                        "txn.end_date",
                         selection: $recurringEndDate,
                         displayedComponents: .date
                     )
@@ -514,13 +514,13 @@ struct AddTransactionView: View {
                 }
 
                 if !recurringDateRangeValid {
-                    Text("End date must be on or after start date.")
+                    Text("txn.end_date_invalid")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.red)
                 }
 
                 Toggle(isOn: $remindRecurring) {
-                    Text("Remind me")
+                    Text("txn.remind_me")
                         .font(.system(size: 16, weight: .medium))
                         .xpnseAdaptiveForeground()
                 }
@@ -529,14 +529,14 @@ struct AddTransactionView: View {
 
                 if remindRecurring {
                     DatePicker(
-                        "Reminder date and time",
+                        "txn.reminder_datetime",
                         selection: $reminderDateTime,
                         displayedComponents: [.date, .hourAndMinute]
                     )
                     .datePickerStyle(.compact)
 
                     if !isRecurringReminderScheduleValid {
-                        Text("Reminder must be before the transaction date, at latest the end of the previous day (e.g. transaction 11 May → reminder on or before 10 May, 11:59 p.m.).")
+                        Text("txn.reminder_invalid")
                             .font(.system(size: 12, weight: .medium))
                             .foregroundColor(.red)
                     }
@@ -548,19 +548,19 @@ struct AddTransactionView: View {
     // MARK: - Description Input Section
     private var descriptionInputSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Description")
+            Text("common.description")
                 .font(.system(size: 18, weight: .semibold))
                 .xpnseAdaptiveForeground()
 
             VStack(alignment: .leading, spacing: 0) {
-                TextField("Add a description", text: $description)
+                TextField("txn.field.description_placeholder", text: $description)
                     .font(.system(size: 20, weight: .bold))
                     .xpnseStyledTextField()
                     .focused(self.$focussedField, equals: .description)
 
                 if showSuggestions {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Suggestions:")
+                        Text("txn.suggestions")
                             .font(.system(size: 16, weight: .semibold))
                             .xpnseAdaptiveForeground()
                             .padding(.top, 12)
@@ -627,19 +627,19 @@ struct AddTransactionView: View {
     // MARK: - Merchant Input Section
     private var merchantInputSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Merchant")
+            Text("common.merchant")
                 .font(.system(size: 18, weight: .semibold))
                 .xpnseAdaptiveForeground()
 
             VStack(alignment: .leading, spacing: 0) {
-                TextField("Merchant (optional)", text: $merchant)
+                TextField("txn.field.merchant_placeholder", text: $merchant)
                     .font(.system(size: 20, weight: .bold))
                     .xpnseStyledTextField()
                     .focused(self.$focussedField, equals: .merchant)
 
                 if showMerchantSuggestions {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Suggestions:")
+                        Text("txn.suggestions")
                             .font(.system(size: 16, weight: .semibold))
                             .xpnseAdaptiveForeground()
                             .padding(.top, 12)
@@ -683,7 +683,7 @@ struct AddTransactionView: View {
     // MARK: - Date Input Section
     private var dateInputSection: some View {
         HStack(alignment: .center, spacing: 16) {
-            Text("Date of transaction")
+            Text("txn.date_of_transaction")
                 .font(.system(size: 18, weight: .semibold))
                 .xpnseAdaptiveForeground()
 
@@ -716,7 +716,7 @@ struct AddTransactionView: View {
                             .font(.system(size: 16, weight: .semibold))
                     }
 
-                    Text("Save")
+                    Text("common.save")
                         .font(.system(size: 18, weight: .semibold))
                 }
             }
@@ -738,7 +738,7 @@ struct AddTransactionView: View {
                         Image(systemName: "doc.text.viewfinder")
                             .font(.system(size: 18, weight: .semibold))
 
-                        Text("Scan Bill")
+                        Text("txn.scan_bill")
                             .font(.system(size: 18, weight: .semibold))
                     }
                 }

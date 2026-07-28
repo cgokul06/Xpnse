@@ -28,7 +28,7 @@ class BillScannerService: ObservableObject {
             let extractedTransaction = try await extractTransactionFromImage(image)
             self.extractedTransaction = extractedTransaction
         } catch {
-            errorMessage = "Failed to extract data: \(error.localizedDescription)"
+            errorMessage = L10n.tr("scanner.extract_failed", error.localizedDescription)
         }
 
         isScanning = false
@@ -41,11 +41,19 @@ class BillScannerService: ObservableObject {
             throw BillScannerError.invalidImage
         }
 
-        let res = try await RecognizeTextRequest().perform(on: cgImage)
+        var request = RecognizeTextRequest()
+        request.recognitionLanguages = OCRLanguagePreferences.recognitionLanguages().map {
+            Locale.Language(identifier: $0)
+        }
+        let res = try await request.perform(on: cgImage)
         var allText: [String] = []
         for c in res {
             guard let topCandidate = c.topCandidates(1).first else { continue }
             allText.append(topCandidate.string)
+        }
+
+        guard !allText.isEmpty else {
+            throw BillScannerError.noTextFound
         }
 
         return try await parseTransactionWithLanguageModel(allText.joined(separator: "\n"))
@@ -67,7 +75,7 @@ class BillScannerService: ObservableObject {
         guard FoundationModelsAvailability.isAvailable else {
             throw BillScannerError.modelUnavailable(
                 FoundationModelsAvailability.unavailabilityMessage
-                    ?? "The language model is unavailable."
+                    ?? L10n.tr("scanner.model_unavailable")
             )
         }
 
@@ -91,11 +99,11 @@ class BillScannerService: ObservableObject {
         var errorDescription: String? {
             switch self {
             case .invalidImage:
-                return "Invalid image provided"
+                return L10n.tr("scanner.invalid_image")
             case .noTextFound:
-                return "No text found in the image"
+                return L10n.tr("scanner.no_text")
             case .extractionFailed:
-                return "Failed to extract data from image"
+                return L10n.tr("scanner.extraction_failed")
             case .modelUnavailable(let message):
                 return message
             }

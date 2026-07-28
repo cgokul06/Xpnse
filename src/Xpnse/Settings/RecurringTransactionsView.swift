@@ -37,7 +37,7 @@ struct RecurringTransactionsView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .gradientNavigationBackground()
-        .navigationTitle("Recurring")
+        .navigationTitle("common.recurring")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $selectedForEdit) { item in
             EditRecurringTransactionView(item: item) {
@@ -58,7 +58,7 @@ struct RecurringTransactionsView: View {
                         recurringRow(item)
                     }
                 } header: {
-                    sectionHeader("Active")
+                    sectionHeader(L10n.tr("common.active"))
                 }
             }
 
@@ -68,7 +68,7 @@ struct RecurringTransactionsView: View {
                         recurringRow(item)
                     }
                 } header: {
-                    sectionHeader("Paused")
+                    sectionHeader(L10n.tr("common.paused"))
                 }
             }
         }
@@ -101,7 +101,7 @@ struct RecurringTransactionsView: View {
                             await reload()
                         }
                     } label: {
-                        Label("Skip", systemImage: "forward.fill")
+                        Label("txn.skip", systemImage: "forward.fill")
                     }
                     .tint(.orange)
 
@@ -111,7 +111,7 @@ struct RecurringTransactionsView: View {
                             await reload()
                         }
                     } label: {
-                        Label("Pause", systemImage: "pause.fill")
+                        Label("common.pause", systemImage: "pause.fill")
                     }
                     .tint(.gray)
                 }
@@ -124,11 +124,11 @@ struct RecurringTransactionsView: View {
                 .font(.system(size: 40))
                 .xpnseAdaptiveForeground(muted: true)
 
-            Text("No recurring transactions")
+            Text("settings.recurring_empty")
                 .font(.system(size: 18, weight: .semibold))
                 .xpnseAdaptiveForeground()
 
-            Text("Create one when adding a transaction and enabling Recurring.")
+            Text("settings.recurring_empty_hint")
                 .font(.system(size: 14, weight: .regular))
                 .xpnseAdaptiveForeground(muted: true)
                 .multilineTextAlignment(.center)
@@ -320,17 +320,17 @@ private struct EditRecurringTransactionView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
+                    Button("common.close") { dismiss() }
                         .xpnseAdaptiveForeground()
                 }
                 ToolbarItem(placement: .principal) {
-                    Text("Update Recurring")
+                    Text("txn.update_recurring")
                         .font(.title3)
                         .fontWeight(.bold)
                         .xpnseAdaptiveForeground()
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button("common.save") {
                         Task { await save() }
                     }
                     .disabled(
@@ -340,13 +340,13 @@ private struct EditRecurringTransactionView: View {
                     .xpnseAdaptiveForeground()
                 }
             }
-            .alert("Notifications", isPresented: $showReminderPermissionAlert) {
-                Button("Open Settings") {
+            .alert("common.notifications", isPresented: $showReminderPermissionAlert) {
+                Button("common.open_settings") {
                     RecurringReminderScheduler.shared.openAppSettings()
                 }
-                Button("OK", role: .cancel) {}
+                Button("common.ok", role: .cancel) {}
             } message: {
-                Text("Turn on notifications for SnapLedger in Settings to get reminders for this recurring transaction.")
+                Text("txn.notifications_settings")
             }
             .onChange(of: remindRecurring) { _, newValue in
                 guard newValue else { return }
@@ -477,7 +477,7 @@ private struct EditRecurringTransactionView: View {
     private var reminderSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Toggle(isOn: $remindRecurring) {
-                Text("Remind me")
+                Text("txn.remind_me")
                     .font(.system(size: 16, weight: .medium))
                     .xpnseAdaptiveForeground()
             }
@@ -486,14 +486,14 @@ private struct EditRecurringTransactionView: View {
 
             if remindRecurring {
                 DatePicker(
-                    "Reminder date and time",
+                    "txn.reminder_datetime",
                     selection: $reminderDateTime,
                     displayedComponents: [.date, .hourAndMinute]
                 )
                 .datePickerStyle(.compact)
 
                 if !isReminderScheduleValid {
-                    Text("Reminder must be before the start date, at latest the end of the previous day (e.g. start 11 May → reminder on or before 10 May, 11:59 p.m.).")
+                    Text("txn.reminder_invalid_start")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.red)
                 }
@@ -509,7 +509,7 @@ private struct EditRecurringTransactionView: View {
 
     private var initialDateSection: some View {
         HStack(alignment: .center, spacing: 16) {
-            Text("Date of initial transaction")
+            Text("txn.date_of_initial")
                 .font(.system(size: 18, weight: .semibold))
                 .xpnseAdaptiveForeground()
 
@@ -523,11 +523,11 @@ private struct EditRecurringTransactionView: View {
 
     private var descriptionInputSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Description")
+            Text("common.description")
                 .font(.system(size: 18, weight: .semibold))
                 .xpnseAdaptiveForeground()
 
-            TextField("Add a description", text: $description)
+            TextField("txn.field.description_placeholder", text: $description)
                 .font(.system(size: 20, weight: .bold))
                 .xpnseStyledTextField()
         }
@@ -535,18 +535,18 @@ private struct EditRecurringTransactionView: View {
 
     private var merchantInputSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Merchant")
+            Text("common.merchant")
                 .font(.system(size: 18, weight: .semibold))
                 .xpnseAdaptiveForeground()
 
             VStack(alignment: .leading, spacing: 0) {
-                TextField("Merchant (optional)", text: $merchant)
+                TextField("txn.field.merchant_placeholder", text: $merchant)
                     .font(.system(size: 20, weight: .bold))
                     .xpnseStyledTextField()
 
                 if showMerchantSuggestions {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Suggestions:")
+                        Text("txn.suggestions")
                             .font(.system(size: 16, weight: .semibold))
                             .xpnseAdaptiveForeground()
                             .padding(.top, 12)
@@ -589,7 +589,7 @@ private struct EditRecurringTransactionView: View {
 
     private var amountInputSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Amount")
+            Text("common.amount")
                 .font(.system(size: 18, weight: .semibold))
                 .xpnseAdaptiveForeground()
 
@@ -598,7 +598,7 @@ private struct EditRecurringTransactionView: View {
                     .font(.system(size: 24, weight: .bold))
                     .xpnseAdaptiveForeground()
 
-                TextField("0.00", text: $amount)
+                TextField("txn.field.amount_placeholder", text: $amount)
                     .font(.system(size: 24, weight: .bold))
                     .keyboardType(.decimalPad)
                     .xpnseStyledTextField()
@@ -608,7 +608,7 @@ private struct EditRecurringTransactionView: View {
 
     private var categorySelectionSection: some View {
         HStack(alignment: .top, spacing: 16) {
-            Text("Category")
+            Text("common.category")
                 .font(.system(size: 18, weight: .semibold))
                 .xpnseAdaptiveForeground()
                 .frame(height: 64, alignment: .center)
@@ -628,13 +628,13 @@ private struct EditRecurringTransactionView: View {
     private var recurrenceSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Frequency")
+                Text("txn.frequency")
                     .font(.system(size: 16, weight: .medium))
                     .xpnseAdaptiveForeground()
 
                 Spacer(minLength: 0)
 
-                Picker("Frequency", selection: $recurrence) {
+                Picker("txn.frequency", selection: $recurrence) {
                     ForEach(recurrenceOptions, id: \.self) { option in
                         Text(option.displayName).tag(option)
                     }
@@ -643,7 +643,7 @@ private struct EditRecurringTransactionView: View {
             }
 
             HStack {
-                Text("Start date")
+                Text("txn.start_date")
                     .font(.system(size: 16, weight: .medium))
                     .xpnseAdaptiveForeground()
                 Spacer(minLength: 0)
@@ -654,7 +654,7 @@ private struct EditRecurringTransactionView: View {
             }
 
             Toggle(isOn: $hasRecurringEndDate) {
-                Text("Set end date")
+                Text("txn.set_end_date")
                     .font(.system(size: 16, weight: .medium))
                     .xpnseAdaptiveForeground()
             }
@@ -662,12 +662,12 @@ private struct EditRecurringTransactionView: View {
             .tint(XpnseColorKey.secondaryButtonBGColor.color)
 
             if hasRecurringEndDate {
-                DatePicker("End date", selection: $recurringEndDate, displayedComponents: .date)
+                DatePicker("txn.end_date", selection: $recurringEndDate, displayedComponents: .date)
                     .datePickerStyle(.compact)
             }
 
             if !isDateRangeValid {
-                Text("End date must be on or after start date.")
+                Text("txn.end_date_invalid")
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(.red)
             }
@@ -682,7 +682,7 @@ private struct EditRecurringTransactionView: View {
                 dismiss()
             }
         } label: {
-            Text("Delete Recurring Transaction")
+            Text("txn.delete_recurring")
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)

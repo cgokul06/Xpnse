@@ -12,6 +12,7 @@ struct WidgetMonthSnapshot: Codable {
     let totalExpenses: Double
     let totalSavings: Double
     let currencySymbol: String
+    let currencyCode: String
     let donutSlices: [WidgetDonutSlice]
     /// Financial overview legend slices (expense, savings, balance).
     let expenseCategories: [WidgetDonutSlice]
@@ -26,6 +27,7 @@ struct WidgetMonthSnapshot: Codable {
         totalExpenses: Double,
         totalSavings: Double,
         currencySymbol: String,
+        currencyCode: String = "USD",
         donutSlices: [WidgetDonutSlice],
         expenseCategories: [WidgetDonutSlice],
         donutCenterTitle: String,
@@ -38,6 +40,7 @@ struct WidgetMonthSnapshot: Codable {
         self.totalExpenses = totalExpenses
         self.totalSavings = totalSavings
         self.currencySymbol = currencySymbol
+        self.currencyCode = currencyCode
         self.donutSlices = donutSlices
         self.expenseCategories = expenseCategories
         self.donutCenterTitle = donutCenterTitle
@@ -53,6 +56,7 @@ struct WidgetMonthSnapshot: Codable {
         totalExpenses = try container.decode(Double.self, forKey: .totalExpenses)
         totalSavings = try container.decodeIfPresent(Double.self, forKey: .totalSavings) ?? 0
         currencySymbol = try container.decode(String.self, forKey: .currencySymbol)
+        currencyCode = try container.decodeIfPresent(String.self, forKey: .currencyCode) ?? "USD"
         donutSlices = try container.decode([WidgetDonutSlice].self, forKey: .donutSlices)
         donutCenterTitle = try container.decode(String.self, forKey: .donutCenterTitle)
         donutCenterAmount = try container.decode(Double.self, forKey: .donutCenterAmount)
@@ -75,6 +79,7 @@ struct WidgetMonthSnapshot: Codable {
         try container.encode(totalExpenses, forKey: .totalExpenses)
         try container.encode(totalSavings, forKey: .totalSavings)
         try container.encode(currencySymbol, forKey: .currencySymbol)
+        try container.encode(currencyCode, forKey: .currencyCode)
         try container.encode(donutSlices, forKey: .donutSlices)
         try container.encode(expenseCategories, forKey: .expenseCategories)
         try container.encode(donutCenterTitle, forKey: .donutCenterTitle)
@@ -89,6 +94,7 @@ struct WidgetMonthSnapshot: Codable {
         case totalExpenses
         case totalSavings
         case currencySymbol
+        case currencyCode
         case donutSlices
         case expenseCategories
         case donutCenterTitle
@@ -103,9 +109,10 @@ struct WidgetMonthSnapshot: Codable {
         totalExpenses: 0,
         totalSavings: 0,
         currencySymbol: "$",
+        currencyCode: "USD",
         donutSlices: [],
         expenseCategories: [],
-        donutCenterTitle: "Balance",
+        donutCenterTitle: L10n.tr("common.balance"),
         donutCenterAmount: 0,
         updatedAt: .distantPast
     )

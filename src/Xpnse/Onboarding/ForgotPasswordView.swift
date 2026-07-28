@@ -29,16 +29,16 @@ struct ForgotPasswordView<AuthManager: AuthManagerProtocol>: View {
                 .ignoresSafeArea()
                 
                 VStack(spacing: 24) {
-                    Text("Reset Password")
+                    Text("auth.reset_password")
                         .font(.largeTitle)
                         .fontWeight(.bold)
                     
-                    Text("Enter your email address and we'll send you a link to reset your password.")
+                    Text("auth.reset_subtitle")
                         .font(.body)
                         .foregroundColor(XpnseColorKey.white.color)
                         .multilineTextAlignment(.center)
                     
-                    TextField("Email", text: $email)
+                    TextField("auth.email", text: $email)
                         .keyboardType(.emailAddress)
                         .autocapitalization(.none)
                         .xpnseStyledTextField()
@@ -57,7 +57,7 @@ struct ForgotPasswordView<AuthManager: AuthManagerProtocol>: View {
                                     .progressViewStyle(CircularProgressViewStyle(tint: XpnseColorKey.white.color))
                                     .scaleEffect(0.8)
                             }
-                            Text("Send Reset Link")
+                            Text("auth.send_reset")
                                 .fontWeight(.semibold)
                         }
                     }
@@ -89,8 +89,8 @@ struct ForgotPasswordView<AuthManager: AuthManagerProtocol>: View {
                     .foregroundStyle(Color.black)
                 }
             }
-            .alert("Error", isPresented: .constant(authManager.errorMessage != nil)) {
-                Button("OK") {
+            .alert("common.error", isPresented: .constant(authManager.errorMessage != nil)) {
+                Button("common.ok") {
                     authManager.clearError()
                 }
             } message: {

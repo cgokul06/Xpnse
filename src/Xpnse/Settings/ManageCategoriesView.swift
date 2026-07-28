@@ -27,19 +27,19 @@ struct ManageCategoriesView: View {
 
     var body: some View {
         List {
-            Section("Expense") {
+            Section("category.section.expense") {
                 ForEach(expenseCategories) { category in
                     categoryRow(category)
                 }
             }
 
-            Section("Savings") {
+            Section("category.section.savings") {
                 ForEach(savingsCategories) { category in
                     categoryRow(category)
                 }
             }
 
-            Section("Income") {
+            Section("category.section.income") {
                 ForEach(incomeCategories) { category in
                     categoryRow(category)
                 }
@@ -47,7 +47,7 @@ struct ManageCategoriesView: View {
         }
         .scrollContentBackground(.hidden)
         .gradientNavigationBackground()
-        .navigationTitle("Categories")
+        .navigationTitle("settings.categories")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -72,8 +72,8 @@ struct ManageCategoriesView: View {
                 Task { await categoryStore.load() }
             }
         }
-        .alert("Could Not Delete", isPresented: $showDeleteError) {
-            Button("OK", role: .cancel) {}
+        .alert("category.delete_failed_title", isPresented: $showDeleteError) {
+            Button("common.ok", role: .cancel) {}
         } message: {
             Text(deleteError ?? "")
         }
@@ -87,11 +87,11 @@ struct ManageCategoriesView: View {
                 colorHex: category.colorHex,
                 size: 32
             )
-            Text(category.name)
+            Text(categoryStore.localizedName(for: category))
                 .foregroundColor(.primary)
             Spacer(minLength: 0)
             if category.isBuiltIn || BuiltinCategories.builtInCategoryIds.contains(category.id) {
-                Text("Built-in")
+                Text("category.builtin_badge")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -106,7 +106,7 @@ struct ManageCategoriesView: View {
                 Button(role: .destructive) {
                     Task { await deleteCategory(category) }
                 } label: {
-                    Label("Delete", systemImage: "trash")
+                    Label("common.delete", systemImage: "trash")
                 }
             }
         }

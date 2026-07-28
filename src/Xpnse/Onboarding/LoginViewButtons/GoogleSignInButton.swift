@@ -25,7 +25,7 @@ struct GoogleSignInButton<AuthManager: AuthManagerProtocol>: View {
                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
                         .scaleEffect(0.8)
                 } else {
-                    Text("Continue with Google")
+                    Text("auth.continue_google")
                         .fontWeight(.semibold)
                 }
             }

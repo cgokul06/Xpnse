@@ -28,7 +28,7 @@ struct Settings: View {
 
                 // Currency Section
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Preferences")
+                    Text("settings.preferences")
                         .font(.system(size: 20, weight: .bold))
                         .xpnseAdaptiveForeground()
 
@@ -39,7 +39,7 @@ struct Settings: View {
                         }
                     } label: {
                         HStack(spacing: 10) {
-                            Text("Currency")
+                            Text("settings.currency")
                                 .font(.system(size: 16, weight: .medium))
                                 .xpnseAdaptiveForeground()
                             Spacer()
@@ -58,44 +58,44 @@ struct Settings: View {
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Data Portability")
+                    Text("settings.data_portability")
                         .font(.system(size: 20, weight: .bold))
                         .xpnseAdaptiveForeground()
 
                     Button {
                         self.startExport()
                     } label: {
-                        self.actionLabel(text: "Export All Data")
+                        self.actionLabel(text: L10n.tr("settings.export"))
                     }
 
                     Button {
                         self.showImporter = true
                     } label: {
-                        self.actionLabel(text: "Import All Data")
+                        self.actionLabel(text: L10n.tr("settings.import"))
                     }
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Categories")
+                    Text("settings.categories")
                         .font(.system(size: 20, weight: .bold))
                         .xpnseAdaptiveForeground()
 
                     NavigationLink {
                         ManageCategoriesView()
                     } label: {
-                        self.actionLabel(text: "Manage Categories")
+                        self.actionLabel(text: L10n.tr("category.manage"))
                     }
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Recurring")
+                    Text("common.recurring")
                         .font(.system(size: 20, weight: .bold))
                         .xpnseAdaptiveForeground()
 
                     NavigationLink {
                         RecurringTransactionsView()
                     } label: {
-                        self.actionLabel(text: "Manage Recurring Transactions")
+                        self.actionLabel(text: L10n.tr("settings.manage_recurring"))
                     }
                 }
 
@@ -107,7 +107,7 @@ struct Settings: View {
                             isWorking = false
                         }
                     } label: {
-                        Text("Clear Local Data")
+                        Text("settings.clear_local_data")
                             .font(.system(size: 18, weight: .medium))
                             .foregroundColor(.red)
                             .frame(maxWidth: .infinity, alignment: .center)
@@ -118,7 +118,7 @@ struct Settings: View {
         }
         .gradientNavigationBackground()
         .safeAreaInset(edge: .bottom, content: {
-            Text("Version: 0.0.0")
+            Text("settings.version")
                 .font(.system(size: 12, weight: .medium))
                 .padding(.horizontal, 20)
         })
@@ -136,7 +136,7 @@ struct Settings: View {
             }
 
             ToolbarItem(placement: .principal) {
-                Text("Settings")
+                Text("settings.title")
                     .font(.title2)
                     .fontWeight(.bold)
                     .xpnseAdaptiveForeground()
@@ -173,19 +173,19 @@ struct Settings: View {
                         let content = try String(contentsOf: fileURL, encoding: .utf8)
                         try await exportService.importAllData(content)
                         selectedCurrency = CurrencyManager.shared.selectedCurrency.code
-                        importResultText = "Import completed successfully."
+                        importResultText = L10n.tr("settings.import_success")
                     } catch {
-                        importResultText = "Import failed: \(error.localizedDescription)"
+                        importResultText = L10n.tr("settings.import_failed", error.localizedDescription)
                     }
                     showImportResult = true
                 }
             case .failure(let error):
-                importResultText = "Import failed: \(error.localizedDescription)"
+                importResultText = L10n.tr("settings.import_failed", error.localizedDescription)
                 showImportResult = true
             }
         }
-        .alert("Import Status", isPresented: $showImportResult) {
-            Button("OK", role: .cancel) { }
+        .alert("settings.import_status", isPresented: $showImportResult) {
+            Button("common.ok", role: .cancel) { }
         } message: {
             Text(importResultText)
         }
@@ -213,7 +213,7 @@ struct Settings: View {
                 isWorking = false
             } catch {
                 isWorking = false
-                importResultText = "Export failed: \(error.localizedDescription)"
+                importResultText = L10n.tr("settings.export_failed", error.localizedDescription)
                 showImportResult = true
             }
         }

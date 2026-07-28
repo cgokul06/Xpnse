@@ -12,19 +12,25 @@ struct ExtractedDataPreview: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Extracted Data")
+            Text("scanner.preview")
                 .font(.headline)
                 .foregroundColor(.white)
 
             VStack(alignment: .leading, spacing: 12) {
                 ScrollView {
-                    DataRow(label: "Amount", value: "\(CurrencyManager.shared.selectedCurrency.symbol) \(AmountFormatter.format(data.amount))")
+                    DataRow(
+                        label: L10n.tr("common.amount"),
+                        value: AmountFormatter.format(
+                            data.amount,
+                            currencyCode: CurrencyManager.shared.selectedCurrency.code
+                        )
+                    )
 
-                    DataRow(label: "Merchant", value: data.title)
+                    DataRow(label: L10n.tr("common.merchant"), value: data.title)
 
-                    DataRow(label: "Date", value: data.formattedDate)
+                    DataRow(label: L10n.tr("common.date"), value: data.formattedDate)
 
-                    DataRow(label: "Category", value: data.categoryDisplayName)
+                    DataRow(label: L10n.tr("common.category"), value: data.categoryDisplayName)
 
                     ForEach(data.items, id: \.id) { item in
                         DataRow(

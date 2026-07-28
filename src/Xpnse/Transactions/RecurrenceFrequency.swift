@@ -13,14 +13,14 @@ public enum RecurrenceFrequency: Codable, Hashable, Sendable {
 
     var displayName: String {
         switch self {
-        case .daily: return "Daily"
-        case .weeklyOn: return "Weekly"
-        case .monthlyOn: return "Monthly"
-        case .everyTwoWeeksOn: return "Every two weeks"
-        case .everyThreeWeeksOn: return "Every three weeks"
-        case .everyFourWeeksOn: return "Every four weeks"
-        case .onceInEveryTwoMonthsOn: return "Once in every two months"
-        case .onceInEveryQuarterOn: return "Once in every quarter"
+        case .daily: return L10n.tr("recurrence.daily")
+        case .weeklyOn: return L10n.tr("recurrence.weekly")
+        case .monthlyOn: return L10n.tr("recurrence.monthly")
+        case .everyTwoWeeksOn: return L10n.tr("recurrence.every_two_weeks")
+        case .everyThreeWeeksOn: return L10n.tr("recurrence.every_three_weeks")
+        case .everyFourWeeksOn: return L10n.tr("recurrence.every_four_weeks")
+        case .onceInEveryTwoMonthsOn: return L10n.tr("recurrence.every_two_months")
+        case .onceInEveryQuarterOn: return L10n.tr("recurrence.every_quarter")
         }
     }
 

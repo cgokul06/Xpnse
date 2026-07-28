@@ -219,7 +219,7 @@ struct TransactionListView: View {
         let isNegative = net < 0
         let displayAmount = abs(net)
 
-        Text("\(currency.symbol)\(AmountFormatter.format(displayAmount))")
+        Text(AmountFormatter.format(displayAmount, currencyCode: currency.code))
             .font(.system(size: 14, weight: .semibold))
             .foregroundStyle(
                 isNegative
@@ -639,7 +639,7 @@ struct TransactionListView: View {
                         removal: .move(edge: .trailing).combined(with: .opacity)
                     ))
             } else {
-                Text("Transactions")
+                Text("home.transactions")
                     .font(.system(size: 18, weight: .medium))
                     .xpnseAdaptiveForeground()
 
@@ -657,7 +657,7 @@ struct TransactionListView: View {
                         .background(AdaptiveBrandSurface.rowBackground(for: colorScheme))
                         .clipShape(RoundedRectangle(cornerRadius: 10))
                 }
-                .accessibilityLabel("Search transactions")
+                .accessibilityLabel(L10n.tr("home.search_transactions"))
                 .transition(.opacity)
             }
         }
@@ -742,7 +742,7 @@ struct TransactionListView: View {
                 size: 36,
                 showsColorBackground: false
             )
-            Text(section.category.name)
+            Text(categoryStore.localizedName(for: section.category))
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
 
@@ -761,7 +761,7 @@ struct TransactionListView: View {
                 .font(.system(size: 14, weight: .medium))
                 .xpnseAdaptiveForeground(muted: true)
 
-            TextField("Search by description or merchant", text: $searchText)
+            TextField("home.search_placeholder", text: $searchText)
                 .font(.system(size: 15, weight: .medium))
                 .foregroundStyle(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
                 .textInputAutocapitalization(.never)
@@ -801,13 +801,17 @@ struct TransactionListView: View {
                 .background(AdaptiveBrandSurface.rowBackground(for: colorScheme))
                 .clipShape(RoundedRectangle(cornerRadius: 10))
         }
-        .accessibilityLabel(grouping == .date ? "Group by category" : "Group by date")
+        .accessibilityLabel(
+            grouping == .date
+                ? L10n.tr("home.group_by_category")
+                : L10n.tr("home.group_by_date")
+        )
     }
 
     @ViewBuilder
     private var searchResultsContent: some View {
         if filteredSearchResults.isEmpty {
-            Text("No matching transactions")
+            Text("home.no_matching")
                 .font(.system(size: 16, weight: .medium))
                 .xpnseAdaptiveForeground(muted: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -882,7 +886,7 @@ struct TransactionListView: View {
             HStack(spacing: 0) {
                 Spacer(minLength: 0)
 
-                Text("No transactions found!")
+                Text("home.no_transactions")
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundStyle(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
 

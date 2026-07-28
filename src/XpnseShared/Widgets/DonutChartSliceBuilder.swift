@@ -16,7 +16,7 @@ enum DonutChartSliceBuilder {
     }
 
     static func centerTitle(income: Double) -> String {
-        "Balance"
+        L10n.tr("common.balance")
     }
 
     static func centerAmount(income: Double, expenses: Double, savings: Double = 0) -> Double {

@@ -48,15 +48,15 @@ struct EditCategoryView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Name")
+                            Text("common.name")
                                 .font(.system(size: 16, weight: .semibold))
                                 .xpnseAdaptiveForeground()
-                            TextField("Category name", text: $name)
+                            TextField("category.name_placeholder", text: $name)
                                 .xpnseStyledTextField(errorMessage: nameError)
                         }
 
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Type")
+                            Text("common.type")
                                 .font(.system(size: 16, weight: .semibold))
                                 .xpnseAdaptiveForeground()
                             TransactionTypePicker(
@@ -72,17 +72,17 @@ struct EditCategoryView: View {
                         }
 
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Emoji")
+                            Text("common.emoji")
                                 .font(.system(size: 16, weight: .semibold))
                                 .xpnseAdaptiveForeground()
-                            TextField("Type an emoji", text: $emojiInput)
+                            TextField("category.emoji_placeholder", text: $emojiInput)
                                 .textInputAutocapitalization(.never)
                                 .autocorrectionDisabled()
                                 .xpnseStyledTextField(errorMessage: emojiError)
                         }
 
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Color")
+                            Text("common.color")
                                 .font(.system(size: 16, weight: .semibold))
                                 .xpnseAdaptiveForeground()
                             CategoryColorPickerView(
@@ -103,17 +103,19 @@ struct EditCategoryView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("common.cancel") { dismiss() }
                         .xpnseAdaptiveForeground()
                 }
                 ToolbarItem(placement: .principal) {
-                    Text(editingCategory == nil ? "New Category" : "Edit Category")
+                    Text(editingCategory == nil
+                         ? LocalizedStringKey("category.new")
+                         : LocalizedStringKey("category.edit"))
                         .font(.title3)
                         .fontWeight(.bold)
                         .xpnseAdaptiveForeground()
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button("common.save") {
                         Task { await save() }
                     }
                     .disabled(!isValid || isSaving)
@@ -159,7 +161,7 @@ struct EditCategoryView: View {
             return
         }
         emojiError = CategoryIcon.normalizedEmojiOrNil(trimmed) == nil
-            ? "Enter exactly one emoji."
+            ? L10n.tr("category.emoji_error")
             : nil
     }
 
@@ -175,7 +177,7 @@ struct EditCategoryView: View {
         }
 
         guard let icon = CategoryIcon.resolvedIcon(from: emojiInput) else {
-            emojiError = "Enter exactly one emoji."
+            emojiError = L10n.tr("category.emoji_error")
             return
         }
 

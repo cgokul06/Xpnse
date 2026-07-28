@@ -17,7 +17,7 @@ struct InsightHealthCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            XpnsePanelHeader(title: "Financial health", subtitle: nil)
+            XpnsePanelHeader(title: L10n.tr("insights.financial_health"), subtitle: nil)
 
             HStack(spacing: 4) {
                 ForEach(1...5, id: \.self) { index in
@@ -34,7 +34,7 @@ struct InsightHealthCard: View {
                     Text(String(format: "%.1f/5.0", totalScore))
                         .font(.system(size: 13, weight: .semibold))
                         .xpnseAdaptiveForeground()
-                    Text("\(Int((savingsRate * 100).rounded()))% forecast savings")
+                    Text(L10n.tr("insights.forecast_savings_rate", Int((savingsRate * 100).rounded())))
                         .font(.system(size: 12, weight: .medium))
                         .xpnseAdaptiveForeground(muted: true)
                 }
@@ -70,17 +70,17 @@ struct InsightHealthCard: View {
 
 struct InsightBiggestChangesCard: View {
     let changes: [InsightsCategoryDelta]
-    let currencySymbol: String
+    let currencyCode: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             XpnsePanelHeader(
-                title: "Biggest changes",
-                subtitle: "Versus your recent average"
+                title: L10n.tr("insights.biggest_changes"),
+                subtitle: L10n.tr("insights.versus_average")
             )
 
             if changes.isEmpty {
-                Text("Not enough history yet for category comparisons.")
+                Text(L10n.tr("insights.not_enough_history"))
                     .font(.system(size: 13))
                     .xpnseAdaptiveForeground(muted: true)
             } else {
@@ -126,7 +126,7 @@ struct InsightBiggestChangesCard: View {
     }
 
     private func percentText(_ change: InsightsCategoryDelta) -> String {
-        guard let percent = change.percentChange else { return "New" }
+        guard let percent = change.percentChange else { return L10n.tr("insights.new") }
         let sign = percent > 0 ? "+" : ""
         return "\(sign)\(Int(percent.rounded()))%"
     }
@@ -134,16 +134,16 @@ struct InsightBiggestChangesCard: View {
 
 struct InsightTopMerchantsCard: View {
     let merchants: [InsightsMerchantTotal]
-    let currencySymbol: String
+    let currencyCode: String
     let gloss: String
     @Binding var excludeRecurring: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            XpnsePanelHeader(title: "Top spends", subtitle: nil)
+            XpnsePanelHeader(title: L10n.tr("insights.top_spends"), subtitle: nil)
 
             Toggle(isOn: $excludeRecurring) {
-                Text("Exclude recurring")
+                Text(L10n.tr("insights.exclude_recurring"))
                     .font(.system(size: 13, weight: .medium))
                     .xpnseAdaptiveForeground(muted: true)
             }
@@ -153,8 +153,8 @@ struct InsightTopMerchantsCard: View {
             if merchants.isEmpty {
                 Text(
                     excludeRecurring
-                        ? "No non-recurring spends this month."
-                        : "Top spends appear once you log expenses this month."
+                        ? L10n.tr("insights.no_non_recurring")
+                        : L10n.tr("insights.top_spends_empty")
                 )
                     .font(.system(size: 13))
                     .xpnseAdaptiveForeground(muted: true)
@@ -166,7 +166,7 @@ struct InsightTopMerchantsCard: View {
                             .xpnseAdaptiveForeground()
                             .lineLimit(1)
                         Spacer()
-                        Text("\(currencySymbol)\(AmountFormatter.format(spend.amount))")
+                        Text(AmountFormatter.format(spend.amount, currencyCode: currencyCode))
                             .font(.system(size: 14, weight: .semibold))
                             .xpnseAdaptiveForeground()
                     }
@@ -188,17 +188,17 @@ struct InsightTopMerchantsCard: View {
 
 struct InsightCategoryHealthCard: View {
     let baselines: [InsightsCategoryBaseline]
-    let currencySymbol: String
+    let currencyCode: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             XpnsePanelHeader(
-                title: "Category health",
-                subtitle: "This month vs your usual*"
+                title: L10n.tr("insights.category_health"),
+                subtitle: L10n.tr("insights.vs_usual_subtitle")
             )
 
             if baselines.isEmpty {
-                Text("Category baselines appear after a few months of spending.")
+                Text(L10n.tr("insights.baselines_empty"))
                     .font(.system(size: 13))
                     .xpnseAdaptiveForeground(muted: true)
             } else {
@@ -228,7 +228,12 @@ struct InsightCategoryHealthCard: View {
                         .frame(height: 8)
 
                         Text(
-                            "\(currencySymbol)\(item.focusAmount.abbreviatedFloor()) this month · usual* \(currencySymbol)\(item.rollingAverage.abbreviatedFloor()) · \(Int((item.utilization * 100).rounded()))%"
+                            L10n.tr(
+                                "insights.category_utilization",
+                                AmountFormatter.format(item.focusAmount, currencyCode: currencyCode),
+                                AmountFormatter.format(item.rollingAverage, currencyCode: currencyCode),
+                                Int((item.utilization * 100).rounded())
+                            )
                         )
                         .font(.system(size: 12))
                         .xpnseAdaptiveForeground(muted: true)
@@ -240,7 +245,7 @@ struct InsightCategoryHealthCard: View {
                     Text("*")
                         .font(.system(size: 11, weight: .medium))
                         .xpnseAdaptiveForeground(muted: true)
-                    Text(usualLegendBody)
+                    Text(L10n.tr("insights.usual_legend"))
                         .font(.system(size: 11))
                         .xpnseAdaptiveForeground(muted: true)
                         .fixedSize(horizontal: false, vertical: true)
@@ -253,16 +258,12 @@ struct InsightCategoryHealthCard: View {
         .xpnseOutlinedPanel()
     }
 
-    private var usualLegendBody: String {
-        "Usual is your average monthly spend in that category across up to the three most recent complete months before this one. Months with too little logged data are excluded."
-    }
-
     private func statusLabel(_ status: InsightsCategoryHealthStatus) -> String {
         switch status {
-        case .withinRange: return "Near usual"
-        case .approaching: return "Above usual"
-        case .over: return "Well above usual"
-        case .under: return "Below usual"
+        case .withinRange: return L10n.tr("insights.near_usual")
+        case .approaching: return L10n.tr("insights.above_usual")
+        case .over: return L10n.tr("insights.well_above_usual")
+        case .under: return L10n.tr("insights.below_usual")
         }
     }
 
@@ -278,17 +279,17 @@ struct InsightCategoryHealthCard: View {
 
 struct InsightForecastCard: View {
     let forecast: InsightsForecast
-    let currencySymbol: String
+    let currencyCode: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            XpnsePanelHeader(title: "Predicted month end", subtitle: nil)
+            XpnsePanelHeader(title: L10n.tr("insights.predicted_month_end"), subtitle: nil)
 
-            forecastRow(title: "Income", value: forecast.expectedIncome)
-            forecastRow(title: "Expected spending", value: forecast.expectedExpense)
-            forecastRow(title: "Expected savings", value: forecast.expectedSavings)
+            forecastRow(title: L10n.tr("txn.type.income"), value: forecast.expectedIncome)
+            forecastRow(title: L10n.tr("insights.expected_spending"), value: forecast.expectedExpense)
+            forecastRow(title: L10n.tr("insights.expected_savings"), value: forecast.expectedSavings)
 
-            Text("Confidence \(Int((forecast.confidence * 100).rounded()))%")
+            Text(L10n.tr("insights.confidence", Int((forecast.confidence * 100).rounded())))
                 .font(.system(size: 13, weight: .medium))
                 .xpnseAdaptiveForeground(muted: true)
                 .padding(.top, 4)
@@ -304,7 +305,7 @@ struct InsightForecastCard: View {
                 .font(.system(size: 14, weight: .medium))
                 .xpnseAdaptiveForeground(muted: true)
             Spacer()
-            Text("\(currencySymbol)\(AmountFormatter.format(value))")
+            Text(AmountFormatter.format(value, currencyCode: currencyCode))
                 .font(.system(size: 14, weight: .semibold))
                 .xpnseAdaptiveForeground()
         }
@@ -318,18 +319,18 @@ struct InsightOpportunitiesCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            XpnsePanelHeader(title: "Opportunities & wins", subtitle: nil)
+            XpnsePanelHeader(title: L10n.tr("insights.opportunities_wins"), subtitle: nil)
 
             if isLoading && opportunities.isEmpty && wins.isEmpty {
                 ProgressView()
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else if opportunities.isEmpty && wins.isEmpty {
-                Text("Apple Intelligence can add personalized tips when available.")
+                Text(L10n.tr("insights.ai_tips_empty"))
                     .font(.system(size: 13))
                     .xpnseAdaptiveForeground(muted: true)
             } else {
                 if !opportunities.isEmpty {
-                    Text("Potential savings")
+                    Text(L10n.tr("insights.potential_savings"))
                         .font(.system(size: 13, weight: .semibold))
                         .xpnseAdaptiveForeground()
                     ForEach(opportunities, id: \.self) { line in
@@ -340,7 +341,7 @@ struct InsightOpportunitiesCard: View {
                 }
 
                 if !wins.isEmpty {
-                    Text("Wins")
+                    Text(L10n.tr("insights.wins"))
                         .font(.system(size: 13, weight: .semibold))
                         .xpnseAdaptiveForeground()
                         .padding(.top, opportunities.isEmpty ? 0 : 8)
@@ -360,13 +361,13 @@ struct InsightOpportunitiesCard: View {
 
 struct InsightEventsCard: View {
     let events: [InsightsFinancialEvent]
-    let currencySymbol: String
+    let currencyCode: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             XpnsePanelHeader(
-                title: "Detected events",
-                subtitle: "Rare / one-time spikes — not recurring or mild overspend"
+                title: L10n.tr("insights.detected_events"),
+                subtitle: L10n.tr("insights.events_subtitle")
             )
 
             ForEach(events.prefix(5)) { event in
@@ -377,7 +378,7 @@ struct InsightEventsCard: View {
                             .xpnseAdaptiveForeground()
                             .lineLimit(1)
                         Spacer()
-                        Text("\(currencySymbol)\(AmountFormatter.format(event.amount))")
+                        Text(AmountFormatter.format(event.amount, currencyCode: currencyCode))
                             .font(.system(size: 13, weight: .semibold))
                             .xpnseAdaptiveForeground()
                     }

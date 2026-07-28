@@ -128,7 +128,7 @@ struct Home: View {
                 isLoading: .constant(false)
             )
         )
-        .accessibilityLabel("SnapLedger Insights")
+        .accessibilityLabel(L10n.tr("home.insights_a11y"))
         .padding(.trailing, 16)
         .padding(.bottom, contentBottomInset + 8)
         .offset(y: displayedBottomBarHiddenAmount)
@@ -142,7 +142,7 @@ struct Home: View {
                 Button {
                     self.homeCoordinator.push(.transactions)
                 } label: {
-                    Text("Add transaction")
+                    Text("home.add_transaction")
                         .font(.system(size: 20, weight: .bold))
                 }
                 .buttonStyle(
@@ -166,7 +166,7 @@ struct Home: View {
                             isLoading: .constant(false)
                         )
                     )
-                    .accessibilityLabel("Scan bill")
+                    .accessibilityLabel(L10n.tr("home.scan_bill"))
                 }
             }
             .padding(.horizontal, 16)
@@ -207,12 +207,12 @@ struct Home: View {
     private var topView: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text("SnapLedger")
+                Text("home.title")
                     .font(.title2)
                     .fontWeight(.bold)
                     .xpnseAdaptiveForeground()
 
-                Text("Track your expenses")
+                Text("home.subtitle")
                     .xpnseAdaptiveForeground(muted: true)
                     .font(.headline)
             }
@@ -404,7 +404,7 @@ struct Home: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Previous month")
+            .accessibilityLabel(L10n.tr("home.prev_month"))
 
             GeometryReader { geometry in
                 let textWidth = geometry.size.width
@@ -441,7 +441,7 @@ struct Home: View {
             }
             .buttonStyle(.plain)
             .disabled(!canGoForward)
-            .accessibilityLabel("Next month")
+            .accessibilityLabel(L10n.tr("home.next_month"))
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)

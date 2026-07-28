@@ -28,10 +28,10 @@ struct CategoryColorPickerView: View {
                 )
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Preview")
+                    Text("color.preview")
                         .font(.system(size: 14, weight: .semibold))
                         .xpnseAdaptiveForeground()
-                    Text("Tap to choose a color")
+                    Text("color.tap_to_choose")
                         .font(.system(size: 13, weight: .medium))
                         .xpnseAdaptiveForeground(muted: true)
                 }

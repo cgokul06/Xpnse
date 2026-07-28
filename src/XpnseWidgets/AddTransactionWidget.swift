@@ -46,7 +46,7 @@ struct AddTransactionWidgetView: View {
                         )
                 }
 
-            Text("Add transaction")
+            Text(L10n.tr("widget.add_transaction"))
                 .font(.system(size: 13, weight: .bold))
                 .foregroundStyle(WidgetStyle.primaryText(for: colorScheme))
                 .multilineTextAlignment(.center)
@@ -67,8 +67,8 @@ struct AddTransactionWidget: Widget {
                 AddTransactionWidgetView()
             }
         }
-        .configurationDisplayName("Add Transaction")
-        .description("Jump straight to adding a transaction.")
+        .configurationDisplayName(LocalizedStringResource("widget.add.name"))
+        .description(LocalizedStringResource("widget.add.description"))
         .supportedFamilies([.systemSmall])
         .contentMarginsDisabled()
     }

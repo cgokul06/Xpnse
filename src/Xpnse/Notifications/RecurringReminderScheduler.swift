@@ -222,9 +222,11 @@ final class RecurringReminderScheduler: NSObject {
         updated.notificationScheduledForOccurrenceDate = occurrenceStart
 
         let content = UNMutableNotificationContent()
-        content.title = "Upcoming: \(recurring.title)"
-        let symbol = CurrencyManager.shared.selectedCurrency.symbol
-        content.body = "\(symbol)\(AmountFormatter.format(recurring.amount))"
+        content.title = L10n.tr("notification.upcoming", recurring.title)
+        content.body = AmountFormatter.format(
+            recurring.amount,
+            currencyCode: CurrencyManager.shared.selectedCurrency.code
+        )
         content.sound = .default
         content.userInfo = [
             "recurringId": recurring.id.uuidString,

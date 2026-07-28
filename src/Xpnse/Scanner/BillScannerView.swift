@@ -44,7 +44,7 @@ struct BillScannerView: View {
                             } label: {
                                 actionButtonLabel(
                                     iconName: "camera.fill",
-                                    title: "Take Photo"
+                                    title: L10n.tr("scanner.take_photo")
                                 )
                             }
 
@@ -55,7 +55,7 @@ struct BillScannerView: View {
                             ) {
                                 actionButtonLabel(
                                     iconName: "photo.on.rectangle.angled",
-                                    title: "Select from Library"
+                                    title: L10n.tr("scanner.select_library")
                                 )
                             }
                         }
@@ -83,7 +83,7 @@ struct BillScannerView: View {
                 }
 
                 ToolbarItem(placement: .principal) {
-                    Text("Scan Bill")
+                    Text("scanner.title")
                         .font(.title2)
                         .fontWeight(.bold)
                         .xpnseAdaptiveForeground()
@@ -107,8 +107,8 @@ struct BillScannerView: View {
                 }
             }
         }
-        .alert("Error", isPresented: showsErrorAlert) {
-            Button("OK", role: .cancel) {
+        .alert("common.error", isPresented: showsErrorAlert) {
+            Button("common.ok", role: .cancel) {
                 billScannerService.errorMessage = nil
             }
         } message: {
@@ -136,11 +136,11 @@ struct BillScannerView: View {
                     .foregroundColor(.white)
             }
 
-            Text("Scan a receipt")
+            Text("scanner.hero_title")
                 .font(.system(size: 22, weight: .bold))
                 .foregroundColor(.white)
 
-            Text("Take a photo or choose an image to extract amount, date, and category automatically.")
+            Text("scanner.hero_subtitle")
                 .font(.system(size: 16, weight: .regular))
                 .foregroundColor(.white.opacity(0.8))
                 .multilineTextAlignment(.center)
@@ -162,7 +162,7 @@ struct BillScannerView: View {
                 )
                 .scaleEffect(1.2)
 
-            Text("Analyzing bill...")
+            Text("scanner.analyzing")
                 .font(.system(size: 16, weight: .semibold))
                 .xpnseAdaptiveForeground()
         }
