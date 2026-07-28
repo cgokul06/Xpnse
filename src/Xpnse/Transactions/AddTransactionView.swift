@@ -441,7 +441,7 @@ struct AddTransactionView: View {
                 TextField("0.00", text: $amount)
                     .font(.system(size: 24, weight: .bold))
                     .keyboardType(.decimalPad)
-                    .textFieldStyle(XpnseTextFieldStyle())
+                    .xpnseStyledTextField()
                     .focused(self.$focussedField, equals: .cost)
             }
         }
@@ -555,7 +555,7 @@ struct AddTransactionView: View {
             VStack(alignment: .leading, spacing: 0) {
                 TextField("Add a description", text: $description)
                     .font(.system(size: 20, weight: .bold))
-                    .textFieldStyle(XpnseTextFieldStyle())
+                    .xpnseStyledTextField()
                     .focused(self.$focussedField, equals: .description)
 
                 if showSuggestions {
@@ -634,7 +634,7 @@ struct AddTransactionView: View {
             VStack(alignment: .leading, spacing: 0) {
                 TextField("Merchant (optional)", text: $merchant)
                     .font(.system(size: 20, weight: .bold))
-                    .textFieldStyle(XpnseTextFieldStyle())
+                    .xpnseStyledTextField()
                     .focused(self.$focussedField, equals: .merchant)
 
                 if showMerchantSuggestions {

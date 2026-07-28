@@ -8,7 +8,7 @@ import SwiftUI
 struct CategoryColorPickerView: View {
     @Environment(\.colorScheme) private var colorScheme
     @Binding var selectedColorHex: String
-    var symbolName: String = "tag.fill"
+    var symbolName: String = CategoryIcon.defaultEmoji
 
     private var normalizedSelectedHex: String {
         let normalized = CategoryColorPalette.normalizedHex(selectedColorHex)

@@ -529,7 +529,7 @@ private struct EditRecurringTransactionView: View {
 
             TextField("Add a description", text: $description)
                 .font(.system(size: 20, weight: .bold))
-                .textFieldStyle(XpnseTextFieldStyle())
+                .xpnseStyledTextField()
         }
     }
 
@@ -542,7 +542,7 @@ private struct EditRecurringTransactionView: View {
             VStack(alignment: .leading, spacing: 0) {
                 TextField("Merchant (optional)", text: $merchant)
                     .font(.system(size: 20, weight: .bold))
-                    .textFieldStyle(XpnseTextFieldStyle())
+                    .xpnseStyledTextField()
 
                 if showMerchantSuggestions {
                     VStack(alignment: .leading, spacing: 8) {
@@ -601,7 +601,7 @@ private struct EditRecurringTransactionView: View {
                 TextField("0.00", text: $amount)
                     .font(.system(size: 24, weight: .bold))
                     .keyboardType(.decimalPad)
-                    .textFieldStyle(XpnseTextFieldStyle())
+                    .xpnseStyledTextField()
             }
         }
     }

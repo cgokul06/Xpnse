@@ -18,16 +18,22 @@ struct EditCategoryView: View {
 
     @State private var name: String = ""
     @State private var transactionType: TransactionType = .expense
-    @State private var symbolName: String = "tag.fill"
+    @State private var emojiInput: String = ""
     @State private var colorHex: String = CategoryColorPalette.defaultHex(for: .expense)
     @State private var canChangeType = true
     @State private var typeChangeMessage: String?
     @State private var isSaving = false
-    @State private var errorMessage: String?
+    @State private var nameError: String?
+    @State private var emojiError: String?
+    @State private var formError: String?
 
     private var editingCategory: CategoryDefinition? {
         if case .edit(let category) = mode { return category }
         return nil
+    }
+
+    private var previewIcon: String {
+        CategoryIcon.resolvedIcon(from: emojiInput) ?? CategoryIcon.defaultEmoji
     }
 
     private var isValid: Bool {
@@ -46,20 +52,17 @@ struct EditCategoryView: View {
                                 .font(.system(size: 16, weight: .semibold))
                                 .xpnseAdaptiveForeground()
                             TextField("Category name", text: $name)
-                                .textFieldStyle(XpnseTextFieldStyle())
+                                .xpnseStyledTextField(errorMessage: nameError)
                         }
 
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Type")
                                 .font(.system(size: 16, weight: .semibold))
                                 .xpnseAdaptiveForeground()
-                            Picker("Type", selection: $transactionType) {
-                                Text("Expense").tag(TransactionType.expense)
-                                Text("Savings").tag(TransactionType.savings)
-                                Text("Income").tag(TransactionType.income)
-                            }
-                            .pickerStyle(.segmented)
-                            .disabled(!canChangeType)
+                            TransactionTypePicker(
+                                selection: $transactionType,
+                                isEnabled: canChangeType
+                            )
 
                             if let typeChangeMessage {
                                 Text(typeChangeMessage)
@@ -69,10 +72,13 @@ struct EditCategoryView: View {
                         }
 
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("Icon")
+                            Text("Emoji")
                                 .font(.system(size: 16, weight: .semibold))
                                 .xpnseAdaptiveForeground()
-                            SFSymbolPickerView(selectedSymbol: $symbolName)
+                            TextField("Type an emoji", text: $emojiInput)
+                                .textInputAutocapitalization(.never)
+                                .autocorrectionDisabled()
+                                .xpnseStyledTextField(errorMessage: emojiError)
                         }
 
                         VStack(alignment: .leading, spacing: 8) {
@@ -81,14 +87,14 @@ struct EditCategoryView: View {
                                 .xpnseAdaptiveForeground()
                             CategoryColorPickerView(
                                 selectedColorHex: $colorHex,
-                                symbolName: symbolName
+                                symbolName: previewIcon
                             )
                         }
 
-                        if let errorMessage {
-                            Text(errorMessage)
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.red)
+                        if let formError {
+                            Text(formError)
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(AdaptiveBrandSurface.fieldErrorBorder)
                         }
                     }
                     .padding(20)
@@ -118,7 +124,9 @@ struct EditCategoryView: View {
                 if let category = editingCategory {
                     name = category.name
                     transactionType = category.transactionType
-                    symbolName = category.symbolName
+                    emojiInput = CategoryIcon.isEmojiIcon(category.symbolName)
+                        ? category.symbolName
+                        : ""
                     colorHex = category.colorHex
                     let restriction = CategoryStore.shared.typeChangeRestriction(for: category.id)
                     canChangeType = !restriction.blocksTypeChange
@@ -131,20 +139,47 @@ struct EditCategoryView: View {
                     colorHex = CategoryColorPalette.defaultHex(for: newType)
                 }
             }
+            .onChange(of: name) { _, _ in
+                nameError = nil
+                formError = nil
+            }
+            .onChange(of: emojiInput) { _, newValue in
+                formError = nil
+                updateEmojiError(for: newValue)
+            }
             .dismissKeyboardOnOutsideTap(isEnabled: true) {}
             .scrollDismissesKeyboard(.immediately)
         }
     }
 
+    private func updateEmojiError(for value: String) {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            emojiError = nil
+            return
+        }
+        emojiError = CategoryIcon.normalizedEmojiOrNil(trimmed) == nil
+            ? "Enter exactly one emoji."
+            : nil
+    }
+
     private func save() async {
+        nameError = nil
+        emojiError = nil
+        formError = nil
+
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            errorMessage = CategoryStoreError.emptyName.localizedDescription
+            nameError = CategoryStoreError.emptyName.localizedDescription
+            return
+        }
+
+        guard let icon = CategoryIcon.resolvedIcon(from: emojiInput) else {
+            emojiError = "Enter exactly one emoji."
             return
         }
 
         isSaving = true
-        errorMessage = nil
         defer { isSaving = false }
 
         do {
@@ -152,14 +187,14 @@ struct EditCategoryView: View {
             case .add:
                 try await CategoryStore.shared.add(
                     name: trimmed,
-                    symbolName: symbolName,
+                    symbolName: icon,
                     colorHex: colorHex,
                     transactionType: transactionType
                 )
             case .edit(let existing):
                 var updated = existing
                 updated.name = trimmed
-                updated.symbolName = symbolName
+                updated.symbolName = icon
                 updated.colorHex = CategoryColorPalette.normalizedHex(colorHex)
                 if canChangeType {
                     updated.transactionType = transactionType
@@ -169,7 +204,7 @@ struct EditCategoryView: View {
             onSaved()
             dismiss()
         } catch {
-            errorMessage = error.localizedDescription
+            formError = error.localizedDescription
         }
     }
 }

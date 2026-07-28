@@ -27,6 +27,8 @@ enum AdaptiveBrandSurface {
         colorScheme == .dark ? Color.white.opacity(0.3) : Color.black.opacity(0.12)
     }
 
+    static let fieldErrorBorder = Color(red: 0.92, green: 0.25, blue: 0.25)
+
     static func elevatedSurfaceBackground(for colorScheme: ColorScheme) -> Color {
         colorScheme == .dark ? Color.white.opacity(0.08) : Color.black.opacity(0.04)
     }

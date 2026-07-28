@@ -156,11 +156,11 @@ enum BuiltinCategories {
         }
 
         return [
-            savings("savings_general", "General Savings", "banknote", "#3B82F6", protected: true),
-            savings("savings_emergency", "Emergency Fund", "exclamationmark.triangle", "#0EA5E9"),
-            savings("savings_vacation", "Vacation", "airplane", "#06B6D4"),
-            savings("savings_home", "Home", "house", "#8B5CF6"),
-            savings("savings_investments", "Investments", "chart.line.uptrend.xyaxis", "#10B981")
+            savings("savings_general", "General Savings", "💵", "#3B82F6", protected: true),
+            savings("savings_emergency", "Emergency Fund", "🚨", "#0EA5E9"),
+            savings("savings_vacation", "Vacation", "✈️", "#06B6D4"),
+            savings("savings_home", "Home", "🏠", "#8B5CF6"),
+            savings("savings_investments", "Investments", "📈", "#10B981")
         ]
     }
 
@@ -211,12 +211,12 @@ enum BuiltinCategories {
         }
 
         return [
-            expense("food", "Food", "fork.knife", "#EF4444"),
-            expense("transport", "Transport", "car", "#0EA5E9"),
-            expense("shopping", "Shopping", "bag", "#8B5CF6"),
-            expense("health", "Health", "medical.thermometer", "#EC4899"),
-            expense("bills", "Bills", "text.pad.header", "#F59E0B"),
-            expense("other", "Other", "ellipsis.circle", "#9CA3AF", protected: true)
+            expense("food", "Food", "🍽️", "#EF4444"),
+            expense("transport", "Transport", "🚗", "#0EA5E9"),
+            expense("shopping", "Shopping", "🛍️", "#8B5CF6"),
+            expense("health", "Health", "🩺", "#EC4899"),
+            expense("bills", "Bills", "🧾", "#F59E0B"),
+            expense("other", "Other", "📦", "#9CA3AF", protected: true)
         ]
     }
 
@@ -243,11 +243,11 @@ enum BuiltinCategories {
         }
 
         return [
-            income("salary", "Salary", "dollarsign.circle", "#22C55E"),
-            income("business", "Business", "building.2", "#3B82F6"),
-            income("gifts", "Gifts", "gift", "#FB7185"),
-            income("rewards", "Rewards", "star.fill", "#EAB308"),
-            income("investments", "Investments", "chart.bar", "#14B8A6")
+            income("salary", "Salary", "💰", "#22C55E"),
+            income("business", "Business", "🏢", "#3B82F6"),
+            income("gifts", "Gifts", "🎁", "#FB7185"),
+            income("rewards", "Rewards", "⭐", "#EAB308"),
+            income("investments", "Investments", "📊", "#14B8A6")
         ]
     }
 

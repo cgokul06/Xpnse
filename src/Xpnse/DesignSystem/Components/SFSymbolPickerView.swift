@@ -52,7 +52,7 @@ struct SFSymbolPickerView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 10))
 
                 TextField("Search symbols", text: $searchText)
-                    .textFieldStyle(XpnseTextFieldStyle())
+                    .xpnseStyledTextField()
             }
 
             ScrollView {

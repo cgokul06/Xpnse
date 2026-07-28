@@ -15,9 +15,15 @@ struct CategoryIconBadge: View {
             Circle()
                 .fill(Color(hex: colorHex))
                 .frame(width: size, height: size)
-            Image(systemName: symbolName)
-                .font(.system(size: size * 0.42, weight: .semibold))
-                .foregroundColor(.white)
+
+            if CategoryIcon.isEmojiIcon(symbolName) {
+                Text(symbolName)
+                    .font(.system(size: size * 0.55))
+            } else {
+                Image(systemName: symbolName)
+                    .font(.system(size: size * 0.42, weight: .semibold))
+                    .foregroundColor(.white)
+            }
         }
     }
 }

@@ -8,6 +8,7 @@ import UIKit
 
 struct TransactionTypePicker: View {
     @Binding var selection: TransactionType
+    var isEnabled: Bool = true
     var onSelectionChange: ((TransactionType) -> Void)?
 
     @Environment(\.colorScheme) private var colorScheme
@@ -24,13 +25,16 @@ struct TransactionTypePicker: View {
             RoundedRectangle(cornerRadius: 10)
                 .fill(AdaptiveBrandSurface.segmentTrackBackground(for: colorScheme))
         )
+        .opacity(isEnabled ? 1 : 0.55)
+        .allowsHitTesting(isEnabled)
+        .accessibilityElement(children: .contain)
     }
 
     private func segmentButton(for type: TransactionType) -> some View {
         let isSelected = selection == type
 
         return Button {
-            guard selection != type else { return }
+            guard isEnabled, selection != type else { return }
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             withAnimation(.easeInOut(duration: 0.2)) {
                 selection = type
@@ -59,6 +63,7 @@ struct TransactionTypePicker: View {
                 }
         }
         .buttonStyle(.plain)
+        .disabled(!isEnabled)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

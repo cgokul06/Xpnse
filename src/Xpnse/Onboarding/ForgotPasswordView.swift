@@ -39,9 +39,9 @@ struct ForgotPasswordView<AuthManager: AuthManagerProtocol>: View {
                         .multilineTextAlignment(.center)
                     
                     TextField("Email", text: $email)
-                        .textFieldStyle(XpnseTextFieldStyle())
                         .keyboardType(.emailAddress)
                         .autocapitalization(.none)
+                        .xpnseStyledTextField()
 
                     Button(action: {
                         Task {

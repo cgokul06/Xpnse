@@ -46,13 +46,13 @@ struct EmailSignInView<AuthManager: AuthManagerProtocol>: View {
                     // Form
                     VStack(alignment: .leading, spacing: 16) {
                         TextField("Email", text: $email)
-                            .textFieldStyle(XpnseTextFieldStyle())
                             .keyboardType(.emailAddress)
                             .autocapitalization(.none)
+                            .xpnseStyledTextField()
 
                         VStack(alignment: .leading, spacing: 8) {
                             SecureField("Password", text: $password)
-                                .textFieldStyle(XpnseTextFieldStyle())
+                                .xpnseStyledTextField()
 
                             if isSignUp {
                                 Text("Password must be at least 8 characters")

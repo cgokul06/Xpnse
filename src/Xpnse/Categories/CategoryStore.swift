@@ -38,6 +38,7 @@ final class CategoryStore {
             }
             categories = try await migrateMissingColorsIfNeeded(loaded)
             categories = try await repairBuiltInCategoryFlagsIfNeeded(categories)
+            categories = try await migrateBuiltInIconsToEmojiIfNeeded(categories)
             try await seedMissingBuiltinSavingsCategoriesIfNeeded()
             try await consolidateRetiredSavingsCategoriesIfNeeded()
             try await migrateOrphanedTransactionCategoryIdsIfNeeded()
@@ -146,6 +147,38 @@ final class CategoryStore {
         return repaired
     }
 
+    /// Updates built-in categories to seed emojis when they still use SF Symbols or an outdated icon.
+    private func migrateBuiltInIconsToEmojiIfNeeded(
+        _ loaded: [CategoryDefinition]
+    ) async throws -> [CategoryDefinition] {
+        let seeds = BuiltinCategories.seedById()
+        var migrated: [CategoryDefinition] = []
+        var didChange = false
+
+        for var category in loaded {
+            guard let seed = seeds[category.id] else {
+                migrated.append(category)
+                continue
+            }
+
+            let shouldUpdate = CategoryIcon.isSFSymbolIcon(category.symbolName)
+                && category.symbolName != seed.symbolName
+            if shouldUpdate {
+                category.symbolName = seed.symbolName
+                category.updatedAt = Date()
+                didChange = true
+            }
+            migrated.append(category)
+        }
+
+        if didChange {
+            for category in migrated where seeds[category.id] != nil {
+                try await repository.upsert(category)
+            }
+        }
+        return migrated
+    }
+
     private func seedMissingBuiltinSavingsCategoriesIfNeeded() async throws {
         let savingsSeeds = BuiltinCategories.savingsSeedDefinitions()
         let existingIds = Set(categories.map(\.id))
@@ -234,7 +267,7 @@ final class CategoryStore {
         return CategoryDefinition(
             id: canonicalId,
             name: "Unknown",
-            symbolName: "questionmark.circle",
+            symbolName: CategoryIcon.unknownFallbackEmoji,
             colorHex: CategoryColorPalette.defaultHex,
             transactionType: .expense,
             isBuiltIn: false,
