@@ -17,13 +17,19 @@ struct TransactionItemView: View {
     @State private var isTapped = false
     var transaction: Transaction
     var subtitle: TransactionItemSubtitle = .date
+    /// When false (category-grouped list), omit the leading emoji and use the default grey border.
+    var showsLeadingCategoryIcon: Bool = true
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: transaction.type.displayIcon)
-                .resizable()
-                .frame(width: 16, height: 16)
-                .foregroundStyle(transaction.type.brandColor)
+            if showsLeadingCategoryIcon {
+                CategoryIconBadge(
+                    symbolName: transaction.categorySymbolName,
+                    colorHex: transaction.categoryColorHex,
+                    size: 32,
+                    showsColorBackground: false
+                )
+            }
 
             VStack(alignment: .leading, spacing: 8) {
                 Text(transaction.title)
@@ -37,16 +43,9 @@ struct TransactionItemView: View {
                             .font(.system(size: 12, weight: .light))
                             .xpnseAdaptiveForeground(muted: true)
                     case .category:
-                        HStack(spacing: 6) {
-                            CategoryIconBadge(
-                                symbolName: transaction.categorySymbolName,
-                                colorHex: transaction.categoryColorHex,
-                                size: 18
-                            )
-                            Text(transaction.categoryDisplayName)
-                                .font(.system(size: 12, weight: .light))
-                                .xpnseAdaptiveForeground(muted: true)
-                        }
+                        Text(transaction.categoryDisplayName)
+                            .font(.system(size: 12, weight: .light))
+                            .xpnseAdaptiveForeground(muted: true)
                     }
 
                     if transaction.isRecurringGenerated {
@@ -70,7 +69,7 @@ struct TransactionItemView: View {
         .padding(.vertical, 10)
         .padding(.horizontal, 12)
         .frame(maxWidth: .infinity)
-        .xpnseOutlinedPanel()
+        .xpnseOutlinedPanel(borderColor: rowBorderColor)
         .scaleEffect(isTapped ? 0.97 : 1.0)
         .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isTapped)
         .onTapGesture {
@@ -84,5 +83,10 @@ struct TransactionItemView: View {
                 self.homeCoordinator.push(.editTransaction(transaction: transaction))
             }
         }
+    }
+
+    private var rowBorderColor: Color? {
+        guard showsLeadingCategoryIcon else { return nil }
+        return Color(hex: transaction.categoryColorHex)
     }
 }

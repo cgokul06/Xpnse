@@ -64,6 +64,32 @@ private struct TransactionsHeaderMinYKey: PreferenceKey {
     }
 }
 
+private struct TransactionsHeaderHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+private enum StickySectionID: Hashable {
+    case date(Date)
+    case category(String)
+}
+
+private struct StickySectionFrame: Equatable {
+    let id: StickySectionID
+    let minY: CGFloat
+}
+
+private struct SectionHeaderFramesKey: PreferenceKey {
+    static var defaultValue: [StickySectionFrame] = []
+
+    static func reduce(value: inout [StickySectionFrame], nextValue: () -> [StickySectionFrame]) {
+        value.append(contentsOf: nextValue())
+    }
+}
+
 struct TransactionListView: View {
     let monthKey: Int
     var summary: TransactionSummary?
@@ -92,6 +118,9 @@ struct TransactionListView: View {
     @State private var lastTransactionCount = 0
     @State private var pendingScrollMetrics: TransactionListScrollMetrics?
     @State private var isTransactionsHeaderPinned = false
+    @State private var transactionsHeaderHeight: CGFloat = 52
+    @State private var sectionHeaderFrames: [StickySectionFrame] = []
+    @State private var stickySectionID: StickySectionID?
     @State private var pendingProgrammaticScroll: TransactionListPersistedAnchor?
     @State private var searchText = ""
     @State private var debouncedSearchQuery = ""
@@ -225,6 +254,8 @@ struct TransactionListView: View {
             handleTransactionDataChange()
         }
         .onChange(of: grouping) { _, _ in
+            stickySectionID = nil
+            sectionHeaderFrames = []
             scrollAnchor = .top
             onScrollAnchorChange(.top)
             pendingProgrammaticScroll = .top
@@ -233,6 +264,7 @@ struct TransactionListView: View {
             scheduleSearchDebounce(for: newValue)
         }
         .onChange(of: debouncedSearchQuery) { _, _ in
+            stickySectionID = nil
             pendingProgrammaticScroll = .top
         }
         .onChange(of: monthKey) { _, _ in
@@ -559,11 +591,19 @@ struct TransactionListView: View {
             .disableBounces()
             .onPreferenceChange(TransactionsHeaderMinYKey.self) { minY in
                 isTransactionsHeaderPinned = minY < 0
+                refreshStickySectionHeader()
+            }
+            .onPreferenceChange(TransactionsHeaderHeightKey.self) { height in
+                guard height > 0 else { return }
+                transactionsHeaderHeight = height
+                refreshStickySectionHeader()
+            }
+            .onPreferenceChange(SectionHeaderFramesKey.self) { frames in
+                sectionHeaderFrames = frames
+                refreshStickySectionHeader()
             }
             .overlay(alignment: .top) {
-                if isTransactionsHeaderPinned {
-                    transactionsSectionHeader
-                }
+                stickyHeadersOverlay
             }
             .scrollBounceBehavior(.basedOnSize, axes: .vertical)
             .scrollDismissesKeyboard(.immediately)
@@ -625,6 +665,94 @@ struct TransactionListView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(AdaptiveBrandSurface.background(for: colorScheme))
         .animation(.easeInOut(duration: 0.25), value: isSearching)
+        .background(
+            GeometryReader { geometry in
+                Color.clear.preference(
+                    key: TransactionsHeaderHeightKey.self,
+                    value: geometry.size.height
+                )
+            }
+        )
+    }
+
+    @ViewBuilder
+    private var stickyHeadersOverlay: some View {
+        VStack(spacing: 0) {
+            if isTransactionsHeaderPinned {
+                transactionsSectionHeader
+            }
+            if !isSearchActive, let stickySectionID {
+                stickySectionHeader(for: stickySectionID)
+            }
+        }
+    }
+
+    private var sectionHeaderPinY: CGFloat {
+        isTransactionsHeaderPinned ? transactionsHeaderHeight : 0
+    }
+
+    private func refreshStickySectionHeader() {
+        guard !isSearchActive else {
+            stickySectionID = nil
+            return
+        }
+
+        let pinY = sectionHeaderPinY
+        let candidates = sectionHeaderFrames.filter { $0.minY <= pinY + 0.5 }
+        guard let leading = candidates.max(by: { $0.minY < $1.minY }) else {
+            stickySectionID = nil
+            return
+        }
+
+        stickySectionID = leading.minY < pinY - 0.5 ? leading.id : nil
+    }
+
+    @ViewBuilder
+    private func stickySectionHeader(for id: StickySectionID) -> some View {
+        switch id {
+        case .date(let date):
+            dateSectionHeader(date: date, transactions: dateTransactions[date] ?? [])
+        case .category(let categoryId):
+            if let section = categorySections.first(where: { $0.id == categoryId }) {
+                categorySectionHeader(section)
+            }
+        }
+    }
+
+    private func dateSectionHeader(date: Date, transactions: [Transaction]) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(date.formattedDate())
+                .font(.system(size: 12, weight: .regular))
+                .foregroundStyle(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
+
+            Spacer(minLength: 0)
+
+            sectionNetTotalLabel(for: transactions)
+        }
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AdaptiveBrandSurface.background(for: colorScheme))
+    }
+
+    private func categorySectionHeader(_ section: CategorySection) -> some View {
+        HStack(alignment: .center, spacing: 8) {
+            CategoryIconBadge(
+                symbolName: section.category.symbolName,
+                colorHex: section.category.colorHex,
+                size: 36,
+                showsColorBackground: false
+            )
+            Text(section.category.name)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
+
+            Spacer(minLength: 0)
+
+            sectionNetTotalLabel(for: section.transactions)
+        }
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(AdaptiveBrandSurface.background(for: colorScheme))
     }
 
     private var searchField: some View {
@@ -695,15 +823,20 @@ struct TransactionListView: View {
 
     private func dateSection(date: Date, transactions: [Transaction]) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(date.formattedDate())
-                    .font(.system(size: 12, weight: .regular))
-                    .foregroundStyle(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
-
-                Spacer(minLength: 0)
-
-                sectionNetTotalLabel(for: transactions)
-            }
+            dateSectionHeader(date: date, transactions: transactions)
+                .background(
+                    GeometryReader { geometry in
+                        Color.clear.preference(
+                            key: SectionHeaderFramesKey.self,
+                            value: [
+                                StickySectionFrame(
+                                    id: .date(date),
+                                    minY: geometry.frame(in: .named("transactionScroll")).minY
+                                )
+                            ]
+                        )
+                    }
+                )
 
             VStack(spacing: 8) {
                 ForEach(transactions) { transaction in
@@ -715,24 +848,28 @@ struct TransactionListView: View {
 
     private func categorySection(_ section: CategorySection) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .center, spacing: 8) {
-                CategoryIconBadge(
-                    symbolName: section.category.symbolName,
-                    colorHex: section.category.colorHex,
-                    size: 24
+            categorySectionHeader(section)
+                .background(
+                    GeometryReader { geometry in
+                        Color.clear.preference(
+                            key: SectionHeaderFramesKey.self,
+                            value: [
+                                StickySectionFrame(
+                                    id: .category(section.id),
+                                    minY: geometry.frame(in: .named("transactionScroll")).minY
+                                )
+                            ]
+                        )
+                    }
                 )
-                Text(section.category.name)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
-
-                Spacer(minLength: 0)
-
-                sectionNetTotalLabel(for: section.transactions)
-            }
 
             VStack(spacing: 8) {
                 ForEach(section.transactions) { transaction in
-                    TransactionItemView(transaction: transaction, subtitle: .date)
+                    TransactionItemView(
+                        transaction: transaction,
+                        subtitle: .date,
+                        showsLeadingCategoryIcon: false
+                    )
                 }
             }
         }

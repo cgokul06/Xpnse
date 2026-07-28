@@ -36,10 +36,11 @@ struct XpnsePanelHeader: View {
 }
 
 private struct XpnseOutlinedPanelModifier: ViewModifier {
+    var borderColorOverride: Color?
     @Environment(\.colorScheme) private var colorScheme
 
     private var borderColor: Color {
-        AdaptiveBrandSurface.fieldBorder(for: colorScheme)
+        borderColorOverride ?? AdaptiveBrandSurface.fieldBorder(for: colorScheme)
     }
 
     private var fillColor: Color {
@@ -68,7 +69,7 @@ private struct XpnseOutlinedPanelModifier: ViewModifier {
 
 extension View {
     /// Soft continuous panel with adaptive border + shadow — Insights chart framing language.
-    func xpnseOutlinedPanel() -> some View {
-        modifier(XpnseOutlinedPanelModifier())
+    func xpnseOutlinedPanel(borderColor: Color? = nil) -> some View {
+        modifier(XpnseOutlinedPanelModifier(borderColorOverride: borderColor))
     }
 }
