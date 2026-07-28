@@ -131,6 +131,8 @@ struct EditCategoryView: View {
                     colorHex = CategoryColorPalette.defaultHex(for: newType)
                 }
             }
+            .dismissKeyboardOnOutsideTap(isEnabled: true) {}
+            .scrollDismissesKeyboard(.immediately)
         }
     }
 
