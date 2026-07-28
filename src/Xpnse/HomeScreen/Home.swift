@@ -124,7 +124,6 @@ struct Home: View {
         }
         .buttonStyle(
             XpnseSquareIconButtonStyle.defaultButton(
-                bgColor: XpnseColorKey.secondaryButtonBGColor,
                 isDisabled: .constant(false),
                 isLoading: .constant(false)
             )
@@ -148,7 +147,6 @@ struct Home: View {
                 }
                 .buttonStyle(
                     XpnsePrimaryButtonStyle.defaultButton(
-                        bgColor: XpnseColorKey.secondaryButtonBGColor,
                         isDisabled: .constant(false),
                         isLoading: .constant(false)
                     )
@@ -164,7 +162,6 @@ struct Home: View {
                     }
                     .buttonStyle(
                         XpnseSquareIconButtonStyle.defaultButton(
-                            bgColor: XpnseColorKey.secondaryButtonBGColor,
                             isDisabled: .constant(false),
                             isLoading: .constant(false)
                         )

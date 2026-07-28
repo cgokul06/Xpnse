@@ -703,10 +703,9 @@ struct AddTransactionView: View {
     // MARK: - Bottom Buttons Section
     private var bottomButtonsSection: some View {
         HStack(spacing: 16) {
-            // Done Button
-            Button(action: {
+            Button {
                 addOrUpdateTransaction()
-            }) {
+            } label: {
                 HStack(spacing: 8) {
                     if isLoading {
                         ProgressView()
@@ -720,22 +719,21 @@ struct AddTransactionView: View {
                     Text("Save")
                         .font(.system(size: 18, weight: .semibold))
                 }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(XpnseColorKey.secondaryButtonBGColor.color)
-                .opacity(isFormValid ? 1.0 : 0.7)
-                .xpnseRoundedCorner()
             }
-            .disabled(
-                !isFormValid || isLoading || !recurringDateRangeValid
-                    || (isRecurring && remindRecurring && !isRecurringReminderScheduleValid)
+            .buttonStyle(
+                XpnsePrimaryButtonStyle.defaultButton(
+                    isDisabled: .constant(
+                        !isFormValid || isLoading || !recurringDateRangeValid
+                            || (isRecurring && remindRecurring && !isRecurringReminderScheduleValid)
+                    ),
+                    isLoading: $isLoading
+                )
             )
 
             if !self.isEditing, FoundationModelsAvailability.isAvailable {
-                Button(action: {
+                Button {
                     scanBill()
-                }) {
+                } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "doc.text.viewfinder")
                             .font(.system(size: 18, weight: .semibold))
@@ -743,12 +741,13 @@ struct AddTransactionView: View {
                         Text("Scan Bill")
                             .font(.system(size: 18, weight: .semibold))
                     }
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(XpnseColorKey.secondaryButtonBGColor.color)
-                    .xpnseRoundedCorner()
                 }
+                .buttonStyle(
+                    XpnsePrimaryButtonStyle.defaultButton(
+                        isDisabled: .constant(false),
+                        isLoading: .constant(false)
+                    )
+                )
             }
         }
         .padding(.horizontal, 20)
