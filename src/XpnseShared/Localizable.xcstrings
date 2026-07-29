@@ -5879,6 +5879,64 @@
         }
       }
     },
+    "settings.clear_local_data_confirm_message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dadurch werden alle Transaktionen, Kategorien und wiederkehrenden Einträge auf diesem Gerät dauerhaft gelöscht. Das kann nicht rückgängig gemacht werden."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This permanently deletes all transactions, categories, and recurring items on this device. This cannot be undone."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esto elimina permanentemente todas las transacciones, categorías y elementos recurrentes de este dispositivo. No se puede deshacer."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cela supprime définitivement toutes les transactions, catégories et éléments récurrents sur cet appareil. Cette action est irréversible."
+          }
+        }
+      }
+    },
+    "settings.clear_local_data_confirm_title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alle lokalen Daten löschen?"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete all local data?"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Eliminar todos los datos locales?"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer toutes les données locales ?"
+          }
+        }
+      }
+    },
     "settings.currency" : {
       "extractionState" : "manual",
       "localizations" : {

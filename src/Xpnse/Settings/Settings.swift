@@ -20,6 +20,7 @@ struct Settings: View {
     @State private var showImporter = false
     @State private var showImportResult = false
     @State private var importResultText = ""
+    @State private var showClearDataConfirm = false
     @State private var isWorking = false
 
     var body: some View {
@@ -101,11 +102,7 @@ struct Settings: View {
 
                 VStack {
                     Button(role: .destructive) {
-                        Task {
-                            isWorking = true
-                            await FirebaseTransactionManager.shared.clearAll()
-                            isWorking = false
-                        }
+                        showClearDataConfirm = true
                     } label: {
                         Text("settings.clear_local_data")
                             .font(.system(size: 18, weight: .medium))
@@ -188,6 +185,18 @@ struct Settings: View {
             Button("common.ok", role: .cancel) { }
         } message: {
             Text(importResultText)
+        }
+        .alert("settings.clear_local_data_confirm_title", isPresented: $showClearDataConfirm) {
+            Button("common.cancel", role: .cancel) { }
+            Button("settings.clear_local_data", role: .destructive) {
+                Task {
+                    isWorking = true
+                    await FirebaseTransactionManager.shared.clearAll()
+                    isWorking = false
+                }
+            }
+        } message: {
+            Text("settings.clear_local_data_confirm_message")
         }
     }
 
