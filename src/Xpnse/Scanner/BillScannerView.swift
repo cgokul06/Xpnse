@@ -48,6 +48,12 @@ struct BillScannerView: View {
                                     title: L10n.tr("scanner.take_photo")
                                 )
                             }
+                            .buttonStyle(
+                                XpnsePrimaryButtonStyle.defaultButton(
+                                    isDisabled: .constant(false),
+                                    isLoading: .constant(false)
+                                )
+                            )
 
                             PhotosPicker(
                                 selection: $imagePicker.imageSelections,
@@ -59,6 +65,12 @@ struct BillScannerView: View {
                                     title: L10n.tr("scanner.select_library")
                                 )
                             }
+                            .buttonStyle(
+                                XpnseSecondaryButtonStyle.defaultButton(
+                                    isDisabled: .constant(false),
+                                    isLoading: .constant(false)
+                                )
+                            )
                             .simultaneousGesture(TapGesture().onEnded {
                                 AppAnalytics.logButtonClick(AppAnalytics.Button.selectLibrary, source: AppAnalytics.Screen.scan)
                             })
@@ -73,6 +85,7 @@ struct BillScannerView: View {
                     .padding(.bottom, 32)
                 }
             }
+            .gradientNavigationBackground()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -135,28 +148,26 @@ struct BillScannerView: View {
         VStack(spacing: 16) {
             ZStack {
                 Circle()
-                    .fill(Color.white.opacity(0.15))
+                    .fill(AdaptiveBrandSurface.rowBackground(for: colorScheme, emphasized: true))
                     .frame(width: 88, height: 88)
 
                 Image(systemName: "doc.text.viewfinder")
                     .font(.system(size: 36, weight: .semibold))
-                    .foregroundColor(.white)
+                    .xpnseAdaptiveForeground()
             }
 
             Text("scanner.hero_title")
                 .font(.system(size: 22, weight: .bold))
-                .foregroundColor(.white)
+                .xpnseAdaptiveForeground()
 
             Text("scanner.hero_subtitle")
                 .font(.system(size: 16, weight: .regular))
-                .foregroundColor(.white.opacity(0.8))
+                .xpnseAdaptiveForeground(muted: true)
                 .multilineTextAlignment(.center)
         }
         .padding(20)
         .frame(maxWidth: .infinity)
-        .background(XpnseColorKey.summaryCard.color)
-        .xpnseRoundedCorner(16)
-        .shadow(color: .black.opacity(0.2), radius: 10, x: 0, y: 8)
+        .xpnseOutlinedPanel()
     }
 
     private var scanningCard: some View {
@@ -175,8 +186,8 @@ struct BillScannerView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 24)
-        .background(AdaptiveBrandSurface.elevatedSurfaceBackground(for: colorScheme))
-        .xpnseRoundedCorner(16)
+        .padding(.horizontal, 16)
+        .xpnseOutlinedPanel()
     }
 
     private func actionButtonLabel(iconName: String, title: String) -> some View {
@@ -187,10 +198,5 @@ struct BillScannerView: View {
             Text(title)
                 .font(.system(size: 18, weight: .semibold))
         }
-        .foregroundColor(.white)
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 16)
-        .background(XpnseColorKey.secondaryButtonBGColor.color)
-        .xpnseRoundedCorner()
     }
 }
