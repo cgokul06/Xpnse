@@ -13,6 +13,8 @@ enum UserDefaultsKey: String {
     case calendarAggregator
     /// When true, Insights Top Spends ranks only non-recurring-generated expenses.
     case excludeRecurringFromTopSpends
+    /// UUID for this app installation only (cleared on uninstall).
+    case installationId
 }
 
 /// Wrapper for UserDefaults
@@ -56,7 +58,8 @@ class UserDefaultsHelper {
         let keys: [UserDefaultsKey] = [
             .selectedCurrencyCode,
             .calendarAggregator,
-            .excludeRecurringFromTopSpends
+            .excludeRecurringFromTopSpends,
+            .installationId
         ]
 
         for key in keys {

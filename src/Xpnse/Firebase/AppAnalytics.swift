@@ -65,4 +65,9 @@ enum AppAnalytics {
             Param.enabled: enabled ? "true" : "false"
         ])
     }
+
+    /// Sets Firebase Analytics user ID to the anonymous Keychain-backed UUID.
+    static func configureUserId(_ userId: String) {
+        Analytics.setUserID(userId)
+    }
 }
