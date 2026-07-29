@@ -171,7 +171,16 @@ struct Settings: View {
         .navigationBarBackButtonHidden()
         .overlay {
             if isWorking {
-                ProgressView()
+                ZStack {
+                    Color.black.opacity(0.25)
+                        .ignoresSafeArea()
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                        .scaleEffect(1.2)
+                        .padding(24)
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+                }
+                .allowsHitTesting(true)
             }
         }
         .fileExporter(
@@ -188,7 +197,8 @@ struct Settings: View {
             switch result {
             case .success(let files):
                 guard let fileURL = files.first else { return }
-                Task {
+                Task { @MainActor in
+                    isWorking = true
                     do {
                         let didAccess = fileURL.startAccessingSecurityScopedResource()
                         defer {
@@ -211,6 +221,7 @@ struct Settings: View {
                             parameters: [AppAnalytics.Param.result: "fail"]
                         )
                     }
+                    isWorking = false
                     showImportResult = true
                 }
             case .failure(let error):

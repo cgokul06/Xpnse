@@ -12,7 +12,10 @@ struct CurrencySelectionView: View {
     @Environment(\.colorScheme) private var colorScheme
 
     @State private var selectedCurrencyCode: String = CurrencyManager.shared.selectedCurrency.code
-    @State private var didSelectCurrency = false
+
+    private var canContinue: Bool {
+        CurrencyManager.shared.currency(for: selectedCurrencyCode) != nil
+    }
 
     var body: some View {
         NavigationStack {
@@ -33,7 +36,6 @@ struct CurrencySelectionView: View {
                         CurrencyListView(selectedCurrencyCode: selectedCurrencyCode) { selected in
                             selectedCurrencyCode = selected.code
                             CurrencyManager.shared.selectedCurrency = selected
-                            didSelectCurrency = true
                         }
                     } label: {
                         HStack(spacing: 12) {
@@ -68,13 +70,13 @@ struct CurrencySelectionView: View {
                     .buttonStyle(
                         XpnsePrimaryButtonStyle.defaultButton(
                             isDisabled: Binding(
-                                get: { !didSelectCurrency },
+                                get: { !canContinue },
                                 set: { _ in }
                             ),
                             isLoading: .constant(false)
                         )
                     )
-                    .disabled(!didSelectCurrency)
+                    .disabled(!canContinue)
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 40)
