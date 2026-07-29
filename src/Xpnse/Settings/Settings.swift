@@ -23,6 +23,7 @@ struct Settings: View {
     @State private var showClearDataConfirm = false
     @State private var isWorking = false
     @State private var featureFlags = FeatureFlags.shared
+    @State private var presentedLegalDocument: LegalDocument?
 
     var body: some View {
         ScrollView {
@@ -108,6 +109,24 @@ struct Settings: View {
                         RecurringTransactionsView()
                     } label: {
                         self.actionLabel(text: L10n.tr("settings.manage_recurring"))
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("settings.legal")
+                        .font(.system(size: 20, weight: .bold))
+                        .xpnseAdaptiveForeground()
+
+                    Button {
+                        presentedLegalDocument = .privacyPolicy
+                    } label: {
+                        self.actionLabel(text: L10n.tr("settings.privacy_policy"))
+                    }
+
+                    Button {
+                        presentedLegalDocument = .termsAndConditions
+                    } label: {
+                        self.actionLabel(text: L10n.tr("settings.terms_conditions"))
                     }
                 }
 
@@ -250,6 +269,10 @@ struct Settings: View {
             }
         } message: {
             Text("settings.clear_local_data_confirm_message")
+        }
+        .sheet(item: $presentedLegalDocument) { document in
+            SafariView(url: document.url)
+                .ignoresSafeArea()
         }
     }
 
