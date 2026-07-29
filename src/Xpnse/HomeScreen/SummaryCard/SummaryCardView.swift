@@ -77,11 +77,9 @@ struct SummaryCardView: View {
 
     private func centeredStat(type: TransactionType, amount: Double) -> some View {
         HStack(alignment: .center, spacing: 8) {
-            Image(systemName: type.displayIcon)
-                .font(.system(size: 14, weight: .bold))
-                .foregroundColor(.white)
-                .frame(width: 24, height: 24)
-                .background(Circle().fill(type.brandColor))
+            Text(statEmoji(for: type))
+                .font(.system(size: 22))
+                .frame(width: 28, height: 28)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(type.displayName)
@@ -96,6 +94,17 @@ struct SummaryCardView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .center)
+    }
+
+    private func statEmoji(for type: TransactionType) -> String {
+        switch type {
+        case .expense:
+            "💸"
+        case .savings:
+            "💰"
+        case .income:
+            type.displayIcon
+        }
     }
 
     @ViewBuilder
