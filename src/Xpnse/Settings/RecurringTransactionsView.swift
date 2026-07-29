@@ -45,6 +45,7 @@ struct RecurringTransactionsView: View {
             }
         }
         .task {
+            AppAnalytics.logScreen(AppAnalytics.Screen.recurring)
             await categoryStore.load()
             await reload()
         }
@@ -91,11 +92,13 @@ struct RecurringTransactionsView: View {
             .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
             .contentShape(Rectangle())
             .onTapGesture {
+                AppAnalytics.logButtonClick(AppAnalytics.Button.editRecurring, source: AppAnalytics.Screen.recurring)
                 selectedForEdit = item
             }
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                 if item.state == .active {
                     Button {
+                        AppAnalytics.logButtonClick(AppAnalytics.Button.skipRecurring, source: AppAnalytics.Screen.recurring)
                         Task {
                             await transactionManager.skipRecurringTransaction(id: item.id)
                             await reload()
@@ -106,6 +109,7 @@ struct RecurringTransactionsView: View {
                     .tint(.orange)
 
                     Button {
+                        AppAnalytics.logButtonClick(AppAnalytics.Button.pauseRecurring, source: AppAnalytics.Screen.recurring)
                         Task {
                             await transactionManager.cancelRecurringTransaction(id: item.id)
                             await reload()
@@ -331,6 +335,10 @@ private struct EditRecurringTransactionView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("common.save") {
+                        AppAnalytics.logButtonClick(
+                            AppAnalytics.Button.saveRecurring,
+                            source: AppAnalytics.Screen.editRecurring
+                        )
                         Task { await save() }
                     }
                     .disabled(
@@ -366,6 +374,7 @@ private struct EditRecurringTransactionView: View {
                 clampReminderDateTimeToTransactionDay(newValue)
             }
             .onAppear {
+                AppAnalytics.logScreen(AppAnalytics.Screen.editRecurring)
                 merchantSuggestionEngine.load()
             }
             .task {
@@ -677,6 +686,10 @@ private struct EditRecurringTransactionView: View {
     private var deleteRecurringButton: some View {
         Button(role: .destructive) {
             Task {
+                AppAnalytics.logButtonClick(
+                    AppAnalytics.Button.deleteRecurring,
+                    source: AppAnalytics.Screen.editRecurring
+                )
                 await transactionManager.deleteRecurringTransaction(id: original.id)
                 onSaved()
                 dismiss()

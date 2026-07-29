@@ -40,6 +40,12 @@ struct LegalDocumentView: View {
                     }
                 }
         }
+        .onAppear {
+            let screen = document == .privacyPolicy
+                ? AppAnalytics.Screen.legalPrivacy
+                : AppAnalytics.Screen.legalTerms
+            AppAnalytics.logScreen(screen)
+        }
     }
 }
 

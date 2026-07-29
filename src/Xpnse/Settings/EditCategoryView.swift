@@ -123,6 +123,7 @@ struct EditCategoryView: View {
                 }
             }
             .task {
+                AppAnalytics.logScreen(AppAnalytics.Screen.editCategory)
                 if let category = editingCategory {
                     name = category.name
                     transactionType = category.transactionType

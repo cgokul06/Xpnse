@@ -59,6 +59,10 @@ struct CurrencySelectionView: View {
                     Spacer()
 
                     Button {
+                        AppAnalytics.logButtonClick(
+                            AppAnalytics.Button.currencyContinue,
+                            source: AppAnalytics.Screen.currencySelection
+                        )
                         if let selected = CurrencyManager.shared.currency(for: selectedCurrencyCode) {
                             CurrencyManager.shared.selectedCurrency = selected
                         }
@@ -84,6 +88,9 @@ struct CurrencySelectionView: View {
             }
             .ignoresSafeArea(.keyboard, edges: .bottom)
             .toolbar(.hidden, for: .navigationBar)
+            .onAppear {
+                AppAnalytics.logScreen(AppAnalytics.Screen.currencySelection)
+            }
         }
     }
 }

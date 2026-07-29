@@ -96,6 +96,7 @@ struct TransactionItemView: View {
                     isTapped = false
                 }
                 self.homeCoordinator.push(.editTransaction(transaction: transaction))
+                AppAnalytics.logButtonClick(AppAnalytics.Button.openTransaction, source: AppAnalytics.Screen.home)
             }
         }
     }

@@ -39,6 +39,10 @@ struct CurrencyListView: View {
                     VStack(spacing: 12) {
                         ForEach(filteredCurrencies) { currency in
                             Button {
+                                AppAnalytics.logButtonClick(
+                                    AppAnalytics.Button.selectCurrency,
+                                    source: AppAnalytics.Screen.currencyList
+                                )
                                 onSelect(currency)
                                 dismiss()
                             } label: {
@@ -80,6 +84,7 @@ struct CurrencyListView: View {
                 }
             }
             .onAppear {
+                AppAnalytics.logScreen(AppAnalytics.Screen.currencyList)
                 scrollToSelected(using: proxy)
             }
         }

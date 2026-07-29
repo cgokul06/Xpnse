@@ -52,6 +52,10 @@ struct ManageCategoriesView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
+                    AppAnalytics.logButtonClick(
+                        AppAnalytics.Button.addCategory,
+                        source: AppAnalytics.Screen.manageCategories
+                    )
                     showAddCategory = true
                 } label: {
                     Image(systemName: "plus")
@@ -100,11 +104,19 @@ struct ManageCategoriesView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
         .onTapGesture {
+            AppAnalytics.logButtonClick(
+                AppAnalytics.Button.editCategory,
+                source: AppAnalytics.Screen.manageCategories
+            )
             editingCategory = category
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             if !category.isDeletionProtected {
                 Button(role: .destructive) {
+                    AppAnalytics.logButtonClick(
+                        AppAnalytics.Button.deleteCategory,
+                        source: AppAnalytics.Screen.manageCategories
+                    )
                     Task { await deleteCategory(category) }
                 } label: {
                     Label("common.delete", systemImage: "trash")

@@ -330,7 +330,9 @@ struct AddTransactionView: View {
                 }
             }
             .onAppear {
-                AppAnalytics.logScreen(AppAnalytics.Screen.addTransaction)
+                AppAnalytics.logScreen(
+                    isEditing ? AppAnalytics.Screen.editTransaction : AppAnalytics.Screen.addTransaction
+                )
                 self.mapEditableDatas()
                 self.applyExtractedTransactionIfNeeded()
                 lastNormalizedDescription = SuggestionEngine.normalize(description)
@@ -705,6 +707,10 @@ struct AddTransactionView: View {
     private var bottomButtonsSection: some View {
         HStack(spacing: 16) {
             Button {
+                AppAnalytics.logButtonClick(
+                    AppAnalytics.Button.saveTransaction,
+                    source: isEditing ? AppAnalytics.Screen.editTransaction : AppAnalytics.Screen.addTransaction
+                )
                 addOrUpdateTransaction()
             } label: {
                 HStack(spacing: 8) {
@@ -733,6 +739,10 @@ struct AddTransactionView: View {
 
             if !self.isEditing, FoundationModelsAvailability.isAvailable {
                 Button {
+                    AppAnalytics.logButtonClick(
+                        AppAnalytics.Button.scanBillFromForm,
+                        source: AppAnalytics.Screen.addTransaction
+                    )
                     scanBill()
                 } label: {
                     HStack(spacing: 8) {
@@ -915,6 +925,10 @@ struct AddTransactionView: View {
 
     private func deleteTransaction() async {
         guard let transaction else { return }
+        AppAnalytics.logButtonClick(
+            AppAnalytics.Button.deleteTransaction,
+            source: AppAnalytics.Screen.editTransaction
+        )
         await self.transactionManager.deleteTransaction(transaction)
         suggestionEngine.decrement(title: transaction.title)
         if let merchantName = transaction.merchant {

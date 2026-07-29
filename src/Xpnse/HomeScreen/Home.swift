@@ -155,6 +155,7 @@ struct Home: View {
 
     private var scrollToTopFloatingButton: some View {
         Button {
+            AppAnalytics.logButtonClick(AppAnalytics.Button.scrollToTop, source: AppAnalytics.Screen.home)
             scrollToTopTick &+= 1
         } label: {
             Image(systemName: "chevron.up")
@@ -170,6 +171,7 @@ struct Home: View {
 
     private var insightsFloatingButton: some View {
         Button {
+            AppAnalytics.logButtonClick(AppAnalytics.Button.openInsights, source: AppAnalytics.Screen.home)
             AppAnalytics.logFeatureExposure(
                 featureKey: FeatureFlags.Key.insightsEnabled.rawValue,
                 enabled: true
@@ -191,6 +193,7 @@ struct Home: View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
                 Button {
+                    AppAnalytics.logButtonClick(AppAnalytics.Button.addTransaction, source: AppAnalytics.Screen.home)
                     self.homeCoordinator.push(.transactions)
                 } label: {
                     Text("home.add_transaction")
@@ -207,6 +210,7 @@ struct Home: View {
 
                 if featureFlags.receiptScanEnabled, FoundationModelsAvailability.isAvailable {
                     Button {
+                        AppAnalytics.logButtonClick(AppAnalytics.Button.openScan, source: AppAnalytics.Screen.home)
                         AppAnalytics.logFeatureExposure(
                             featureKey: FeatureFlags.Key.receiptScanEnabled.rawValue,
                             enabled: true
@@ -290,6 +294,7 @@ struct Home: View {
 
             HStack(spacing: 12) {
                 Button {
+                    AppAnalytics.logButtonClick(AppAnalytics.Button.openSettings, source: AppAnalytics.Screen.home)
                     homeCoordinator.push(.settings)
                 } label: {
                     Image(systemName: "gear")
@@ -466,6 +471,7 @@ struct Home: View {
         return HStack(spacing: 12) {
             Button {
                 guard canChangeMonth else { return }
+                AppAnalytics.logButtonClick(AppAnalytics.Button.monthPrevious, source: AppAnalytics.Screen.home)
                 commitMonthChange(direction: -1, pageWidth: pageWidth)
             } label: {
                 Image(systemName: "arrowtriangle.left.fill")
@@ -498,6 +504,7 @@ struct Home: View {
 
             Button {
                 guard canChangeMonth, canGoForward else { return }
+                AppAnalytics.logButtonClick(AppAnalytics.Button.monthNext, source: AppAnalytics.Screen.home)
                 commitMonthChange(direction: 1, pageWidth: pageWidth)
             } label: {
                 Image(systemName: "arrowtriangle.right.fill")

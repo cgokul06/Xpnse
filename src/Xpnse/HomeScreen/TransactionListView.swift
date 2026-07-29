@@ -654,6 +654,7 @@ struct TransactionListView: View {
                 Spacer(minLength: 0)
 
                 Button {
+                    AppAnalytics.logButtonClick(AppAnalytics.Button.searchTransactions, source: AppAnalytics.Screen.home)
                     activateSearch()
                 } label: {
                     Image(systemName: "magnifyingglass")
@@ -796,8 +797,15 @@ struct TransactionListView: View {
     private var groupingToggleButton: some View {
         Button {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            let nextGrouping: TransactionListGrouping = grouping == .date ? .category : .date
+            AppAnalytics.logButtonClick(
+                nextGrouping == .category
+                    ? AppAnalytics.Button.groupByCategory
+                    : AppAnalytics.Button.groupByDate,
+                source: AppAnalytics.Screen.home
+            )
             withAnimation(.easeInOut(duration: 0.2)) {
-                grouping = grouping == .date ? .category : .date
+                grouping = nextGrouping
             }
         } label: {
             Image(systemName: grouping == .date ? "square.grid.2x2.fill" : "calendar")

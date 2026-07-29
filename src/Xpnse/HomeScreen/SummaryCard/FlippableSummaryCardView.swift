@@ -38,6 +38,7 @@ struct FlippableSummaryCardView: View {
     }
 
     private func flipCard() {
+        AppAnalytics.logButtonClick(AppAnalytics.Button.flipSummaryCard, source: AppAnalytics.Screen.home)
         isShowingDonut.toggle()
     }
 }

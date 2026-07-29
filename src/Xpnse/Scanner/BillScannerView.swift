@@ -39,6 +39,7 @@ struct BillScannerView: View {
 
                         VStack(spacing: 12) {
                             Button {
+                                AppAnalytics.logButtonClick(AppAnalytics.Button.takePhoto, source: AppAnalytics.Screen.scan)
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                 showingCamera = true
                             } label: {
@@ -58,6 +59,9 @@ struct BillScannerView: View {
                                     title: L10n.tr("scanner.select_library")
                                 )
                             }
+                            .simultaneousGesture(TapGesture().onEnded {
+                                AppAnalytics.logButtonClick(AppAnalytics.Button.selectLibrary, source: AppAnalytics.Screen.scan)
+                            })
                         }
 
                         if billScannerService.isScanning {

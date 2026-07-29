@@ -82,6 +82,10 @@ final class InsightsViewModel: ObservableObject {
 
     func setExcludeRecurringFromTopSpends(_ exclude: Bool) {
         guard exclude != excludeRecurringFromTopSpends else { return }
+        AppAnalytics.logButtonClick(
+            AppAnalytics.Button.excludeRecurringToggle,
+            source: AppAnalytics.Screen.insights
+        )
         excludeRecurringFromTopSpends = exclude
         UserDefaultsHelper.shared.set(exclude, forKey: .excludeRecurringFromTopSpends)
         scheduleReload(reason: .preferenceChange)

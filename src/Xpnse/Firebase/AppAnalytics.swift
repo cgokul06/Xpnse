@@ -16,18 +16,68 @@ enum AppAnalytics {
         static let result = "result"
         static let featureKey = "feature_key"
         static let enabled = "enabled"
+        static let button = "button"
     }
 
     enum Screen {
         static let home = "home"
         static let insights = "insights"
         static let addTransaction = "add_transaction"
+        static let editTransaction = "edit_transaction"
         static let manageCategories = "manage_categories"
+        static let editCategory = "edit_category"
         static let settings = "settings"
         static let scan = "scan"
+        static let currencySelection = "currency_selection"
+        static let currencyList = "currency_list"
+        static let recurring = "recurring"
+        static let editRecurring = "edit_recurring"
+        static let legalPrivacy = "legal_privacy"
+        static let legalTerms = "legal_terms"
+    }
+
+    /// Stable non-PII button identifiers for `button_click` events.
+    enum Button {
+        static let addTransaction = "add_transaction"
+        static let openSettings = "open_settings"
+        static let openInsights = "open_insights"
+        static let openScan = "open_scan"
+        static let scrollToTop = "scroll_to_top"
+        static let flipSummaryCard = "flip_summary_card"
+        static let openTransaction = "open_transaction"
+        static let saveTransaction = "save_transaction"
+        static let deleteTransaction = "delete_transaction"
+        static let scanBillFromForm = "scan_bill_from_form"
+        static let takePhoto = "take_photo"
+        static let selectLibrary = "select_library"
+        static let exportBackup = "export_backup"
+        static let importBackup = "import_backup"
+        static let manageCategories = "manage_categories"
+        static let manageRecurring = "manage_recurring"
+        static let openCurrency = "open_currency"
+        static let openPrivacy = "open_privacy"
+        static let openTerms = "open_terms"
+        static let clearLocalData = "clear_local_data"
+        static let currencyContinue = "currency_continue"
+        static let selectCurrency = "select_currency"
+        static let excludeRecurringToggle = "exclude_recurring_toggle"
+        static let addCategory = "add_category"
+        static let editCategory = "edit_category"
+        static let deleteCategory = "delete_category"
+        static let pauseRecurring = "pause_recurring"
+        static let skipRecurring = "skip_recurring"
+        static let editRecurring = "edit_recurring"
+        static let deleteRecurring = "delete_recurring"
+        static let saveRecurring = "save_recurring"
+        static let monthPrevious = "month_previous"
+        static let monthNext = "month_next"
+        static let groupByDate = "group_by_date"
+        static let groupByCategory = "group_by_category"
+        static let searchTransactions = "search_transactions"
     }
 
     enum Event {
+        static let buttonClick = "button_click"
         static let txnSave = "txn_save"
         static let txnDelete = "txn_delete"
         static let receiptScanStart = "receipt_scan_start"
@@ -57,6 +107,13 @@ enum AppAnalytics {
             payload[key] = value
         }
         Analytics.logEvent(name, parameters: payload)
+    }
+
+    static func logButtonClick(_ button: String, source: String) {
+        logEvent(Event.buttonClick, parameters: [
+            Param.button: button,
+            Param.source: source
+        ])
     }
 
     static func logFeatureExposure(featureKey: String, enabled: Bool) {

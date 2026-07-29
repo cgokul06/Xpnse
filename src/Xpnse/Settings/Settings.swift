@@ -58,6 +58,9 @@ struct Settings: View {
                         .background(AdaptiveBrandSurface.rowBackground(for: colorScheme))
                         .xpnseRoundedCorner()
                     }
+                    .simultaneousGesture(TapGesture().onEnded {
+                        AppAnalytics.logButtonClick(AppAnalytics.Button.openCurrency, source: AppAnalytics.Screen.settings)
+                    })
                 }
 
                 if featureFlags.exportImportEnabled {
@@ -67,6 +70,7 @@ struct Settings: View {
                             .xpnseAdaptiveForeground()
 
                         Button {
+                            AppAnalytics.logButtonClick(AppAnalytics.Button.exportBackup, source: AppAnalytics.Screen.settings)
                             AppAnalytics.logFeatureExposure(
                                 featureKey: FeatureFlags.Key.exportImportEnabled.rawValue,
                                 enabled: true
@@ -77,6 +81,7 @@ struct Settings: View {
                         }
 
                         Button {
+                            AppAnalytics.logButtonClick(AppAnalytics.Button.importBackup, source: AppAnalytics.Screen.settings)
                             AppAnalytics.logFeatureExposure(
                                 featureKey: FeatureFlags.Key.exportImportEnabled.rawValue,
                                 enabled: true
@@ -98,6 +103,9 @@ struct Settings: View {
                     } label: {
                         self.actionLabel(text: L10n.tr("category.manage"))
                     }
+                    .simultaneousGesture(TapGesture().onEnded {
+                        AppAnalytics.logButtonClick(AppAnalytics.Button.manageCategories, source: AppAnalytics.Screen.settings)
+                    })
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
@@ -110,6 +118,9 @@ struct Settings: View {
                     } label: {
                         self.actionLabel(text: L10n.tr("settings.manage_recurring"))
                     }
+                    .simultaneousGesture(TapGesture().onEnded {
+                        AppAnalytics.logButtonClick(AppAnalytics.Button.manageRecurring, source: AppAnalytics.Screen.settings)
+                    })
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
@@ -118,12 +129,14 @@ struct Settings: View {
                         .xpnseAdaptiveForeground()
 
                     Button {
+                        AppAnalytics.logButtonClick(AppAnalytics.Button.openPrivacy, source: AppAnalytics.Screen.settings)
                         presentedLegalDocument = .privacyPolicy
                     } label: {
                         self.actionLabel(text: L10n.tr("settings.privacy_policy"))
                     }
 
                     Button {
+                        AppAnalytics.logButtonClick(AppAnalytics.Button.openTerms, source: AppAnalytics.Screen.settings)
                         presentedLegalDocument = .termsAndConditions
                     } label: {
                         self.actionLabel(text: L10n.tr("settings.terms_conditions"))
@@ -132,6 +145,7 @@ struct Settings: View {
 
                 VStack {
                     Button(role: .destructive) {
+                        AppAnalytics.logButtonClick(AppAnalytics.Button.clearLocalData, source: AppAnalytics.Screen.settings)
                         showClearDataConfirm = true
                     } label: {
                         Text("settings.clear_local_data")
