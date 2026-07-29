@@ -270,9 +270,8 @@ struct Settings: View {
         } message: {
             Text("settings.clear_local_data_confirm_message")
         }
-        .sheet(item: $presentedLegalDocument) { document in
-            SafariView(url: document.url)
-                .ignoresSafeArea()
+        .fullScreenCover(item: $presentedLegalDocument) { document in
+            LegalDocumentView(document: document)
         }
     }
 

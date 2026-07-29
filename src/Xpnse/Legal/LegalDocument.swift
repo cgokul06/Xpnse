@@ -12,6 +12,15 @@ enum LegalDocument: String, Identifiable {
 
     var id: String { rawValue }
 
+    var titleKey: String {
+        switch self {
+        case .privacyPolicy:
+            "settings.privacy_policy"
+        case .termsAndConditions:
+            "settings.terms_conditions"
+        }
+    }
+
     var url: URL {
         switch self {
         case .privacyPolicy:
