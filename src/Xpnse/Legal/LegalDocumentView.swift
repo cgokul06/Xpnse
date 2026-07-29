@@ -33,7 +33,7 @@ struct LegalDocumentView: View {
                     }
 
                     ToolbarItem(placement: .principal) {
-                        Text(document.titleKey)
+                        Text(L10n.tr(document.titleKey))
                             .font(.title2)
                             .fontWeight(.bold)
                             .xpnseAdaptiveForeground()

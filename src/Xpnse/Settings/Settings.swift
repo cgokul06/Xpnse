@@ -155,6 +155,12 @@ struct Settings: View {
                     }
                 }
                 #endif
+
+                Text("settings.version")
+                    .font(.system(size: 12, weight: .medium))
+                    .xpnseAdaptiveForeground(muted: true)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 8)
             }
             .padding()
         }
@@ -162,11 +168,6 @@ struct Settings: View {
         .onAppear {
             AppAnalytics.logScreen(AppAnalytics.Screen.settings)
         }
-        .safeAreaInset(edge: .bottom, content: {
-            Text("settings.version")
-                .font(.system(size: 12, weight: .medium))
-                .padding(.horizontal, 20)
-        })
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
