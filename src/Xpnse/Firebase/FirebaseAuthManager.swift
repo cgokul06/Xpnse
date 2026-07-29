@@ -11,6 +11,7 @@ import GoogleSignIn
 import Combine
 import FirebaseCore
 import FirebaseFirestore
+import FirebaseCrashlytics
 
 class FirebaseAuthManager: AuthManagerProtocol {
     @Published var isAuthenticated: Bool?
@@ -39,6 +40,11 @@ class FirebaseAuthManager: AuthManagerProtocol {
                 self?.isAuthenticated = user != nil
                 self?.currentUser = user
                 print("authent: \(self?.isAuthenticated): \(self?.currentUser)")
+                if let user {
+                    Crashlytics.crashlytics().setUserID(user.uid)
+                } else {
+                    Crashlytics.crashlytics().setUserID("")
+                }
                 // Ensure Firestore has a profile document for this user
                 if let strongSelf = self, let user = user {
                     Task { await strongSelf.upsertUserProfile(for: user) }

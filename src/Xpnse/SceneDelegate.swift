@@ -28,6 +28,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         Task {
             await FirebaseTransactionManager.shared.processRecurringTransactionsAsync()
             await WidgetRefreshCoordinator.shared.refresh()
+            await RemoteConfigService.shared.fetchAndActivateIfNeeded()
         }
     }
 

@@ -193,6 +193,7 @@ struct EditCategoryView: View {
                     colorHex: colorHex,
                     transactionType: transactionType
                 )
+                AppAnalytics.logEvent(AppAnalytics.Event.categoryAdd)
             case .edit(let existing):
                 var updated = existing
                 updated.name = trimmed
@@ -202,6 +203,7 @@ struct EditCategoryView: View {
                     updated.transactionType = transactionType
                 }
                 try await CategoryStore.shared.update(updated)
+                AppAnalytics.logEvent(AppAnalytics.Event.categoryEdit)
             }
             onSaved()
             dismiss()

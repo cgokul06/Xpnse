@@ -27,9 +27,17 @@ struct CoordinatedHomeView: View {
                     case .settings:
                         Settings()
                     case .billScanner:
-                        BillScannerView(billScannerService: billScannerService)
+                        if FeatureFlags.shared.receiptScanEnabled {
+                            BillScannerView(billScannerService: billScannerService)
+                        } else {
+                            EmptyView()
+                        }
                     case .insights:
-                        InsightsView()
+                        if FeatureFlags.shared.insightsEnabled {
+                            InsightsView()
+                        } else {
+                            EmptyView()
+                        }
                     }
                 }
         }

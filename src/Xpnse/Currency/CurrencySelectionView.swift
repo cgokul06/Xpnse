@@ -63,15 +63,18 @@ struct CurrencySelectionView: View {
                         appCoordinator.navigateToHome()
                     } label: {
                         Text("Continue")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                            .background(XpnseColorKey.secondaryButtonBGColor.color)
-                            .xpnseRoundedCorner()
+                            .font(.system(size: 18, weight: .bold))
                     }
+                    .buttonStyle(
+                        XpnsePrimaryButtonStyle.defaultButton(
+                            isDisabled: Binding(
+                                get: { !didSelectCurrency },
+                                set: { _ in }
+                            ),
+                            isLoading: .constant(false)
+                        )
+                    )
                     .disabled(!didSelectCurrency)
-                    .opacity(didSelectCurrency ? 1.0 : 0.7)
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 40)

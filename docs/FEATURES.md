@@ -364,8 +364,15 @@ Used by widgets and can be invoked from Shortcuts or other apps.
 ### Sync & services
 
 - **Firebase Auth** — sign-in infrastructure (Google, email); not required for core usage
-- **Firebase Analytics / Crashlytics / Firestore** — included in project dependencies; transaction storage is local SwiftData
+- **Firebase Crashlytics** — crash reporting; configured at launch; dSYMs uploaded via Xcode Run Script
+- **Firebase Analytics** — privacy-safe usability events (screens, core actions, feature exposure). Does **not** send amounts, merchants, descriptions, category names, or other personal/financial content
+- **Firebase Remote Config** — feature gating (`insights_enabled`, `receipt_scan_enabled`, `export_import_enabled`) with offline-safe defaults (all on). Fetched at launch and on foreground
+- **Firebase Firestore** — optional user profile docs only; transaction storage remains local SwiftData
+- **Dual Firebase environments** — Debug uses existing project `xpnse-7b4f2` (`com.snapledgerapp.ios`); Release uses a separate Prod project (`com.snapledger.ios`). Plists live under `src/Xpnse/Firebase/Config/`. See [FIREBASE_ENVIRONMENTS.md](FIREBASE_ENVIRONMENTS.md).
+- **Network** — no special internet entitlement is required; Firebase uses standard HTTPS. The app works offline with queued analytics and last-known / default feature flags
 - **No custom backend** — the app does not depend on a proprietary server
+
+**Console setup:** Enable Crashlytics, Analytics, and Remote Config in **both** Firebase projects. Keep Debug (`GoogleService-Info-Debug.plist`) and Prod (`GoogleService-Info-Release.plist`) in sync with their consoles.
 
 ### Widget pipeline
 
@@ -399,7 +406,7 @@ When unavailable, bill scanner entry point is hidden and classification is skipp
 
 ### Third-party packages (SPM)
 
-- Firebase iOS SDK ≥ 12.0
+- Firebase iOS SDK ≥ 12.0 (Analytics, Auth, Crashlytics, Firestore, Remote Config)
 - Google Sign-In iOS ≥ 9.0
 
 ### Build & run

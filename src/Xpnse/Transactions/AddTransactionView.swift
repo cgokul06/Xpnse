@@ -330,6 +330,7 @@ struct AddTransactionView: View {
                 }
             }
             .onAppear {
+                AppAnalytics.logScreen(AppAnalytics.Screen.addTransaction)
                 self.mapEditableDatas()
                 self.applyExtractedTransactionIfNeeded()
                 lastNormalizedDescription = SuggestionEngine.normalize(description)
@@ -835,6 +836,8 @@ struct AddTransactionView: View {
                 await transactionManager.addTransaction(transaction)
             }
 
+            AppAnalytics.logEvent(AppAnalytics.Event.txnSave)
+
             await MainActor.run {
                 isLoading = false
                 self.dismiss()
@@ -917,6 +920,7 @@ struct AddTransactionView: View {
         if let merchantName = transaction.merchant {
             merchantSuggestionEngine.decrement(title: merchantName)
         }
+        AppAnalytics.logEvent(AppAnalytics.Event.txnDelete)
         self.dismiss()
     }
 

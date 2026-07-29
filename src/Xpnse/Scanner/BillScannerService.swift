@@ -23,12 +23,21 @@ class BillScannerService: ObservableObject {
     func scanBill(from image: UIImage) async {
         isScanning = true
         errorMessage = nil
+        AppAnalytics.logEvent(AppAnalytics.Event.receiptScanStart)
 
         do {
             let extractedTransaction = try await extractTransactionFromImage(image)
             self.extractedTransaction = extractedTransaction
+            AppAnalytics.logEvent(
+                AppAnalytics.Event.receiptScanResult,
+                parameters: [AppAnalytics.Param.result: "success"]
+            )
         } catch {
             errorMessage = L10n.tr("scanner.extract_failed", error.localizedDescription)
+            AppAnalytics.logEvent(
+                AppAnalytics.Event.receiptScanResult,
+                parameters: [AppAnalytics.Param.result: "fail"]
+            )
         }
 
         isScanning = false

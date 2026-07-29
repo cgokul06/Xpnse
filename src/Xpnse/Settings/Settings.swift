@@ -22,6 +22,7 @@ struct Settings: View {
     @State private var importResultText = ""
     @State private var showClearDataConfirm = false
     @State private var isWorking = false
+    @State private var featureFlags = FeatureFlags.shared
 
     var body: some View {
         ScrollView {
@@ -58,21 +59,31 @@ struct Settings: View {
                     }
                 }
 
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("settings.data_portability")
-                        .font(.system(size: 20, weight: .bold))
-                        .xpnseAdaptiveForeground()
+                if featureFlags.exportImportEnabled {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("settings.data_portability")
+                            .font(.system(size: 20, weight: .bold))
+                            .xpnseAdaptiveForeground()
 
-                    Button {
-                        self.startExport()
-                    } label: {
-                        self.actionLabel(text: L10n.tr("settings.export"))
-                    }
+                        Button {
+                            AppAnalytics.logFeatureExposure(
+                                featureKey: FeatureFlags.Key.exportImportEnabled.rawValue,
+                                enabled: true
+                            )
+                            self.startExport()
+                        } label: {
+                            self.actionLabel(text: L10n.tr("settings.export"))
+                        }
 
-                    Button {
-                        self.showImporter = true
-                    } label: {
-                        self.actionLabel(text: L10n.tr("settings.import"))
+                        Button {
+                            AppAnalytics.logFeatureExposure(
+                                featureKey: FeatureFlags.Key.exportImportEnabled.rawValue,
+                                enabled: true
+                            )
+                            self.showImporter = true
+                        } label: {
+                            self.actionLabel(text: L10n.tr("settings.import"))
+                        }
                     }
                 }
 
@@ -110,10 +121,28 @@ struct Settings: View {
                             .frame(maxWidth: .infinity, alignment: .center)
                     }
                 }
+
+                #if DEBUG
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Debug")
+                        .font(.system(size: 20, weight: .bold))
+                        .xpnseAdaptiveForeground()
+
+                    Button(role: .destructive) {
+                        // Forces a fatal crash so Crashlytics can upload on next launch.
+                        fatalError("SnapLedger DEBUG Crashlytics test crash")
+                    } label: {
+                        self.actionLabel(text: "Test Crashlytics Crash")
+                    }
+                }
+                #endif
             }
             .padding()
         }
         .gradientNavigationBackground()
+        .onAppear {
+            AppAnalytics.logScreen(AppAnalytics.Screen.settings)
+        }
         .safeAreaInset(edge: .bottom, content: {
             Text("settings.version")
                 .font(.system(size: 12, weight: .medium))
@@ -171,13 +200,25 @@ struct Settings: View {
                         try await exportService.importAllData(content)
                         selectedCurrency = CurrencyManager.shared.selectedCurrency.code
                         importResultText = L10n.tr("settings.import_success")
+                        AppAnalytics.logEvent(
+                            AppAnalytics.Event.importBackup,
+                            parameters: [AppAnalytics.Param.result: "success"]
+                        )
                     } catch {
                         importResultText = L10n.tr("settings.import_failed", error.localizedDescription)
+                        AppAnalytics.logEvent(
+                            AppAnalytics.Event.importBackup,
+                            parameters: [AppAnalytics.Param.result: "fail"]
+                        )
                     }
                     showImportResult = true
                 }
             case .failure(let error):
                 importResultText = L10n.tr("settings.import_failed", error.localizedDescription)
+                AppAnalytics.logEvent(
+                    AppAnalytics.Event.importBackup,
+                    parameters: [AppAnalytics.Param.result: "fail"]
+                )
                 showImportResult = true
             }
         }
@@ -190,6 +231,7 @@ struct Settings: View {
             Button("common.cancel", role: .cancel) { }
             Button("settings.clear_local_data", role: .destructive) {
                 Task {
+                    AppAnalytics.logEvent(AppAnalytics.Event.clearDataConfirm)
                     isWorking = true
                     await FirebaseTransactionManager.shared.clearAll()
                     isWorking = false
@@ -220,10 +262,18 @@ struct Settings: View {
                 exportFilename = "snapledger_backup.json"
                 showExporter = true
                 isWorking = false
+                AppAnalytics.logEvent(
+                    AppAnalytics.Event.exportBackup,
+                    parameters: [AppAnalytics.Param.result: "success"]
+                )
             } catch {
                 isWorking = false
                 importResultText = L10n.tr("settings.export_failed", error.localizedDescription)
                 showImportResult = true
+                AppAnalytics.logEvent(
+                    AppAnalytics.Event.exportBackup,
+                    parameters: [AppAnalytics.Param.result: "fail"]
+                )
             }
         }
     }

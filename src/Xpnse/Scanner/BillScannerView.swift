@@ -122,6 +122,9 @@ struct BillScannerView: View {
             } onCancel: {}
             .ignoresSafeArea()
         }
+        .onAppear {
+            AppAnalytics.logScreen(AppAnalytics.Screen.scan)
+        }
     }
 
     private var heroCard: some View {

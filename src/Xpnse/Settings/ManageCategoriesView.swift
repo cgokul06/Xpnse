@@ -60,6 +60,7 @@ struct ManageCategoriesView: View {
             }
         }
         .task {
+            AppAnalytics.logScreen(AppAnalytics.Screen.manageCategories)
             await categoryStore.load()
         }
         .sheet(isPresented: $showAddCategory) {

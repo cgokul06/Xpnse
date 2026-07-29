@@ -8,10 +8,17 @@ import OSLog
 
 /// Console-visible calculation dumps for Insights analytics (filter: subsystem SnapLedger, category InsightsCalc).
 enum InsightsCalculationLog {
+    #if DEBUG
     private static let logger = Logger(
         subsystem: "com.snapledgerapp.ios",
         category: "InsightsCalc"
     )
+    #else
+    private static let logger = Logger(
+        subsystem: "com.snapledger.ios",
+        category: "InsightsCalc"
+    )
+    #endif
 
     static func baselineMonths(
         candidates: [(Int, Int)],

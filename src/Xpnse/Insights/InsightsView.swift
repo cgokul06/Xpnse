@@ -31,6 +31,7 @@ struct InsightsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             // Prefer `.task` so work is tied to view lifetime and starts after the first layout.
+            AppAnalytics.logScreen(AppAnalytics.Screen.insights)
             viewModel.onAppear()
         }
         .onDisappear {

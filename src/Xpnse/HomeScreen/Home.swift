@@ -39,6 +39,7 @@ struct Home: View {
     @State private var transactionListGrouping: TransactionListGrouping = .date
     @State private var bottomBarHiddenAmount: CGFloat = 0
     @State private var isTransactionSearchActive = false
+    @State private var featureFlags = FeatureFlags.shared
 
     private var displayedBottomBarHiddenAmount: CGFloat {
         isTransactionSearchActive
@@ -79,6 +80,9 @@ struct Home: View {
                 ProgressView()
             }
         }
+        .onAppear {
+            AppAnalytics.logScreen(AppAnalytics.Screen.home)
+        }
     }
 
     private var contentView: some View {
@@ -104,7 +108,9 @@ struct Home: View {
             bottomActionBar
         }
         .overlay(alignment: .bottomTrailing) {
-            insightsFloatingButton
+            if featureFlags.insightsEnabled {
+                insightsFloatingButton
+            }
         }
         .onChange(of: homeCoordinator.path.count) { oldCount, newCount in
             guard newCount < oldCount else { return }
@@ -118,6 +124,10 @@ struct Home: View {
 
     private var insightsFloatingButton: some View {
         Button {
+            AppAnalytics.logFeatureExposure(
+                featureKey: FeatureFlags.Key.insightsEnabled.rawValue,
+                enabled: true
+            )
             homeCoordinator.push(.insights)
         } label: {
             Image(systemName: "chart.bar.xaxis")
@@ -154,8 +164,12 @@ struct Home: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: XpnseBottomBarMetrics.buttonHeight)
 
-                if FoundationModelsAvailability.isAvailable {
+                if featureFlags.receiptScanEnabled, FoundationModelsAvailability.isAvailable {
                     Button {
+                        AppAnalytics.logFeatureExposure(
+                            featureKey: FeatureFlags.Key.receiptScanEnabled.rawValue,
+                            enabled: true
+                        )
                         self.homeCoordinator.push(.billScanner)
                     } label: {
                         Image(systemName: "doc.text.viewfinder")
