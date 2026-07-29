@@ -8,6 +8,7 @@ Native iOS app for tracking day-to-day income and expenses — with period summa
 
 - **[Features & capabilities](docs/FEATURES.md)** — full product documentation: home dashboard, transactions, bill scanner, recurring rules, categories, currency, widgets, export/import, and more
 - **[Firebase environments](docs/FIREBASE_ENVIRONMENTS.md)** — Debug vs Prod Firebase projects, bundle IDs, and GoogleService-Info plists
+- **[Legal documents](docs/LEGAL.md)** — Privacy Policy and Terms source HTML, plus how to republish to GitHub Pages
 - **[AGENTS.md](AGENTS.md)** — contributor and build environment notes
 
 ## Quick start
@@ -29,4 +30,7 @@ src/
   Xpnse.xcodeproj/
 docs/
   FEATURES.md      Product feature documentation
+  LEGAL.md         How to update/republish Privacy & Terms
+  privacy.html     Privacy Policy source (publish via snapledger-legal)
+  terms.html       Terms & Conditions source (publish via snapledger-legal)
 ```
