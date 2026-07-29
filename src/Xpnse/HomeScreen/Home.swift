@@ -40,6 +40,8 @@ struct Home: View {
     @State private var bottomBarHiddenAmount: CGFloat = 0
     @State private var isTransactionSearchActive = false
     @State private var featureFlags = FeatureFlags.shared
+    @State private var isSummaryCardOffscreen = false
+    @State private var scrollToTopTick: UInt = 0
 
     private var displayedBottomBarHiddenAmount: CGFloat {
         isTransactionSearchActive
@@ -70,6 +72,7 @@ struct Home: View {
                     .onChange(of: self.homeViewModel.currentKey) { _, _ in
                         bottomBarHiddenAmount = 0
                         isTransactionSearchActive = false
+                        isSummaryCardOffscreen = false
                         Task {
                             await homeViewModel.prefetchIfNeeded(currentKey: homeViewModel.currentKey)
                         }
@@ -108,9 +111,7 @@ struct Home: View {
             bottomActionBar
         }
         .overlay(alignment: .bottomTrailing) {
-            if featureFlags.insightsEnabled {
-                insightsFloatingButton
-            }
+            floatingTrailingButtons
         }
         .onChange(of: homeCoordinator.path.count) { oldCount, newCount in
             guard newCount < oldCount else { return }
@@ -118,8 +119,53 @@ struct Home: View {
         }
     }
 
+    private var floatingTrailingButtons: some View {
+        VStack(spacing: 12) {
+            if isSummaryCardOffscreen {
+                scrollToTopFloatingButton
+                    .transition(
+                        .asymmetric(
+                            insertion: .scale(scale: 0.55, anchor: .bottom)
+                                .combined(with: .opacity)
+                                .combined(with: .offset(y: 12)),
+                            removal: .scale(scale: 0.55, anchor: .bottom)
+                                .combined(with: .opacity)
+                                .combined(with: .offset(y: 12))
+                        )
+                    )
+            }
+
+            if featureFlags.insightsEnabled {
+                insightsFloatingButton
+            }
+        }
+        .padding(.trailing, 16)
+        // Track the add bar: move down as it collapses, keep an on-screen floor gap.
+        .padding(.bottom, max(16, contentBottomInset + 8))
+        .animation(.easeInOut(duration: 0.2), value: contentBottomInset)
+        .animation(
+            .spring(response: 0.34, dampingFraction: 0.78),
+            value: isSummaryCardOffscreen
+        )
+    }
+
     private func resetBottomActionBar() {
         bottomBarHiddenAmount = 0
+    }
+
+    private var scrollToTopFloatingButton: some View {
+        Button {
+            scrollToTopTick &+= 1
+        } label: {
+            Image(systemName: "chevron.up")
+        }
+        .buttonStyle(
+            XpnseSquareIconButtonStyle.defaultButton(
+                isDisabled: .constant(false),
+                isLoading: .constant(false)
+            )
+        )
+        .accessibilityLabel(L10n.tr("home.scroll_to_top_a11y"))
     }
 
     private var insightsFloatingButton: some View {
@@ -139,11 +185,6 @@ struct Home: View {
             )
         )
         .accessibilityLabel(L10n.tr("home.insights_a11y"))
-        .padding(.trailing, 16)
-        .padding(.bottom, contentBottomInset + 8)
-        .offset(y: displayedBottomBarHiddenAmount)
-        .opacity(1 - bottomBarHideProgress)
-        .allowsHitTesting(bottomBarHideProgress < 1)
     }
 
     private var bottomActionBar: some View {
@@ -192,7 +233,21 @@ struct Home: View {
     }
 
     private func handleTransactionListScroll(_ update: TransactionListScrollUpdate) {
-        guard update.visibleHeight > 0, !isTransactionSearchActive else { return }
+        guard update.visibleHeight > 0 else { return }
+
+        if isTransactionSearchActive {
+            if isSummaryCardOffscreen {
+                isSummaryCardOffscreen = false
+            }
+            return
+        }
+
+        let hasBalanceCard = monthHasTransactions(for: homeViewModel.currentKey)
+        let summaryOffscreen = hasBalanceCard
+            && update.offsetY >= SummaryCardMetrics.height + 12
+        if isSummaryCardOffscreen != summaryOffscreen {
+            isSummaryCardOffscreen = summaryOffscreen
+        }
 
         if update.offsetY <= 0 {
             bottomBarHiddenAmount = 0
@@ -387,8 +442,12 @@ struct Home: View {
                 ? handleTransactionListScroll
                 : nil,
             onListAppear: key == homeViewModel.currentKey
-                ? resetBottomActionBar
+                ? {
+                    resetBottomActionBar()
+                    isSummaryCardOffscreen = false
+                }
                 : nil,
+            scrollToTopTick: key == homeViewModel.currentKey ? scrollToTopTick : 0,
             isSearching: key == homeViewModel.currentKey
                 ? $isTransactionSearchActive
                 : .constant(false),

@@ -25,30 +25,30 @@ struct InsightsGhostView: View {
         }
         .scrollBounceBehavior(.basedOnSize, axes: .vertical)
         .scrollDisabled(true)
-        .accessibilityLabel("Loading insights")
+        .accessibilityLabel(L10n.tr("insights.loading"))
     }
 
     private var chartGhost: some View {
         VStack(alignment: .leading, spacing: 12) {
             headerGhost(width: 120)
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .fill(bone)
-                .frame(height: 180)
-                .overlay(alignment: .bottom) {
-                    HStack(alignment: .bottom, spacing: 8) {
-                        ForEach(0..<6, id: \.self) { index in
-                            RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                .fill(boneStrong)
-                                .frame(height: CGFloat(40 + (index % 3) * 28))
-                        }
+
+            ZStack(alignment: .bottom) {
+                boneRect(cornerRadius: 8)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 180)
+
+                HStack(alignment: .bottom, spacing: 8) {
+                    ForEach(0..<6, id: \.self) { index in
+                        boneRect(cornerRadius: 4, strong: true)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: CGFloat(40 + (index % 3) * 28))
                     }
-                    .padding(16)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                 }
+                .padding(16)
+            }
         }
         .padding(16)
         .xpnseOutlinedPanel()
-        .redacted(reason: .placeholder)
     }
 
     private func cardGhost(lines: Int, barHeights: [CGFloat]) -> some View {
@@ -56,35 +56,42 @@ struct InsightsGhostView: View {
             headerGhost(width: CGFloat(100 + lines * 12))
             ForEach(0..<lines, id: \.self) { index in
                 HStack {
-                    RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .fill(bone)
+                    boneRect(cornerRadius: 4)
                         .frame(width: CGFloat(80 + (index % 3) * 24), height: 12)
                     Spacer()
-                    RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .fill(bone)
+                    boneRect(cornerRadius: 4)
                         .frame(width: 48, height: 12)
                 }
                 if index < barHeights.count {
-                    Capsule()
-                        .fill(bone)
+                    boneCapsule()
+                        .frame(maxWidth: .infinity)
                         .frame(height: barHeights[index])
                 }
             }
         }
         .padding(16)
         .xpnseOutlinedPanel()
-        .redacted(reason: .placeholder)
     }
 
     private func headerGhost(width: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            RoundedRectangle(cornerRadius: 4, style: .continuous)
-                .fill(boneStrong)
+            boneRect(cornerRadius: 4, strong: true)
                 .frame(width: width, height: 16)
-            RoundedRectangle(cornerRadius: 4, style: .continuous)
-                .fill(bone)
+            boneRect(cornerRadius: 4)
                 .frame(width: width * 0.7, height: 10)
         }
+    }
+
+    private func boneRect(cornerRadius: CGFloat, strong: Bool = false) -> some View {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .fill(strong ? boneStrong : bone)
+            .shimmering(.roundedRect(cornerRadius))
+    }
+
+    private func boneCapsule() -> some View {
+        Capsule(style: .continuous)
+            .fill(bone)
+            .shimmering(.capsule)
     }
 
     private var bone: Color {

@@ -100,6 +100,8 @@ struct TransactionListView: View {
     var onScrollAnchorChange: (TransactionListPersistedAnchor) -> Void
     var onScrollOffsetChange: ((TransactionListScrollUpdate) -> Void)?
     var onListAppear: (() -> Void)?
+    /// Increment from the parent to programmatically scroll back to the balance card.
+    var scrollToTopTick: UInt = 0
     @Binding var isSearching: Bool
     var scrollBottomInset: CGFloat = 62
     var extendsToBottomSafeArea: Bool = false
@@ -127,7 +129,7 @@ struct TransactionListView: View {
     @State private var searchDebounceTask: Task<Void, Never>?
     @FocusState private var isSearchFieldFocused: Bool
 
-    private static let summaryCardScrollThreshold: CGFloat = 176
+    private static let summaryCardScrollThreshold: CGFloat = SummaryCardMetrics.height + 12
     private static let searchDebounceInterval: Duration = .milliseconds(300)
 
     private var scrollContentBottomPadding: CGFloat {
@@ -620,6 +622,10 @@ struct TransactionListView: View {
                 guard let target else { return }
                 pendingProgrammaticScroll = nil
                 scrollToAnchor(target, proxy: proxy)
+            }
+            .onChange(of: scrollToTopTick) { oldValue, newValue in
+                guard newValue != oldValue else { return }
+                scrollToTop(using: proxy)
             }
             .onAppear {
                 onListAppear?()

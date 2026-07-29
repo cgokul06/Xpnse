@@ -76,25 +76,24 @@ struct SummaryCardView: View {
     }
 
     private func centeredStat(type: TransactionType, amount: Double) -> some View {
-        VStack(spacing: 2) {
-            HStack(spacing: 4) {
-                Image(systemName: type.displayIcon)
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(.white)
-                    .frame(width: 18, height: 18)
-                    .padding(2)
-                    .background(Circle().fill(type.brandColor))
+        HStack(alignment: .center, spacing: 8) {
+            Image(systemName: type.displayIcon)
+                .font(.system(size: 14, weight: .bold))
+                .foregroundColor(.white)
+                .frame(width: 24, height: 24)
+                .background(Circle().fill(type.brandColor))
 
+            VStack(alignment: .leading, spacing: 2) {
                 Text(type.displayName)
                     .font(.system(size: 13, weight: .medium))
                     .xpnseAdaptiveForeground(muted: true)
-            }
 
-            Text(AmountFormatter.formatCompact(amount, currencyCode: currencyCode))
-                .font(.system(size: 20, weight: .bold))
-                .xpnseAdaptiveForeground()
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+                Text(AmountFormatter.formatCompact(amount, currencyCode: currencyCode))
+                    .font(.system(size: 20, weight: .bold))
+                    .xpnseAdaptiveForeground()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .center)
     }

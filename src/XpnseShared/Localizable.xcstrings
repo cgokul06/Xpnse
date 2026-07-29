@@ -3865,6 +3865,35 @@
         }
       }
     },
+    "home.scroll_to_top_a11y" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nach oben scrollen"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scroll to top"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Volver arriba"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Haut de page"
+          }
+        }
+      }
+    },
     "home.search_placeholder" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -5143,9 +5172,6 @@
           }
         }
       }
-    },
-    "Loading insights" : {
-
     },
     "Loading..." : {
 
