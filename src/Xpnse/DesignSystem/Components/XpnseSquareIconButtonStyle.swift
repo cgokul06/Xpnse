@@ -22,44 +22,71 @@ struct XpnseSquareIconButtonStyle: ButtonStyle {
     let usesBrandGradient: Bool
 
     func makeBody(configuration: Configuration) -> some View {
+        let disabled = isDisabled.wrappedValue
+        let showBrandDisabled = usesBrandGradient && disabled
+
         configuration.label
             .font(.system(size: 20, weight: .bold))
             .frame(
                 width: XpnseBottomBarMetrics.buttonHeight,
                 height: XpnseBottomBarMetrics.buttonHeight
             )
-            .foregroundColor(foregroundColor.color)
-            .background(backgroundFill)
+            .foregroundColor(
+                showBrandDisabled
+                    ? XpnseColorKey.secondaryButtonDisabledText.color
+                    : foregroundColor.color
+            )
+            .background(backgroundFill(disabled: disabled))
             .xpnseRoundedCorner(
                 cornerRadius,
                 strokeConfig: StrokeConfig(
-                    color: borderColor,
+                    color: .clear,
                     lineWidth: borderWidth
                 )
             )
-            .opacity((configuration.isPressed || isDisabled.wrappedValue) ? 0.6 : 1)
-            .scaleEffect(configuration.isPressed ? 0.9 : 1)
+            .opacity(pressedOpacity(configuration: configuration, disabled: disabled))
+            .scaleEffect(configuration.isPressed && !disabled ? 0.9 : 1)
             .animation(.default, value: configuration.isPressed)
             .shadow(
-                color: usesBrandGradient
-                    ? XpnsePrimaryButtonChrome.shadowColor
-                    : Color.black.opacity(0.2),
-                radius: usesBrandGradient
+                color: shadowColor(disabled: disabled),
+                radius: usesBrandGradient && !disabled
                     ? XpnsePrimaryButtonChrome.shadowRadius
                     : 10,
                 x: 0,
-                y: usesBrandGradient ? XpnsePrimaryButtonChrome.shadowY : 8
+                y: usesBrandGradient && !disabled
+                    ? XpnsePrimaryButtonChrome.shadowY
+                    : 8
             )
-            .disabled(isDisabled.wrappedValue || isLoading.wrappedValue)
+            .disabled(disabled || isLoading.wrappedValue)
     }
 
     @ViewBuilder
-    private var backgroundFill: some View {
+    private func backgroundFill(disabled: Bool) -> some View {
         if usesBrandGradient {
-            XpnsePrimaryButtonChrome.gradient
+            if disabled {
+                // Disabled icon button: #103654 background, #5D7B91 icon.
+                XpnseColorKey.secondaryButtonBackground.color
+            } else {
+                XpnsePrimaryButtonChrome.gradient
+            }
         } else {
             bgColor.color
         }
+    }
+
+    private func pressedOpacity(configuration: Configuration, disabled: Bool) -> Double {
+        if usesBrandGradient {
+            if disabled { return 1 }
+            return configuration.isPressed ? 0.6 : 1
+        }
+        return (configuration.isPressed || disabled) ? 0.6 : 1
+    }
+
+    private func shadowColor(disabled: Bool) -> Color {
+        if usesBrandGradient {
+            return disabled ? .clear : XpnsePrimaryButtonChrome.shadowColor
+        }
+        return Color.black.opacity(0.2)
     }
 
     static func defaultButton(
