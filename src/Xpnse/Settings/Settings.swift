@@ -170,7 +170,7 @@ struct Settings: View {
                 }
                 #endif
 
-                Text("settings.version")
+                Text(appVersionLabel)
                     .font(.system(size: 12, weight: .medium))
                     .xpnseAdaptiveForeground(muted: true)
                     .frame(maxWidth: .infinity)
@@ -288,6 +288,12 @@ struct Settings: View {
         .fullScreenCover(item: $presentedLegalDocument) { document in
             LegalDocumentView(document: document)
         }
+    }
+
+    private var appVersionLabel: String {
+        let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"
+        return L10n.tr("settings.version", short, build)
     }
 
     private func actionLabel(text: String) -> some View {

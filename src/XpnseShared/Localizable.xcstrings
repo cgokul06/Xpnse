@@ -6520,25 +6520,25 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Version: 0.0.0"
+            "value" : "Version: %@ (%@)"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Version: 0.0.0"
+            "value" : "Version: %@ (%@)"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Versión: 0.0.0"
+            "value" : "Versión: %@ (%@)"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Version : 0.0.0"
+            "value" : "Version : %@ (%@)"
           }
         }
       }
