@@ -16,6 +16,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         AnonymousIdentity.bootstrap()
         RecurringReminderScheduler.shared.configureNotificationCenterDelegate()
         Task { @MainActor in
+            UserSatisfactionEngine.shared.track(.appLaunched)
+            UserEngagementCoordinator.shared.attach(engine: .shared)
             await CategoryStore.shared.load()
             await RemoteConfigService.shared.fetchAndActivateIfNeeded(force: true)
         }

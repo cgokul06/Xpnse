@@ -69,20 +69,20 @@ final class InsightsNarrativeService {
         return base.appendingPathComponent("insights-narrative-cache-v5-\(lang).json")
     }
 
-    func narratives(for snapshot: InsightsSnapshot) async -> InsightsNarratives {
+    func narratives(for snapshot: InsightsSnapshot) async -> (InsightsNarratives, wasFreshlyGenerated: Bool) {
         let key = "\(snapshot.contentHash)|\(L10n.preferredLanguageCode)"
         if InsightsResultCache.Policy.narrativeReadsEnabled {
             if let cached = memoryCache[key] {
-                return cached
+                return (cached, false)
             }
             if let disk = loadDiskCache()[key] {
                 memoryCache[key] = disk
-                return disk
+                return (disk, false)
             }
         }
 
         guard FoundationModelsAvailability.isAvailable else {
-            return .empty
+            return (.empty, false)
         }
 
         task?.cancel()
@@ -94,8 +94,9 @@ final class InsightsNarrativeService {
         if result.hasContent {
             memoryCache[key] = result
             persist(key: key, value: result)
+            return (result, true)
         }
-        return result
+        return (result, false)
     }
 
     func cancel() {

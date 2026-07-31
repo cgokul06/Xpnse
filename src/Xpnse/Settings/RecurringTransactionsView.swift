@@ -49,6 +49,12 @@ struct RecurringTransactionsView: View {
             await categoryStore.load()
             await reload()
         }
+        .onAppear {
+            UserEngagementCoordinator.shared.beginBusyWork(.manageRecurring)
+        }
+        .onDisappear {
+            UserEngagementCoordinator.shared.endBusyWork(.manageRecurring)
+        }
     }
 
     private var listContent: some View {

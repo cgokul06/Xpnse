@@ -65,8 +65,14 @@ final class FirebaseTransactionManager {
     func addTransaction(_ transaction: Transaction) async {
         do {
             try await transactionRepository.add(transaction)
+            await MainActor.run {
+                UserSatisfactionEngine.shared.track(.transactionAdded)
+            }
         } catch {
             print("Failed to add transaction: \(error.localizedDescription)")
+            await MainActor.run {
+                UserSatisfactionEngine.shared.track(.criticalErrorOccurred)
+            }
         }
     }
 
@@ -75,6 +81,9 @@ final class FirebaseTransactionManager {
             try await transactionRepository.update(transaction)
         } catch {
             print("Failed to update transaction: \(error.localizedDescription)")
+            await MainActor.run {
+                UserSatisfactionEngine.shared.track(.criticalErrorOccurred)
+            }
         }
     }
 
@@ -83,6 +92,9 @@ final class FirebaseTransactionManager {
                 try await transactionRepository.delete(transaction)
             } catch {
                 print("Failed to delete transaction: \(error.localizedDescription)")
+                await MainActor.run {
+                    UserSatisfactionEngine.shared.track(.criticalErrorOccurred)
+                }
             }
         }
 

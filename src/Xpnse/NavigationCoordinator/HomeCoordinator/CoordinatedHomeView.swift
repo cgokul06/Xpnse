@@ -6,11 +6,12 @@
 //
 
 import SwiftUI
+import Combine
 
 struct CoordinatedHomeView: View {
     @EnvironmentObject var homeCoordinator: NavigationCoordinator<HomeRoute>
     @StateObject var billScannerService: BillScannerService = BillScannerService()
-//    @EnvironmentObject var appCoordinator: AppCoordinator
+    @State private var engagement = UserEngagementCoordinator.shared
 
     var body: some View {
         NavigationStack(path: $homeCoordinator.path) {
@@ -41,14 +42,59 @@ struct CoordinatedHomeView: View {
                     }
                 }
         }
-//        .sheet(item: $homeCoordinator.presentedSheet) { sheet in
-//            switch sheet {
-//            case .addTransaction(let type):
-//                AddTransactionView(type: type)
-//            case .transactionDetail(let transaction):
-//                TransactionDetailView(transaction: transaction)
-//            }
-//        }
+        .onAppear {
+            engagement.attach(engine: .shared)
+            engagement.markSettledPastLaunch()
+            engagement.noteAppBecameActive()
+            syncBusyWork(for: homeCoordinator.path)
+            engagement.reconcile()
+        }
+        .onChange(of: homeCoordinator.path) { _, newPath in
+            syncBusyWork(for: newPath)
+            engagement.reconcile()
+        }
+        .onReceive(Timer.publish(every: 5, on: .main, in: .common).autoconnect()) { _ in
+            engagement.reconcile()
+            engagement.checkPresentationGate()
+        }
+        .sheet(item: presentedEngagementBinding) { presentation in
+            switch presentation {
+            case .appReview(let opportunity):
+                FeedbackFlowView(opportunity: opportunity)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            }
+        }
+    }
+
+    private var presentedEngagementBinding: Binding<EngagementPresentation?> {
+        Binding(
+            get: { engagement.presentedEngagement },
+            set: { newValue in
+                if newValue == nil, engagement.presentedEngagement != nil {
+                    engagement.dismissCurrentEngagement(reportToEngine: true)
+                }
+            }
+        )
+    }
+
+    private func syncBusyWork(for path: [HomeRoute]) {
+        engagement.endBusyWork(.addOrEditTransaction)
+        engagement.endBusyWork(.billScanner)
+        engagement.endBusyWork(.manageCategories)
+        engagement.endBusyWork(.manageRecurring)
+        engagement.endBusyWork(.settingsCriticalFlow)
+
+        guard let top = path.last else { return }
+        switch top {
+        case .transactions, .editTransaction:
+            engagement.beginBusyWork(.addOrEditTransaction)
+        case .billScanner:
+            engagement.beginBusyWork(.billScanner)
+        case .settings:
+            break
+        case .insights:
+            break
+        }
     }
 }
-

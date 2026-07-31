@@ -32,6 +32,7 @@ class BillScannerService: ObservableObject {
                 AppAnalytics.Event.receiptScanResult,
                 parameters: [AppAnalytics.Param.result: "success"]
             )
+            UserSatisfactionEngine.shared.track(.receiptScanned)
         } catch {
             errorMessage = L10n.tr("scanner.extract_failed", error.localizedDescription)
             AppAnalytics.logEvent(

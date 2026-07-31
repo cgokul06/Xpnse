@@ -24,6 +24,12 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             ?? .unspecified
         WidgetAppearanceStore.sync(from: style)
         WidgetCenter.shared.reloadAllTimelines()
+        Task { @MainActor in
+            UserSatisfactionEngine.shared.track(.appBecameActive)
+            UserEngagementCoordinator.shared.attach(engine: .shared)
+            UserEngagementCoordinator.shared.noteAppBecameActive()
+            UserEngagementCoordinator.shared.reconcile()
+        }
 
         Task {
             await FirebaseTransactionManager.shared.processRecurringTransactionsAsync()
@@ -34,5 +40,12 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func sceneWillEnterForeground(_ scene: UIScene) {
         FirebaseTransactionManager.shared.processRecurringTransactions()
+    }
+
+    func sceneDidEnterBackground(_ scene: UIScene) {
+        Task { @MainActor in
+            UserSatisfactionEngine.shared.track(.appEnteredBackground)
+            UserEngagementCoordinator.shared.noteAppEnteredBackground()
+        }
     }
 }

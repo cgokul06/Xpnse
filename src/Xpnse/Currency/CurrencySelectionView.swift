@@ -90,6 +90,10 @@ struct CurrencySelectionView: View {
             .toolbar(.hidden, for: .navigationBar)
             .onAppear {
                 AppAnalytics.logScreen(AppAnalytics.Screen.currencySelection)
+                UserEngagementCoordinator.shared.beginBusyWork(.currencySetup)
+            }
+            .onDisappear {
+                UserEngagementCoordinator.shared.endBusyWork(.currencySetup)
             }
         }
     }

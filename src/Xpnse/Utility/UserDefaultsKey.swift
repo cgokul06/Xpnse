@@ -15,6 +15,8 @@ enum UserDefaultsKey: String {
     case excludeRecurringFromTopSpends
     /// UUID for this app installation only (cleared on uninstall).
     case installationId
+    /// Codable `ReviewState` blob for the user-satisfaction engine.
+    case reviewState
 }
 
 /// Wrapper for UserDefaults
@@ -53,13 +55,26 @@ class UserDefaultsHelper {
         defaults.removeObject(forKey: key.rawValue)
     }
 
+    func data(forKey key: UserDefaultsKey) -> Data? {
+        defaults.data(forKey: key.rawValue)
+    }
+
+    func setData(_ value: Data?, forKey key: UserDefaultsKey) {
+        if let value {
+            defaults.set(value, forKey: key.rawValue)
+        } else {
+            defaults.removeObject(forKey: key.rawValue)
+        }
+    }
+
     private func migrateFromStandardIfNeeded(to groupDefaults: UserDefaults) {
         let standard = UserDefaults.standard
         let keys: [UserDefaultsKey] = [
             .selectedCurrencyCode,
             .calendarAggregator,
             .excludeRecurringFromTopSpends,
-            .installationId
+            .installationId,
+            .reviewState
         ]
 
         for key in keys {

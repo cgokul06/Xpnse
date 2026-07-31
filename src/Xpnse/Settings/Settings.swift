@@ -233,6 +233,7 @@ struct Settings: View {
                 guard let fileURL = files.first else { return }
                 Task { @MainActor in
                     isWorking = true
+                    UserEngagementCoordinator.shared.beginBusyWork(.importExport)
                     do {
                         let didAccess = fileURL.startAccessingSecurityScopedResource()
                         defer {
@@ -254,7 +255,9 @@ struct Settings: View {
                             AppAnalytics.Event.importBackup,
                             parameters: [AppAnalytics.Param.result: "fail"]
                         )
+                        UserSatisfactionEngine.shared.track(.criticalErrorOccurred)
                     }
+                    UserEngagementCoordinator.shared.endBusyWork(.importExport)
                     isWorking = false
                     showImportResult = true
                 }
@@ -278,7 +281,9 @@ struct Settings: View {
                 Task {
                     AppAnalytics.logEvent(AppAnalytics.Event.clearDataConfirm)
                     isWorking = true
+                    UserEngagementCoordinator.shared.beginBusyWork(.settingsCriticalFlow)
                     await FirebaseTransactionManager.shared.clearAll()
+                    UserEngagementCoordinator.shared.endBusyWork(.settingsCriticalFlow)
                     isWorking = false
                 }
             }
@@ -311,16 +316,19 @@ struct Settings: View {
         Task {
             do {
                 isWorking = true
+                UserEngagementCoordinator.shared.beginBusyWork(.importExport)
                 let backup = try await exportService.exportAllData()
                 exportDocument = BackupDocument(text: backup)
                 exportFilename = "snapledger_backup.json"
                 showExporter = true
+                UserEngagementCoordinator.shared.endBusyWork(.importExport)
                 isWorking = false
                 AppAnalytics.logEvent(
                     AppAnalytics.Event.exportBackup,
                     parameters: [AppAnalytics.Param.result: "success"]
                 )
             } catch {
+                UserEngagementCoordinator.shared.endBusyWork(.importExport)
                 isWorking = false
                 importResultText = L10n.tr("settings.export_failed", error.localizedDescription)
                 showImportResult = true

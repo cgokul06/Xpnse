@@ -88,6 +88,19 @@ enum AppAnalytics {
         static let importBackup = "import_backup"
         static let clearDataConfirm = "clear_data_confirm"
         static let featureExposure = "feature_exposure"
+        static let reviewEligibilityPassed = "review_eligibility_passed"
+        static let reviewEligibilityFailed = "review_eligibility_failed"
+        static let reviewTriggerTxnMilestone = "review_trigger_txn_milestone"
+        static let reviewTriggerReceiptMilestone = "review_trigger_receipt_milestone"
+        static let reviewTriggerInsights = "review_trigger_insights"
+        static let reviewTriggerSevenDayStreak = "review_trigger_seven_day_streak"
+        static let reviewFeedbackFlowPresented = "review_feedback_flow_presented"
+        static let reviewPositiveSelected = "review_positive_selected"
+        static let reviewNegativeSelected = "review_negative_selected"
+        static let reviewFeedbackSubmitted = "review_feedback_submitted"
+        static let reviewFeedbackCancelled = "review_feedback_cancelled"
+        static let reviewDismissed = "review_dismissed"
+        static let reviewAppStoreOpened = "review_app_store_opened"
     }
 
     static func logScreen(_ name: String) {

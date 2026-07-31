@@ -929,6 +929,8 @@ struct AddTransactionView: View {
             AppAnalytics.Button.deleteTransaction,
             source: AppAnalytics.Screen.editTransaction
         )
+        UserEngagementCoordinator.shared.beginBusyWork(.deleteTransaction)
+        defer { UserEngagementCoordinator.shared.endBusyWork(.deleteTransaction) }
         await self.transactionManager.deleteTransaction(transaction)
         suggestionEngine.decrement(title: transaction.title)
         if let merchantName = transaction.merchant {

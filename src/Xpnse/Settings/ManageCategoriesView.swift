@@ -67,6 +67,12 @@ struct ManageCategoriesView: View {
             AppAnalytics.logScreen(AppAnalytics.Screen.manageCategories)
             await categoryStore.load()
         }
+        .onAppear {
+            UserEngagementCoordinator.shared.beginBusyWork(.manageCategories)
+        }
+        .onDisappear {
+            UserEngagementCoordinator.shared.endBusyWork(.manageCategories)
+        }
         .sheet(isPresented: $showAddCategory) {
             EditCategoryView(mode: .add) {
                 Task { await categoryStore.load() }

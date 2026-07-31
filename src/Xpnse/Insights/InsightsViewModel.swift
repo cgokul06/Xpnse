@@ -276,10 +276,14 @@ final class InsightsViewModel: ObservableObject {
         isGeneratingNarrative = true
         narrativeTask = Task { [weak self] in
             guard let self else { return }
-            let result = await self.narrativeService.narratives(for: snapshot)
+            let (result, wasFreshlyGenerated) = await self.narrativeService.narratives(for: snapshot)
             guard !Task.isCancelled else { return }
             self.narratives = result
             self.isGeneratingNarrative = false
+
+            if wasFreshlyGenerated, result.hasContent {
+                UserSatisfactionEngine.shared.track(.insightsGenerated)
+            }
 
             // Persist narratives into the same revision cache entry.
             if let snap = self.snapshot, self.lastRevision == revision {

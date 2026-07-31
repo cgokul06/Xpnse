@@ -17,6 +17,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		51TEST0082F800001A000008 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 51B3C7652E191B9500B0C61E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 51B3C76C2E191B9500B0C61E;
+			remoteInfo = Xpnse;
+		};
 		51WGT00B2F30001A00000B /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 51B3C7652E191B9500B0C61E /* Project object */;
@@ -42,6 +49,7 @@
 
 /* Begin PBXFileReference section */
 		51B3C76D2E191B9500B0C61E /* Xpnse.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Xpnse.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		51TEST0012F800001A000001 /* XpnseTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = XpnseTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		51WGT0012F30001A000001 /* XpnseWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = XpnseWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -70,6 +78,11 @@
 				515BB6D92ECAC83100C77D01 /* Exceptions for "Xpnse" folder in "Xpnse" target */,
 			);
 			path = Xpnse;
+			sourceTree = "<group>";
+		};
+		51TEST0022F800001A000002 /* XpnseTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = XpnseTests;
 			sourceTree = "<group>";
 		};
 		51WGT0022F30001A000002 /* XpnseShared */ = {
@@ -101,6 +114,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		51TEST0052F800001A000005 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		51WGT0052F30001A000005 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -118,6 +138,7 @@
 				51B3C76F2E191B9500B0C61E /* Xpnse */,
 				51WGT0022F30001A000002 /* XpnseShared */,
 				51WGT0032F30001A000003 /* XpnseWidgets */,
+				51TEST0022F800001A000002 /* XpnseTests */,
 			);
 			sourceTree = "<group>";
 		};
@@ -126,6 +147,7 @@
 			children = (
 				51B3C76D2E191B9500B0C61E /* Xpnse.app */,
 				51WGT0012F30001A000001 /* XpnseWidgets.appex */,
+				51TEST0012F800001A000001 /* XpnseTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -166,6 +188,27 @@
 			productReference = 51B3C76D2E191B9500B0C61E /* Xpnse.app */;
 			productType = "com.apple.product-type.application";
 		};
+		51TEST0032F800001A000003 /* XpnseTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 51TEST0092F800001A000009 /* Build configuration list for PBXNativeTarget "XpnseTests" */;
+			buildPhases = (
+				51TEST0042F800001A000004 /* Sources */,
+				51TEST0052F800001A000005 /* Frameworks */,
+				51TEST0062F800001A000006 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				51TEST0072F800001A000007 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				51TEST0022F800001A000002 /* XpnseTests */,
+			);
+			name = XpnseTests;
+			productName = XpnseTests;
+			productReference = 51TEST0012F800001A000001 /* XpnseTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		51WGT0042F30001A000004 /* XpnseWidgets */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 51WGT0082F30001A000008 /* Build configuration list for PBXNativeTarget "XpnseWidgets" */;
@@ -200,6 +243,10 @@
 					51B3C76C2E191B9500B0C61E = {
 						CreatedOnToolsVersion = 26.0;
 					};
+					51TEST0032F800001A000003 = {
+						CreatedOnToolsVersion = 26.0;
+						TestTargetID = 51B3C76C2E191B9500B0C61E;
+					};
 					51WGT0042F30001A000004 = {
 						CreatedOnToolsVersion = 26.0;
 					};
@@ -228,12 +275,20 @@
 			targets = (
 				51B3C76C2E191B9500B0C61E /* Xpnse */,
 				51WGT0042F30001A000004 /* XpnseWidgets */,
+				51TEST0032F800001A000003 /* XpnseTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		51B3C76B2E191B9500B0C61E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		51TEST0062F800001A000006 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -307,6 +362,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		51TEST0042F800001A000004 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		51WGT0072F30001A000007 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -317,6 +379,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		51TEST0072F800001A000007 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 51B3C76C2E191B9500B0C61E /* Xpnse */;
+			targetProxy = 51TEST0082F800001A000008 /* PBXContainerItemProxy */;
+		};
 		51WGT00C2F30001A00000C /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 51WGT0042F30001A000004 /* XpnseWidgets */;
@@ -547,6 +614,50 @@
 			};
 			name = Release;
 		};
+		51TEST00A2F800001A00000A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = UYXV42883U;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.snapledgerapp.ios.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Xpnse.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Xpnse";
+			};
+			name = Debug;
+		};
+		51TEST00B2F800001A00000B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 99BB8PQ3VU;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.snapledger.ios.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Xpnse.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Xpnse";
+			};
+			name = Release;
+		};
 		51WGT0092F30001A000009 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -622,6 +733,15 @@
 			buildConfigurations = (
 				51B3C7792E191B9800B0C61E /* Debug */,
 				51B3C77A2E191B9800B0C61E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		51TEST0092F800001A000009 /* Build configuration list for PBXNativeTarget "XpnseTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				51TEST00A2F800001A00000A /* Debug */,
+				51TEST00B2F800001A00000B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
