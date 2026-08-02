@@ -209,6 +209,7 @@ private struct EditRecurringTransactionView: View {
     }
 
     private var normalizedMerchantOrNil: String? {
+        guard transactionType == .expense else { return nil }
         let trimmed = merchant.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
     }
@@ -287,7 +288,9 @@ private struct EditRecurringTransactionView: View {
                         transactionTypeSelector
                         initialDateSection
                         descriptionInputSection
-                        merchantInputSection
+                        if transactionType == .expense {
+                            merchantInputSection
+                        }
                         amountInputSection
                         categorySelectionSection
                         recurrenceSection
@@ -386,9 +389,14 @@ private struct EditRecurringTransactionView: View {
             .task {
                 await categoryStore.load()
             }
-            .onChange(of: transactionType) { _, _ in
+            .onChange(of: transactionType) { _, newType in
                 if !categories.contains(where: { $0.id == selectedCategoryId }) {
                     selectedCategoryId = BuiltinCategories.otherCategoryId
+                }
+                if newType != .expense {
+                    showMerchantSuggestions = false
+                    merchantSuggestions = []
+                    merchant = ""
                 }
             }
         }

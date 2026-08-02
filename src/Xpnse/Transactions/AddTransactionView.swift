@@ -71,6 +71,7 @@ struct AddTransactionView: View {
     }
 
     private var normalizedMerchantOrNil: String? {
+        guard transactionType == .expense else { return nil }
         let trimmed = merchant.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
     }
@@ -143,8 +144,10 @@ struct AddTransactionView: View {
                             // Description Input
                             descriptionInputSection
 
-                            // Merchant Input (optional)
-                            merchantInputSection
+                            // Merchant Input (expenses only)
+                            if transactionType == .expense {
+                                merchantInputSection
+                            }
 
                             // Amount Input
                             amountInputSection
@@ -209,7 +212,7 @@ struct AddTransactionView: View {
                         lastNormalizedDescription = normalized
                         // Allow AI merchant re-inference when description changes,
                         // unless the user edited merchant themselves.
-                        if !didManuallyEditMerchant {
+                        if transactionType == .expense, !didManuallyEditMerchant {
                             isMerchantChangeFromInference = true
                             merchant = ""
                         }
@@ -347,9 +350,12 @@ struct AddTransactionView: View {
             .task {
                 await categoryStore.load()
             }
-            .onChange(of: transactionType) { _, _ in
+            .onChange(of: transactionType) { _, newType in
                 if !categories.contains(where: { $0.id == selectedCategoryId }) {
                     selectedCategoryId = BuiltinCategories.otherCategoryId
+                }
+                if newType != .expense {
+                    clearMerchantForNonExpenseType()
                 }
             }
             .alert(isPresented: $showDeleteAlert) {
@@ -887,6 +893,7 @@ struct AddTransactionView: View {
     /// Infers merchant via Foundation Models from the description.
     /// Never prefills from past description→merchant history (unlike category exact-title mapping).
     private func inferMerchantFromDescriptionIfNeeded() {
+        guard transactionType == .expense else { return }
         guard !isEditing else { return }
         guard !didManuallyEditMerchant else { return }
 
@@ -895,10 +902,27 @@ struct AddTransactionView: View {
 
         Task {
             guard let inferred = await merchantClassifier.infer(from: description) else { return }
+            guard !Task.isCancelled else { return }
+            guard transactionType == .expense else { return }
             guard !didManuallyEditMerchant else { return }
             isMerchantChangeFromInference = true
             merchant = inferred
         }
+    }
+
+    private func clearMerchantForNonExpenseType() {
+        merchantClassifier.cancel()
+        if focussedField == .merchant {
+            focussedField = nil
+        }
+        showMerchantSuggestions = false
+        merchantSuggestions = []
+        if !merchant.isEmpty {
+            isMerchantChangeFromInference = true
+            merchant = ""
+        }
+        didManuallyEditMerchant = false
+        lastNormalizedMerchant = ""
     }
 
     private func applyExtractedTransactionIfNeeded() {
