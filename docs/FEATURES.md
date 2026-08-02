@@ -40,8 +40,9 @@ SnapLedger is a native iOS expense-tracking app that helps you record income and
 | Recurring schedules | Automate repeating transactions with optional reminders |
 | Custom categories | Built-in and user-defined categories with icon and color |
 | Multi-currency | 100+ currencies with searchable selection |
+| Number format | Compact amounts as Lakhs & Crores or Millions & Billions (Auto from locale) |
 | Backup & restore | Export and import full JSON backups |
-| Widgets | Balance snapshot and quick-add shortcuts on the Home Screen |
+| Widgets | Balance snapshot and quick-add shortcuts; optional privacy hide |
 | Insights | Deterministic analytics + on-device AI coaching cards |
 
 ---
@@ -87,8 +88,10 @@ Shown only for months that contain transactions.
 
 | Face | Content |
 |---|---|
-| **Balance** (default) | Total balance, income, and expenses for the period |
+| **Balance** (default) | Exact total balance; compact income (when present); compact savings and expenses |
 | **Donut** (tap flip) | Expense breakdown by category with chart visualization |
+
+Compact amounts follow the user’s **Number Format** preference (see [Currency](#currency) / Settings). Exact currency formatting is used for the primary balance and in transaction lists.
 
 The card flip state persists while swiping between months.
 
@@ -239,6 +242,22 @@ Categories appear in transaction forms, list grouping, summary donut chart, and 
 - Stored in shared preferences (App Group) for widget access
 - Included in JSON backup settings
 
+### Number format (compact amounts)
+
+Currency and number abbreviation are **independent**. Choose how large amounts are abbreviated under **Settings → Number Format**:
+
+| Option | Behavior | Example |
+|---|---|---|
+| **Auto (Recommended)** | Uses the device region (India → Lakhs & Crores; otherwise Millions & Billions) | — |
+| **Lakhs & Crores** | K / L / Cr notation | `1.25L`, `3.2Cr` |
+| **Millions & Billions** | K / M / B / T notation | `125K`, `2.5M` |
+
+Examples of independence:
+
+- USD + Lakhs & Crores → `$1.25L` for 125,000
+- INR + Millions & Billions → `₹125K` for 125,000
+
+Compact formatting is used in dense summary UI (balance card chips, chart axes, widgets). Transaction lists, forms, OCR preview, exports, and other detail views always show the **exact** currency amount.
 ---
 
 ## Settings & data management
@@ -248,6 +267,12 @@ Open **Settings** from the home screen gear icon.
 ### Preferences
 
 - **Currency** — change default display currency
+- **Number Format** — Auto, Lakhs & Crores, or Millions & Billions (see [Currency](#currency))
+- **App Lock** — optional Face ID / device passcode lock when returning to the app
+
+### Widgets
+
+- **Hide Financial Information** — mask amounts on the Balance widget until revealed (see [Home screen widgets](#home-screen-widgets))
 
 ### Data portability
 
@@ -278,10 +303,19 @@ SnapLedger includes a WidgetKit extension with two widgets. Data is synced from 
 
 | Size | Content |
 |---|---|
-| **Small** | Period label, total balance, income and expense stacked vertically |
-| **Medium** | Period label, total balance, income and expense side by side |
+| **Small** | Period label, compact total balance (no income ratio), savings and expenses stacked |
+| **Medium** | Period label, balance with optional `/ income` ratio, savings and expenses side by side |
 
-Tapping the widget opens the app home screen (`snapledger://home`).
+Amounts use the same **Number Format** preference as the app. Tapping the widget opens the app home screen (`snapledger://home`).
+
+### Widget privacy
+
+Under **Settings → Widgets → Hide Financial Information**:
+
+- When enabled, the Balance widget masks balances and totals (e.g. `••••••`)
+- Tap **Show** on the widget to reveal amounts for **30 seconds**, then they hide again automatically
+- Tap **Hide** to mask immediately
+- Preference is stored in the App Group so the widget extension and app stay in sync
 
 ### Add Transaction
 
@@ -379,6 +413,7 @@ Used by widgets and can be invoked from Shortcuts or other apps.
 1. `WidgetSnapshotBuilder` aggregates current-period totals and category slices
 2. Snapshot written to App Group storage via `WidgetDataStore`
 3. `WidgetRefreshCoordinator` debounces updates and calls `WidgetCenter.reloadAllTimelines()`
+4. Optional privacy state (`WidgetPrivacyManager`) and number-format preference are also read from the App Group when rendering timelines
 
 ### AI features
 
@@ -434,10 +469,12 @@ When unavailable, bill scanner entry point is hidden and classification is skipp
 | Local reminders | Yes | No |
 | Custom categories | Yes | No |
 | Currency search | Yes | No |
+| Number format preference | Yes | No |
 | Export / import | Yes | No |
 | Insights analytics cards | Yes | No |
 | Insights AI narratives | Yes* | Yes |
 | Widgets | Yes** | No |
+| Widget privacy hide | Yes** | No |
 
 \*Feature hidden or degraded when Foundation Models are unavailable.  
 \*\*Widgets read last snapshot written by the app; opening the app refreshes data.
