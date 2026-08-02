@@ -27,6 +27,7 @@ struct Settings: View {
     @State private var appLock = AppLockController.shared
     @State private var isTogglingAppLock = false
     @State private var highlightAppLock = false
+    @State private var widgetPrivacyEnabled = WidgetPrivacyManager.isEnabled
 
     var body: some View {
         ScrollView {
@@ -66,6 +67,14 @@ struct Settings: View {
                     })
 
                     appLockRow
+                }
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("settings.widgets")
+                        .font(.system(size: 20, weight: .bold))
+                        .xpnseAdaptiveForeground()
+
+                    widgetPrivacyRow
                 }
 
                 if featureFlags.exportImportEnabled {
@@ -370,6 +379,34 @@ struct Settings: View {
         .id("appLockRow")
     }
 
+    private var widgetPrivacyRow: some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("settings.widget_privacy.title")
+                    .font(.system(size: 16, weight: .medium))
+                    .xpnseAdaptiveForeground()
+                Text("settings.widget_privacy.subtitle")
+                    .font(.system(size: 13, weight: .regular))
+                    .xpnseAdaptiveForeground(muted: true)
+            }
+            Spacer(minLength: 8)
+            Toggle(
+                "",
+                isOn: Binding(
+                    get: { widgetPrivacyEnabled },
+                    set: { newValue in
+                        setWidgetPrivacyEnabled(newValue)
+                    }
+                )
+            )
+            .labelsHidden()
+        }
+        .padding(.vertical, 12)
+        .padding(.horizontal, 12)
+        .background(AdaptiveBrandSurface.rowBackground(for: colorScheme))
+        .xpnseRoundedCorner()
+    }
+
     private func toggleAppLock(to enabled: Bool) async {
         guard !isTogglingAppLock else { return }
         isTogglingAppLock = true
@@ -384,6 +421,12 @@ struct Settings: View {
             enabled ? AppAnalytics.Event.appLockEnabled : AppAnalytics.Event.appLockDisabled
         )
         AppAnalytics.logFeatureExposure(featureKey: "app_lock", enabled: enabled)
+    }
+
+    private func setWidgetPrivacyEnabled(_ enabled: Bool) {
+        WidgetPrivacyManager.setEnabled(enabled)
+        widgetPrivacyEnabled = enabled
+        WidgetPrivacyManager.reloadAllWidgets()
     }
 
     private func actionLabel(text: String) -> some View {

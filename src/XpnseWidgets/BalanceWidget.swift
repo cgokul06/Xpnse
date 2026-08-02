@@ -3,28 +3,50 @@
 //  XpnseWidgets
 //
 
+import AppIntents
 import SwiftUI
 import WidgetKit
 
 struct BalanceWidgetEntry: TimelineEntry {
     let date: Date
     let snapshot: WidgetMonthSnapshot
+    let shouldHideSensitiveData: Bool
+    let isPrivacyEnabled: Bool
+    let isRevealActive: Bool
 }
 
 struct BalanceWidgetProvider: TimelineProvider {
     func placeholder(in context: Context) -> BalanceWidgetEntry {
-        BalanceWidgetEntry(date: Date(), snapshot: previewSnapshot)
+        makeEntry(date: Date(), snapshot: previewSnapshot)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (BalanceWidgetEntry) -> Void) {
-        completion(BalanceWidgetEntry(date: Date(), snapshot: WidgetDataStore.load() ?? previewSnapshot))
+        completion(makeEntry(date: Date(), snapshot: WidgetDataStore.load() ?? previewSnapshot))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<BalanceWidgetEntry>) -> Void) {
         let snapshot = WidgetDataStore.load() ?? .empty
-        let entry = BalanceWidgetEntry(date: Date(), snapshot: snapshot)
-        let nextUpdate = Calendar.current.date(byAdding: .minute, value: 45, to: Date()) ?? Date().addingTimeInterval(2700)
+        let entry = makeEntry(date: Date(), snapshot: snapshot)
+
+        let nextUpdate: Date
+        if let expiry = WidgetPrivacyManager.revealExpiresAt {
+            nextUpdate = expiry
+        } else {
+            nextUpdate = Calendar.current.date(byAdding: .minute, value: 45, to: Date())
+                ?? Date().addingTimeInterval(2700)
+        }
+
         completion(Timeline(entries: [entry], policy: .after(nextUpdate)))
+    }
+
+    private func makeEntry(date: Date, snapshot: WidgetMonthSnapshot) -> BalanceWidgetEntry {
+        BalanceWidgetEntry(
+            date: date,
+            snapshot: snapshot,
+            shouldHideSensitiveData: WidgetPrivacyManager.shouldHideData,
+            isPrivacyEnabled: WidgetPrivacyManager.isEnabled,
+            isRevealActive: WidgetPrivacyManager.isRevealActive
+        )
     }
 
     private var previewSnapshot: WidgetMonthSnapshot {
@@ -54,13 +76,13 @@ struct BalanceWidgetView: View {
         family == .systemSmall
     }
 
-    private var currencySymbol: String {
-        entry.snapshot.currencySymbol
-    }
-
     private var showsIncomeRatio: Bool {
         entry.snapshot.totalIncome > 0
     }
+
+    private var currencyCode: String { entry.snapshot.currencyCode }
+
+    private var hiddenPlaceholder: String { "••••••" }
 
     @ViewBuilder
     private var balanceHeader: some View {
@@ -76,12 +98,21 @@ struct BalanceWidgetView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            balanceHeader
+            HStack(alignment: .top, spacing: 8) {
+                balanceHeader
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                if entry.isPrivacyEnabled {
+                    privacyToggleButton
+                }
+            }
 
             Spacer(minLength: isSmall ? 6 : 8)
 
             balanceAmountView
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(privacyAccessibilityLabel)
 
             Spacer(minLength: isSmall ? 6 : 10)
 
@@ -90,6 +121,55 @@ struct BalanceWidgetView: View {
         .padding(0)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .widgetURL(URL(string: "\(AppGroupConstants.urlScheme)://home"))
+    }
+
+    @ViewBuilder
+    private var privacyToggleButton: some View {
+        if entry.isRevealActive {
+            Button(intent: HideWidgetDataIntent()) {
+                privacyButtonLabel(
+                    systemImage: "eye.slash",
+                    title: L10n.tr("widget.hide")
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(L10n.tr("widget.hide"))
+        } else {
+            Button(intent: RevealWidgetDataIntent()) {
+                privacyButtonLabel(
+                    systemImage: "eye",
+                    title: L10n.tr("widget.show")
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(L10n.tr("widget.show"))
+        }
+    }
+
+    private func privacyButtonLabel(systemImage: String, title: String) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: systemImage)
+                .font(.system(size: isSmall ? 10 : 11, weight: .semibold))
+            Text(title)
+                .font(.system(size: isSmall ? 11 : 12, weight: .semibold))
+        }
+        .foregroundStyle(WidgetStyle.mutedText(for: colorScheme))
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(
+            Capsule()
+                .fill(WidgetStyle.divider(for: colorScheme).opacity(0.35))
+        )
+    }
+
+    private var privacyAccessibilityLabel: String {
+        if entry.shouldHideSensitiveData {
+            return L10n.tr("widget.a11y.hidden")
+        }
+        if entry.isPrivacyEnabled {
+            return L10n.tr("widget.a11y.visible")
+        }
+        return L10n.tr("widget.balance.name")
     }
 
     private var bottomStatsRow: some View {
@@ -138,20 +218,27 @@ struct BalanceWidgetView: View {
             }
         }
         .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(privacyAccessibilityLabel)
     }
 
-    private var currencyCode: String { entry.snapshot.currencyCode }
+    private func displayAmount(_ amount: Double, compact: Bool) -> String {
+        if entry.shouldHideSensitiveData {
+            return hiddenPlaceholder
+        }
+        if compact {
+            return AmountFormatter.formatCompact(amount, currencyCode: currencyCode)
+        }
+        return AmountFormatter.format(amount, currencyCode: currencyCode)
+    }
 
     private func formattedBalance(_ balance: Double) -> String {
-        if isSmall {
-            return AmountFormatter.formatCompact(balance, currencyCode: currencyCode)
-        }
-        return AmountFormatter.format(balance, currencyCode: currencyCode)
+        displayAmount(balance, compact: isSmall)
     }
 
     @ViewBuilder
     private var balanceAmountView: some View {
-        if showsIncomeRatio {
+        if showsIncomeRatio && !entry.shouldHideSensitiveData {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(formattedBalance(entry.snapshot.totalBalance))
                     .font(.system(size: isSmall ? 22 : 28, weight: .bold))
@@ -161,7 +248,7 @@ struct BalanceWidgetView: View {
                     .font(.system(size: isSmall ? 14 : 16, weight: .medium))
                     .foregroundStyle(WidgetStyle.mutedText(for: colorScheme))
 
-                Text(AmountFormatter.formatCompact(entry.snapshot.totalIncome, currencyCode: currencyCode))
+                Text(displayAmount(entry.snapshot.totalIncome, compact: true))
                     .font(.system(size: isSmall ? 14 : 16, weight: .semibold))
                     .foregroundStyle(WidgetStyle.mutedText(for: colorScheme))
             }
@@ -187,6 +274,7 @@ struct BalanceWidgetView: View {
         let iconFontSize: CGFloat = isSmall ? 10 : 11
         let titleFontSize: CGFloat = isSmall ? 11 : 13
         let amountFontSize: CGFloat = isSmall ? 16 : 20
+        let amountText = displayAmount(amount, compact: true)
 
         return Group {
             if isSmall {
@@ -198,7 +286,7 @@ struct BalanceWidgetView: View {
                         .padding(2)
                         .background(Circle().fill(color))
 
-                    Text(AmountFormatter.formatCompact(amount, currencyCode: currencyCode))
+                    Text(amountText)
                         .font(.system(size: amountFontSize, weight: .bold))
                         .foregroundStyle(WidgetStyle.primaryText(for: colorScheme))
                         .lineLimit(1)
@@ -219,7 +307,7 @@ struct BalanceWidgetView: View {
                             .foregroundStyle(WidgetStyle.mutedText(for: colorScheme))
                     }
 
-                    Text(AmountFormatter.formatCompact(amount, currencyCode: currencyCode))
+                    Text(amountText)
                         .font(.system(size: amountFontSize, weight: .bold))
                         .foregroundStyle(WidgetStyle.primaryText(for: colorScheme))
                         .lineLimit(1)
