@@ -352,7 +352,7 @@ struct AddTransactionView: View {
             }
             .onChange(of: transactionType) { _, newType in
                 if !categories.contains(where: { $0.id == selectedCategoryId }) {
-                    selectedCategoryId = BuiltinCategories.otherCategoryId
+                    selectedCategoryId = BuiltinCategories.defaultCategoryId(for: newType)
                 }
                 if newType != .expense {
                     clearMerchantForNonExpenseType()

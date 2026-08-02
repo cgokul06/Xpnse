@@ -40,6 +40,7 @@ final class CategoryStore {
             categories = try await repairBuiltInCategoryFlagsIfNeeded(categories)
             categories = try await migrateBuiltInIconsToEmojiIfNeeded(categories)
             try await seedMissingBuiltinSavingsCategoriesIfNeeded()
+            try await seedMissingBuiltinIncomeOtherCategoryIfNeeded()
             try await consolidateRetiredSavingsCategoriesIfNeeded()
             try await migrateOrphanedTransactionCategoryIdsIfNeeded()
         } catch {
@@ -194,6 +195,14 @@ final class CategoryStore {
         }
     }
 
+    private func seedMissingBuiltinIncomeOtherCategoryIfNeeded() async throws {
+        let incomeOtherId = BuiltinCategories.incomeOtherCategoryId
+        guard !categories.contains(where: { $0.id == incomeOtherId }) else { return }
+        guard let seed = BuiltinCategories.seedById()[incomeOtherId] else { return }
+        try await repository.upsert(seed)
+        categories = try await repository.fetchAll()
+    }
+
     private func consolidateRetiredSavingsCategoriesIfNeeded() async throws {
         let activeSavingsIds = BuiltinCategories.activeSavingsCategoryIds
         var didChange = false
@@ -233,6 +242,7 @@ final class CategoryStore {
                 }
                 if type == .expense, category.id == BuiltinCategories.otherCategoryId { return true }
                 if type == .savings, category.id == BuiltinCategories.savingsGeneralCategoryId { return true }
+                if type == .income, category.id == BuiltinCategories.incomeOtherCategoryId { return true }
                 return false
             }
             .sorted { $0.sortOrder < $1.sortOrder }

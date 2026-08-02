@@ -94,6 +94,7 @@ struct CategoryDefinition: Identifiable, Codable, Hashable, Sendable {
 enum BuiltinCategories {
     static let otherCategoryId = "other"
     static let savingsGeneralCategoryId = "savings_general"
+    static let incomeOtherCategoryId = "income_other"
 
     private static let defaultColorsById: [String: String] = [
         "food": "#EF4444",
@@ -107,6 +108,7 @@ enum BuiltinCategories {
         "gifts": "#FB7185",
         "rewards": "#EAB308",
         "investments": "#14B8A6",
+        "income_other": "#9CA3AF",
         "savings_general": "#3B82F6",
         "savings_emergency": "#0EA5E9",
         "savings_vacation": "#06B6D4",
@@ -125,7 +127,7 @@ enum BuiltinCategories {
         case .savings:
             return savingsGeneralCategoryId
         case .income:
-            return "salary"
+            return incomeOtherCategoryId
         }
     }
 
@@ -247,7 +249,8 @@ enum BuiltinCategories {
             income("business", "Business", "🏢", "#3B82F6"),
             income("gifts", "Gifts", "🎁", "#FB7185"),
             income("rewards", "Rewards", "⭐", "#EAB308"),
-            income("investments", "Investments", "📊", "#14B8A6")
+            income("investments", "Investments", "📊", "#14B8A6"),
+            income("income_other", "Other Income", "📦", "#9CA3AF", protected: true)
         ]
     }
 
