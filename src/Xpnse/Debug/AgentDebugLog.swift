@@ -2,9 +2,9 @@
 //  AgentDebugLog.swift
 //  Xpnse
 //
-//  Shared debug-session logger. Prefer device builds: POSTs NDJSON to the
-//  Cursor ingest server on the Mac LAN. Also tries localhost (Simulator) and
-//  a host filesystem path when available.
+//  Shared debug-session logger for Cursor. Physical devices must POST to the
+//  Mac LAN relay on port 7604 (forwards to Cursor ingest on 127.0.0.1:7603).
+//  Also mirrors lines into Documents/agent-debug.ndjson for USB pull.
 //
 
 import Foundation
@@ -20,11 +20,24 @@ enum AgentDebugLog {
     private static let hostLANIP = "192.168.68.51"
     private static let ingestPath = "/ingest/1c5235bd-4792-4659-9160-b047fca07c3d"
 
+    private static let lock = NSLock()
+
     private static var ingestURLs: [URL] {
+        #if targetEnvironment(simulator)
         [
-            URL(string: "http://\(hostLANIP):7603\(ingestPath)")!,
             URL(string: "http://127.0.0.1:7603\(ingestPath)")!
         ]
+        #else
+        [
+            // Cursor ingest is localhost-only; device traffic goes through the LAN relay.
+            URL(string: "http://\(hostLANIP):7604\(ingestPath)")!
+        ]
+        #endif
+    }
+
+    private static var documentsLogURL: URL? {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?
+            .appendingPathComponent("agent-debug.ndjson")
     }
 
     static func log(
@@ -50,7 +63,13 @@ enum AgentDebugLog {
               let line = String(data: json, encoding: .utf8) else { return }
 
         // #region agent log
+        lock.lock()
+        defer { lock.unlock() }
+
         try? (line + "\n").append(toFileAtPath: logPath)
+        if let documentsLogURL {
+            try? (line + "\n").append(toFileAtPath: documentsLogURL.path)
+        }
 
         for url in ingestURLs {
             var request = URLRequest(url: url)
@@ -58,7 +77,7 @@ enum AgentDebugLog {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.setValue(sessionId, forHTTPHeaderField: "X-Debug-Session-Id")
             request.httpBody = json
-            request.timeoutInterval = 2
+            request.timeoutInterval = 3
             URLSession.shared.dataTask(with: request).resume()
         }
         // #endregion
@@ -68,6 +87,8 @@ enum AgentDebugLog {
 private extension String {
     func append(toFileAtPath path: String) throws {
         let url = URL(fileURLWithPath: path)
+        let directory = url.deletingLastPathComponent()
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         if !FileManager.default.fileExists(atPath: path) {
             FileManager.default.createFile(atPath: path, contents: nil)
         }
