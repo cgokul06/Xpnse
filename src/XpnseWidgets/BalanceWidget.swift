@@ -127,39 +127,28 @@ struct BalanceWidgetView: View {
     private var privacyToggleButton: some View {
         if entry.isRevealActive {
             Button(intent: HideWidgetDataIntent()) {
-                privacyButtonLabel(
-                    systemImage: "eye.slash",
-                    title: L10n.tr("widget.hide")
-                )
+                privacyButtonLabel(systemImage: "eye.slash")
             }
             .buttonStyle(.plain)
             .accessibilityLabel(L10n.tr("widget.hide"))
         } else {
             Button(intent: RevealWidgetDataIntent()) {
-                privacyButtonLabel(
-                    systemImage: "eye",
-                    title: L10n.tr("widget.show")
-                )
+                privacyButtonLabel(systemImage: "eye")
             }
             .buttonStyle(.plain)
             .accessibilityLabel(L10n.tr("widget.show"))
         }
     }
 
-    private func privacyButtonLabel(systemImage: String, title: String) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: systemImage)
-                .font(.system(size: isSmall ? 10 : 11, weight: .semibold))
-            Text(title)
-                .font(.system(size: isSmall ? 11 : 12, weight: .semibold))
-        }
-        .foregroundStyle(WidgetStyle.mutedText(for: colorScheme))
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
-        .background(
-            Capsule()
-                .fill(WidgetStyle.divider(for: colorScheme).opacity(0.35))
-        )
+    private func privacyButtonLabel(systemImage: String) -> some View {
+        Image(systemName: systemImage)
+            .font(.system(size: isSmall ? 12 : 13, weight: .semibold))
+            .foregroundStyle(WidgetStyle.mutedText(for: colorScheme))
+            .padding(6)
+            .background(
+                Circle()
+                    .fill(WidgetStyle.divider(for: colorScheme).opacity(0.35))
+            )
     }
 
     private var privacyAccessibilityLabel: String {
