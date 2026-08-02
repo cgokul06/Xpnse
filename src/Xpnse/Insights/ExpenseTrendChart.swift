@@ -136,6 +136,7 @@ struct ExpenseTrendChart: View {
                     if let amount = value.as(Double.self) {
                         Text(AmountFormatter.formatCompact(amount, currencyCode: currencyCode))
                             .font(.system(size: 10, weight: .medium))
+                            .accessibilityExactAmount(amount, currencyCode: currencyCode)
                     }
                 }
             }

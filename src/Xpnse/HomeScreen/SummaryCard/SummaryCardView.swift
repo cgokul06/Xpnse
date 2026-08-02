@@ -91,6 +91,7 @@ struct SummaryCardView: View {
                     .xpnseAdaptiveForeground()
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
+                    .accessibilityExactAmount(amount, currencyCode: currencyCode)
             }
         }
         .frame(maxWidth: .infinity, alignment: .center)
@@ -122,6 +123,7 @@ struct SummaryCardView: View {
                 Text(AmountFormatter.formatCompact(income, currencyCode: currencyCode))
                     .font(.system(size: 16, weight: .semibold))
                     .xpnseAdaptiveForeground(muted: true)
+                    .accessibilityExactAmount(income, currencyCode: currencyCode)
             }
             .lineLimit(1)
             .minimumScaleFactor(0.7)

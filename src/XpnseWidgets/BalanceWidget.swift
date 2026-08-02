@@ -77,7 +77,7 @@ struct BalanceWidgetView: View {
     }
 
     private var showsIncomeRatio: Bool {
-        entry.snapshot.totalIncome > 0
+        !isSmall && entry.snapshot.totalIncome > 0
     }
 
     private var currencyCode: String { entry.snapshot.currencyCode }
@@ -240,6 +240,7 @@ struct BalanceWidgetView: View {
                 Text(displayAmount(entry.snapshot.totalIncome, compact: true))
                     .font(.system(size: isSmall ? 14 : 16, weight: .semibold))
                     .foregroundStyle(WidgetStyle.mutedText(for: colorScheme))
+                    .accessibilityExactAmount(entry.snapshot.totalIncome, currencyCode: currencyCode)
             }
             .lineLimit(1)
             .minimumScaleFactor(0.7)
@@ -280,6 +281,7 @@ struct BalanceWidgetView: View {
                         .foregroundStyle(WidgetStyle.primaryText(for: colorScheme))
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
+                        .accessibilityExactAmount(amount, currencyCode: currencyCode)
                 }
             } else {
                 VStack(spacing: 2) {
@@ -301,6 +303,7 @@ struct BalanceWidgetView: View {
                         .foregroundStyle(WidgetStyle.primaryText(for: colorScheme))
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
+                        .accessibilityExactAmount(amount, currencyCode: currencyCode)
                 }
             }
         }

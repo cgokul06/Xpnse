@@ -28,6 +28,7 @@ struct Settings: View {
     @State private var isTogglingAppLock = false
     @State private var highlightAppLock = false
     @State private var widgetPrivacyEnabled = WidgetPrivacyManager.isEnabled
+    @State private var numberFormatPreference = NumberFormatPreference.current
 
     var body: some View {
         ScrollView {
@@ -65,6 +66,27 @@ struct Settings: View {
                     .simultaneousGesture(TapGesture().onEnded {
                         AppAnalytics.logButtonClick(AppAnalytics.Button.openCurrency, source: AppAnalytics.Screen.settings)
                     })
+
+                    NavigationLink {
+                        NumberFormatSettingsView()
+                    } label: {
+                        HStack(spacing: 10) {
+                            Text("settings.number_format")
+                                .font(.system(size: 16, weight: .medium))
+                                .xpnseAdaptiveForeground()
+                            Spacer()
+                            Text(numberFormatPreferenceLabel)
+                                .font(.system(size: 16, weight: .semibold))
+                                .xpnseAdaptiveForeground()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .semibold))
+                                .xpnseAdaptiveForeground(muted: true)
+                        }
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 12)
+                        .background(AdaptiveBrandSurface.rowBackground(for: colorScheme))
+                        .xpnseRoundedCorner()
+                    }
 
                     appLockRow
                 }
@@ -213,6 +235,7 @@ struct Settings: View {
         .gradientNavigationBackground()
         .onAppear {
             AppAnalytics.logScreen(AppAnalytics.Screen.settings)
+            numberFormatPreference = NumberFormatPreference.current
         }
         .onReceive(NotificationCenter.default.publisher(for: .focusAppLockSettings)) { _ in
             highlightAppLock = true
@@ -338,6 +361,17 @@ struct Settings: View {
         let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"
         return L10n.tr("settings.version", short, build)
+    }
+
+    private var numberFormatPreferenceLabel: String {
+        switch numberFormatPreference {
+        case .auto:
+            L10n.tr("settings.number_format.auto")
+        case .lakhCrore:
+            L10n.tr("settings.number_format.lakh_crore")
+        case .million:
+            L10n.tr("settings.number_format.million")
+        }
     }
 
     private var appLockRow: some View {

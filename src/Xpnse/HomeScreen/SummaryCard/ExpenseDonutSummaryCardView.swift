@@ -60,8 +60,10 @@ struct ExpenseDonutSummaryCardView: View {
     }
 
     private var formattedDonutCenterAmount: String {
-        let symbol = currencyManager.selectedCurrency.symbol
-        return "\(symbol)\(donutCenterAmount.abbreviatedFloor())"
+        AmountFormatter.formatCompact(
+            donutCenterAmount,
+            currencyCode: currencyManager.selectedCurrency.code
+        )
     }
 
     private var hasFinancialActivity: Bool {

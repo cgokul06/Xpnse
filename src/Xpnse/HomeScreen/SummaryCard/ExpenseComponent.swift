@@ -42,6 +42,7 @@ struct ExpenseComponent: View {
                     .foregroundColor(.white)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
+                    .accessibilityExactAmount(cash, currencyCode: currencyManager.selectedCurrency.code)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

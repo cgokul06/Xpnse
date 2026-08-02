@@ -53,54 +53,36 @@ enum AmountFormatter {
     }
 
     /// Compact currency for dense UI (charts, summary cards).
-    /// Uses floor-based abbreviations so values never round up (e.g. 198000 → ₹1.98L, not ₹2L).
+    /// Composes locale currency symbol with the resolved compact number style.
     static func formatCompact(_ value: Double, currencyCode: String) -> String {
-        "\(currencySymbol(for: currencyCode))\(abbreviatedFloor(value))"
+        formatCompact(Decimal(value), currencyCode: currencyCode)
     }
 
-    /// Floor-based abbreviated units: K (thousand), L (lakh), M (million), C (crore).
-    /// Example: 20543 → 20.5K (decimals = 1), 198000 → 1.98L (decimals = 2).
+    static func formatCompact(_ value: Decimal, currencyCode: String) -> String {
+        "\(currencySymbol(for: currencyCode))\(compactNumber(value))"
+    }
+
+    /// Compact number only (no currency). Resolves lakh/crore vs million style from preference/locale.
+    static func compactNumber(_ value: Double) -> String {
+        compactNumber(Decimal(value))
+    }
+
+    static func compactNumber(_ value: Decimal) -> String {
+        CompactNumberFormatterFactory.makeResolved().format(value)
+    }
+
+    /// Compatibility wrapper for older call sites; delegates to the resolved compact formatter.
     static func abbreviatedFloor(_ value: Double, decimals: Int = 2) -> String {
-        let absolute = abs(value)
-        guard absolute >= 1000 else {
-            return formatAbbreviatedNumber(value, maxFractionDigits: max(0, decimals))
-        }
-
-        let units: [(threshold: Double, suffix: String)] = [
-            (10_000_000, "C"),
-            (1_000_000, "M"),
-            (100_000, "L"),
-            (1_000, "K")
-        ]
-
-        guard let unit = units.first(where: { absolute >= $0.threshold }) else {
-            return formatAbbreviatedNumber(value, maxFractionDigits: max(0, decimals))
-        }
-
-        let digits = max(0, decimals)
-        let factor = pow(10.0, Double(digits))
-        let scaled = absolute / unit.threshold
-        let floored = Foundation.floor(scaled * factor) / factor
-        let signedValue = value < 0 ? -floored : floored
-
-        return "\(formatAbbreviatedNumber(signedValue, maxFractionDigits: digits))\(unit.suffix)"
+        _ = decimals
+        return compactNumber(value)
     }
 
-    private static func currencySymbol(for currencyCode: String) -> String {
+    static func currencySymbol(for currencyCode: String) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
         formatter.locale = .current
         formatter.currencyCode = currencyCode
         return formatter.currencySymbol ?? currencyCode
-    }
-
-    private static func formatAbbreviatedNumber(_ value: Double, maxFractionDigits: Int) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.maximumFractionDigits = maxFractionDigits
-        formatter.minimumFractionDigits = 0
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
     }
 
     private static func fallbackCurrency(_ value: Double, currencyCode: String) -> String {
