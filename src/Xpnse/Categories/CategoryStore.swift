@@ -286,15 +286,19 @@ final class CategoryStore {
     }
 
     func categoryDisplayName(for id: String) -> String {
-        let category = resolve(id: id)
-        if BuiltinCategories.builtInCategoryIds.contains(category.id) {
-            return L10n.tr("category.builtin.\(category.id)")
-        }
-        return category.name
+        displayName(for: resolve(id: id))
     }
 
     func localizedName(for category: CategoryDefinition) -> String {
-        if BuiltinCategories.builtInCategoryIds.contains(category.id) {
+        displayName(for: category)
+    }
+
+    /// Built-ins keep localization only while the stored name still matches the English seed.
+    /// After a user rename, the custom stored name is shown everywhere.
+    private func displayName(for category: CategoryDefinition) -> String {
+        if BuiltinCategories.builtInCategoryIds.contains(category.id),
+           let seed = BuiltinCategories.seedById()[category.id],
+           category.name == seed.name {
             return L10n.tr("category.builtin.\(category.id)")
         }
         return category.name
