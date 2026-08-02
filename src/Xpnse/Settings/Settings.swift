@@ -129,6 +129,24 @@ struct Settings: View {
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
+                    Text("settings.support")
+                        .font(.system(size: 20, weight: .bold))
+                        .xpnseAdaptiveForeground()
+
+                    NavigationLink {
+                        SendFeedbackView(marksReviewOutcome: false, showsCloseButton: false)
+                    } label: {
+                        self.actionLabel(text: L10n.tr("settings.send_feedback"))
+                    }
+                    .simultaneousGesture(TapGesture().onEnded {
+                        AppAnalytics.logButtonClick(
+                            AppAnalytics.Button.sendFeedback,
+                            source: AppAnalytics.Screen.settings
+                        )
+                    })
+                }
+
+                VStack(alignment: .leading, spacing: 10) {
                     Text("settings.legal")
                         .font(.system(size: 20, weight: .bold))
                         .xpnseAdaptiveForeground()

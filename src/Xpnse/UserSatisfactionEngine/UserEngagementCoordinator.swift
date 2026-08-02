@@ -109,6 +109,11 @@ final class UserEngagementCoordinator {
         tryPresentNext()
     }
 
+    /// Drops the sheet without recording a dismiss outcome (e.g. transitioning to the feedback form).
+    func clearPresentedWithoutReporting() {
+        presentedEngagement = nil
+    }
+
     func reportAppStoreReviewOpened() {
         engine?.track(.appStoreReviewOpened)
         presentedEngagement = nil

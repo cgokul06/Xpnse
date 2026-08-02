@@ -7,23 +7,19 @@ import SwiftUI
 
 struct FeedbackFlowView: View {
     let opportunity: ReviewOpportunity
+    /// Called before the sheet dismisses so the host can run a follow-up after animation.
+    var onRequestSendFeedback: () -> Void = {}
+    var onRequestAppStoreReview: () -> Void = {}
 
     @Environment(\.colorScheme) private var colorScheme
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.dismissXpnseEdgeSheet) private var dismissEdgeSheet
 
     @State private var step: Step = .enjoyment
-    @State private var feedbackText = ""
-    @State private var isSubmitting = false
-    @State private var submitError: String?
 
     private enum Step {
         case enjoyment
         case thankYou
-        case feedbackForm
     }
-
-    private var coordinator: UserEngagementCoordinator { .shared }
-    private var engine: UserSatisfactionEngine { .shared }
 
     var body: some View {
         NavigationStack {
@@ -33,8 +29,6 @@ struct FeedbackFlowView: View {
                     enjoymentStep
                 case .thankYou:
                     thankYouStep
-                case .feedbackForm:
-                    feedbackFormStep
                 }
             }
             .padding(.horizontal, 20)
@@ -48,7 +42,6 @@ struct FeedbackFlowView: View {
                             .bold()
                             .padding(.all, 8)
                     }
-                    .disabled(isSubmitting)
                     .foregroundStyle(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
                 }
             }
@@ -56,7 +49,6 @@ struct FeedbackFlowView: View {
             .toolbarBackground(sheetFill, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
         }
-        .xpnseEdgeSheetDismissDisabled(isSubmitting)
         .onAppear {
             AppAnalytics.logScreen(AppAnalytics.Screen.feedbackFlow)
         }
@@ -100,7 +92,9 @@ struct FeedbackFlowView: View {
                         source: AppAnalytics.Screen.feedbackFlow
                     )
                     AppAnalytics.logEvent(AppAnalytics.Event.reviewPositiveSelected)
-                    step = .thankYou
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        step = .thankYou
+                    }
                 } label: {
                     Text("😊  Loving it")
                         .font(.system(size: 18, weight: .bold))
@@ -118,7 +112,8 @@ struct FeedbackFlowView: View {
                         source: AppAnalytics.Screen.feedbackFlow
                     )
                     AppAnalytics.logEvent(AppAnalytics.Event.reviewNegativeSelected)
-                    step = .feedbackForm
+                    onRequestSendFeedback()
+                    dismissEdgeSheet()
                 } label: {
                     Text("💡  I Have a Suggestion")
                         .font(.system(size: 18, weight: .semibold))
@@ -173,9 +168,8 @@ struct FeedbackFlowView: View {
                     AppAnalytics.Button.reviewLeaveReview,
                     source: AppAnalytics.Screen.feedbackFlow
                 )
-                AppStoreReviewRequester.requestReview()
-                coordinator.reportAppStoreReviewOpened()
-                dismiss()
+                onRequestAppStoreReview()
+                dismissEdgeSheet()
             } label: {
                 Text("Leave a Review")
                     .font(.system(size: 18, weight: .bold))
@@ -189,73 +183,6 @@ struct FeedbackFlowView: View {
         }
     }
 
-    private var feedbackFormStep: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Help us improve SnapLedger")
-                    .font(.system(size: 24, weight: .bold))
-                    .fixedSize(horizontal: false, vertical: true)
-                    .xpnseAdaptiveForeground()
-
-                Text("What would make the app better for you?")
-                    .font(.system(size: 15, weight: .medium))
-                    .fixedSize(horizontal: false, vertical: true)
-                    .xpnseAdaptiveForeground(muted: true)
-            }
-            .padding(.top, 8)
-
-            TextEditor(text: $feedbackText)
-                .frame(minHeight: 160)
-                .padding(12)
-                .scrollContentBackground(.hidden)
-                .background(AdaptiveBrandSurface.fieldBackground(for: colorScheme))
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .strokeBorder(
-                            AdaptiveBrandSurface.fieldBorder(for: colorScheme),
-                            lineWidth: 1
-                        )
-                )
-                .xpnseAdaptiveForeground()
-
-            if let submitError {
-                Text(submitError)
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(AdaptiveBrandSurface.fieldErrorBorder)
-            }
-
-            Spacer()
-
-            Button {
-                AppAnalytics.logButtonClick(
-                    AppAnalytics.Button.reviewSendFeedback,
-                    source: AppAnalytics.Screen.feedbackFlow
-                )
-                Task { await submitFeedback() }
-            } label: {
-                Text("Send Feedback")
-                    .font(.system(size: 18, weight: .bold))
-            }
-            .buttonStyle(
-                XpnsePrimaryButtonStyle.defaultButton(
-                    isDisabled: Binding(
-                        get: {
-                            feedbackText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                                || isSubmitting
-                        },
-                        set: { _ in }
-                    ),
-                    isLoading: $isSubmitting
-                )
-            )
-            .disabled(
-                feedbackText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                    || isSubmitting
-            )
-        }
-    }
-
     // MARK: - Actions
 
     private func cancelFlow() {
@@ -263,32 +190,6 @@ struct FeedbackFlowView: View {
             AppAnalytics.Button.reviewDismiss,
             source: AppAnalytics.Screen.feedbackFlow
         )
-        if step == .feedbackForm {
-            AppAnalytics.logEvent(AppAnalytics.Event.reviewFeedbackCancelled)
-        }
-        coordinator.dismissCurrentEngagement(reportToEngine: true)
-        dismiss()
-    }
-
-    private func submitFeedback() async {
-        let message = feedbackText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !message.isEmpty else { return }
-        isSubmitting = true
-        submitError = nil
-        do {
-            if let transactions = try? await SwiftDataTransactionRepository.shared.fetchAll() {
-                engine.reconcileLifetimeTransactionCount(transactions.count)
-            }
-            let recurringCount = (try? await SwiftDataRecurringRepository.shared.fetchAll())?.count ?? 0
-            let snapshot = engine.snapshotForFeedback(recurringTransactionsCount: recurringCount)
-            try await FeedbackUploadService.upload(
-                FeedbackPayload(type: "suggestion", message: message, snapshot: snapshot)
-            )
-            coordinator.reportFeedbackSubmitted()
-            dismiss()
-        } catch {
-            submitError = "Couldn't send feedback. Please try again."
-            isSubmitting = false
-        }
+        dismissEdgeSheet()
     }
 }

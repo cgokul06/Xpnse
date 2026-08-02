@@ -98,6 +98,7 @@ struct AppLockPromoView: View {
     var onDismiss: () -> Void
 
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.dismissXpnseEdgeSheet) private var dismissEdgeSheet
 
     var body: some View {
         VStack(spacing: 14) {
@@ -132,6 +133,7 @@ struct AppLockPromoView: View {
                     )
                     AppAnalytics.logEvent(AppAnalytics.Event.appLockPromoEnable)
                     onEnable()
+                    dismissEdgeSheet()
                 } label: {
                     Text("app_lock.promo_enable")
                         .font(.system(size: 18, weight: .bold))
@@ -150,6 +152,7 @@ struct AppLockPromoView: View {
                     )
                     AppAnalytics.logEvent(AppAnalytics.Event.appLockPromoDismiss)
                     onDismiss()
+                    dismissEdgeSheet()
                 } label: {
                     Text("app_lock.promo_not_now")
                         .font(.system(size: 18, weight: .semibold))

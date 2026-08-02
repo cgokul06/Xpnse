@@ -35,6 +35,7 @@ enum AppAnalytics {
         static let legalPrivacy = "legal_privacy"
         static let legalTerms = "legal_terms"
         static let feedbackFlow = "feedback_flow"
+        static let sendFeedback = "send_feedback"
         static let appLockPromo = "app_lock_promo"
     }
 
@@ -59,6 +60,7 @@ enum AppAnalytics {
         static let openCurrency = "open_currency"
         static let openPrivacy = "open_privacy"
         static let openTerms = "open_terms"
+        static let sendFeedback = "send_feedback"
         static let clearLocalData = "clear_local_data"
         static let currencyContinue = "currency_continue"
         static let selectCurrency = "select_currency"

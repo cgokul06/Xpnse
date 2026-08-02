@@ -10,6 +10,20 @@ import Combine
 import UIKit
 
 struct CoordinatedHomeView: View {
+    private enum EngagementDismissMode {
+        /// User cancelled / interactive dismiss — count as review dismiss.
+        case reportDismiss
+        /// Transitioning to the full-screen feedback form.
+        case silent
+        /// User chose Leave a Review — record App Store outcome after dismiss.
+        case appStoreReview
+    }
+
+    private enum EngagementFollowUp {
+        case sendFeedback
+        case appStoreReview
+    }
+
     @EnvironmentObject var appCoordinator: AppCoordinator
     @EnvironmentObject var homeCoordinator: NavigationCoordinator<HomeRoute>
     @Environment(\.scenePhase) private var scenePhase
@@ -21,6 +35,9 @@ struct CoordinatedHomeView: View {
     @State private var didOfferPromoThisForeground = false
     @State private var pendingAppLockSettingsDeepLink = false
     @State private var wasInBackground = false
+    @State private var engagementDismissMode: EngagementDismissMode = .reportDismiss
+    @State private var pendingEngagementFollowUp: EngagementFollowUp?
+    @State private var showSendFeedback = false
 
     var body: some View {
         NavigationStack(path: $homeCoordinator.path) {
@@ -83,12 +100,32 @@ struct CoordinatedHomeView: View {
             evaluateAppLockPromo()
         }
         // Edge-attached custom sheet: iOS 26 system `.medium` sheets are inset (Liquid Glass).
-        .fullScreenCover(item: presentedEngagementBinding) { presentation in
+        .fullScreenCover(item: presentedEngagementBinding, onDismiss: {
+            runPendingEngagementFollowUp()
+        }) { presentation in
             switch presentation {
             case .appReview(let opportunity):
                 XpnseEdgeAttachedSheet {
-                    FeedbackFlowView(opportunity: opportunity)
+                    FeedbackFlowView(
+                        opportunity: opportunity,
+                        onRequestSendFeedback: {
+                            engagementDismissMode = .silent
+                            pendingEngagementFollowUp = .sendFeedback
+                        },
+                        onRequestAppStoreReview: {
+                            engagementDismissMode = .appStoreReview
+                            pendingEngagementFollowUp = .appStoreReview
+                        }
+                    )
                 }
+            }
+        }
+        .fullScreenCover(isPresented: $showSendFeedback) {
+            NavigationStack {
+                SendFeedbackView(
+                    marksReviewOutcome: true,
+                    showsCloseButton: true
+                )
             }
         }
         .fullScreenCover(isPresented: $showAppLockPromo, onDismiss: {
@@ -96,22 +133,23 @@ struct CoordinatedHomeView: View {
             didOfferPromoThisForeground = true
             guard pendingAppLockSettingsDeepLink else { return }
             pendingAppLockSettingsDeepLink = false
-            AppDeepLinkRouter.shared.openSettingsAppLock(
-                appCoordinator: appCoordinator,
-                homeCoordinator: homeCoordinator
-            )
+            // Let the sheet finish dismissing before pushing Settings.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                AppDeepLinkRouter.shared.openSettingsAppLock(
+                    appCoordinator: appCoordinator,
+                    homeCoordinator: homeCoordinator
+                )
+            }
         }) {
             XpnseEdgeAttachedSheet {
                 AppLockPromoView(
                     onEnable: {
                         didOfferPromoThisForeground = true
                         pendingAppLockSettingsDeepLink = true
-                        showAppLockPromo = false
                     },
                     onDismiss: {
                         didOfferPromoThisForeground = true
                         pendingAppLockSettingsDeepLink = false
-                        showAppLockPromo = false
                     }
                 )
             }
@@ -122,15 +160,37 @@ struct CoordinatedHomeView: View {
         Binding(
             get: { engagement.presentedEngagement },
             set: { newValue in
-                if newValue == nil, engagement.presentedEngagement != nil {
+                guard newValue == nil, engagement.presentedEngagement != nil else { return }
+                switch engagementDismissMode {
+                case .reportDismiss:
                     engagement.dismissCurrentEngagement(reportToEngine: true)
+                case .silent:
+                    engagement.clearPresentedWithoutReporting()
+                case .appStoreReview:
+                    engagement.reportAppStoreReviewOpened()
                 }
+                engagementDismissMode = .reportDismiss
             }
         )
     }
 
+    private func runPendingEngagementFollowUp() {
+        guard let followUp = pendingEngagementFollowUp else { return }
+        pendingEngagementFollowUp = nil
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            switch followUp {
+            case .sendFeedback:
+                showSendFeedback = true
+            case .appStoreReview:
+                AppStoreReviewRequester.requestReview()
+            }
+        }
+    }
+
     private func evaluateAppLockPromo() {
         guard !showAppLockPromo else { return }
+        guard !showSendFeedback else { return }
+        guard engagement.presentedEngagement == nil else { return }
         guard !appLock.isLocked else { return }
         // Only offer on the home root — not after Enable navigates into Settings.
         guard homeCoordinator.path.isEmpty else { return }

@@ -86,6 +86,9 @@ struct XpnseEdgeAttachedSheet<Content: View>: View {
         }
         .ignoresSafeArea()
         .presentationBackground(.clear)
+        .environment(\.dismissXpnseEdgeSheet) {
+            dismissSheet()
+        }
         .onPreferenceChange(XpnseEdgeSheetDismissDisabledKey.self) { disabled in
             dismissDisabledFromContent = disabled
         }
@@ -135,6 +138,18 @@ private struct XpnseEdgeSheetDismissDisabledKey: PreferenceKey {
     static var defaultValue = false
     static func reduce(value: inout Bool, nextValue: () -> Bool) {
         value = value || nextValue()
+    }
+}
+
+private struct XpnseEdgeSheetDismissKey: EnvironmentKey {
+    static let defaultValue: () -> Void = {}
+}
+
+extension EnvironmentValues {
+    /// Animates the edge-attached sheet away, then dismisses the cover.
+    var dismissXpnseEdgeSheet: () -> Void {
+        get { self[XpnseEdgeSheetDismissKey.self] }
+        set { self[XpnseEdgeSheetDismissKey.self] = newValue }
     }
 }
 
