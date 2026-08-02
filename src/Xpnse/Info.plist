@@ -13,6 +13,11 @@
 			</array>
 		</dict>
 	</array>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>NSUserNotificationsUsageDescription</key>
 	<string>SnapLedger sends reminders for upcoming recurring transactions when you opt in.</string>
 	<key>UIApplicationSceneManifest</key>
