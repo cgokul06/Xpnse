@@ -155,6 +155,15 @@ final class UserEngagementCoordinator {
         return clock.now().timeIntervalSince(started) >= Self.requiredContinuousUsageSeconds
     }
 
+    /// Idle gate for non-review UI (e.g. app-lock promo). Requires settled home,
+    /// foreground, no busy work, and no engagement sheet — without the 60s wait.
+    var canPresentNonCriticalUI: Bool {
+        hasSettledPastLaunch
+            && isForegroundActive
+            && busyReasons.isEmpty
+            && presentedEngagement == nil
+    }
+
     private func analyticsPresented() {
         AppAnalytics.logEvent(AppAnalytics.Event.reviewFeedbackFlowPresented)
     }

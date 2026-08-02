@@ -12,6 +12,7 @@ struct CoordinatedContentView: View {
     @StateObject private var appCoordinator = AppCoordinator()
     @StateObject private var homeCoordinator = NavigationCoordinator<HomeRoute>()
     @ObservedObject private var deepLinkRouter = AppDeepLinkRouter.shared
+    @State private var appLock = AppLockController.shared
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
@@ -52,6 +53,13 @@ struct CoordinatedContentView: View {
         .environmentObject(appCoordinator)
         .environmentObject(homeCoordinator)
         .animation(.easeInOut(duration: 0.3), value: appCoordinator.currentRoute)
+        .overlay {
+            if appLock.isLocked {
+                AppLockView()
+                    .transition(.opacity)
+                    .zIndex(1)
+            }
+        }
         .onOpenURL { url in
             deepLinkRouter.handle(url)
             deepLinkRouter.consumePendingLink(
@@ -71,6 +79,7 @@ struct CoordinatedContentView: View {
         }
         .onAppear {
             syncWidgetAppearance(colorScheme)
+            appLock.evaluateLockStateOnActivation()
             deepLinkRouter.consumePendingLink(
                 appCoordinator: appCoordinator,
                 homeCoordinator: homeCoordinator

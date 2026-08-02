@@ -527,6 +527,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
 				INFOPLIST_KEY_NSAppleMusicUsageDescription = "This app needs media access to scan bills and receipts for automatic data extraction.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "SnapLedger uses the camera so you can photograph bills and receipts and automatically fill in amount, merchant, date, and category when adding a transaction.";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "SnapLedger uses Face ID to unlock the app when App Lock is enabled.";
 				INFOPLIST_KEY_NSMainCameraUsageDescription = "SnapLedger uses the camera so you can photograph bills and receipts and automatically fill in amount, merchant, date, and category when adding a transaction.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "This app needs photo library access to select bills and receipts for automatic data extraction";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
@@ -580,6 +581,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
 				INFOPLIST_KEY_NSAppleMusicUsageDescription = "This app needs media access to scan bills and receipts for automatic data extraction.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "SnapLedger uses the camera so you can photograph bills and receipts and automatically fill in amount, merchant, date, and category when adding a transaction.";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "SnapLedger uses Face ID to unlock the app when App Lock is enabled.";
 				INFOPLIST_KEY_NSMainCameraUsageDescription = "SnapLedger uses the camera so you can photograph bills and receipts and automatically fill in amount, merchant, date, and category when adding a transaction.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "This app needs photo library access to select bills and receipts for automatic data extraction";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;

@@ -1,175 +1,187 @@
 {
-  "sourceLanguage": "en",
-  "strings": {
-    "CFBundleDisplayName": {
-      "comment": "Bundle display name",
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "SnapLedger"
+  "sourceLanguage" : "en",
+  "strings" : {
+    "CFBundleDisplayName" : {
+      "comment" : "Bundle display name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "SnapLedger"
           }
         }
       }
     },
-    "CFBundleName": {
-      "comment": "Bundle name",
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Xpnse"
+    "CFBundleName" : {
+      "comment" : "Bundle name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Xpnse"
           }
         }
       }
     },
-    "NSAppleMusicUsageDescription": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Diese App benötigt Medienzugriff zum Scannen von Rechnungen und Belegen."
+    "NSAppleMusicUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese App benötigt Medienzugriff zum Scannen von Rechnungen und Belegen."
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This app needs media access to scan bills and receipts for automatic data extraction."
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This app needs media access to scan bills and receipts for automatic data extraction."
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Esta app necesita acceso a medios para escanear facturas y recibos."
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta app necesita acceso a medios para escanear facturas y recibos."
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cette app a besoin d'accéder aux médias pour scanner factures et reçus."
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette app a besoin d'accéder aux médias pour scanner factures et reçus."
           }
         }
       }
     },
-    "NSCameraUsageDescription": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "SnapLedger uses the camera so you can photograph bills and receipts and automatically fill in amount, merchant, date, and category when adding a transaction."
+    "NSCameraUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SnapLedger nutzt die Kamera, damit Sie Rechnungen und Belege fotografieren und beim Hinzufügen einer Transaktion Betrag, Händler, Datum und Kategorie automatisch ausfüllen können."
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "SnapLedger usa la cámara para que puedas fotografiar facturas y recibos y completar automáticamente el importe, el comercio, la fecha y la categoría al añadir una transacción."
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SnapLedger uses the camera so you can photograph bills and receipts and automatically fill in amount, merchant, date, and category when adding a transaction."
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "SnapLedger utilise l'appareil photo pour photographier factures et reçus et remplir automatiquement le montant, le commerçant, la date et la catégorie lors de l'ajout d'une transaction."
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SnapLedger usa la cámara para que puedas fotografiar facturas y recibos y completar automáticamente el importe, el comercio, la fecha y la categoría al añadir una transacción."
           }
         },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "SnapLedger nutzt die Kamera, damit Sie Rechnungen und Belege fotografieren und beim Hinzufügen einer Transaktion Betrag, Händler, Datum und Kategorie automatisch ausfüllen können."
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SnapLedger utilise l'appareil photo pour photographier factures et reçus et remplir automatiquement le montant, le commerçant, la date et la catégorie lors de l'ajout d'une transaction."
           }
         }
       }
     },
-    "NSMainCameraUsageDescription": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "SnapLedger uses the camera so you can photograph bills and receipts and automatically fill in amount, merchant, date, and category when adding a transaction."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "SnapLedger usa la cámara para que puedas fotografiar facturas y recibos y completar automáticamente el importe, el comercio, la fecha y la categoría al añadir una transacción."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "SnapLedger utilise l'appareil photo pour photographier factures et reçus et remplir automatiquement le montant, le commerçant, la date et la catégorie lors de l'ajout d'une transaction."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "SnapLedger nutzt die Kamera, damit Sie Rechnungen und Belege fotografieren und beim Hinzufügen einer Transaktion Betrag, Händler, Datum und Kategorie automatisch ausfüllen können."
+    "NSFaceIDUsageDescription" : {
+      "comment" : "Privacy - Face ID Usage Description",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "SnapLedger uses Face ID to unlock the app when App Lock is enabled."
           }
         }
       }
     },
-    "NSPhotoLibraryUsageDescription": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Diese App benötigt Zugriff auf die Mediathek zum Auswählen von Rechnungen und Belegen"
+    "NSMainCameraUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SnapLedger nutzt die Kamera, damit Sie Rechnungen und Belege fotografieren und beim Hinzufügen einer Transaktion Betrag, Händler, Datum und Kategorie automatisch ausfüllen können."
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This app needs photo library access to select bills and receipts for automatic data extraction"
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SnapLedger uses the camera so you can photograph bills and receipts and automatically fill in amount, merchant, date, and category when adding a transaction."
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Esta app necesita acceso a la fototeca para seleccionar facturas y recibos"
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SnapLedger usa la cámara para que puedas fotografiar facturas y recibos y completar automáticamente el importe, el comercio, la fecha y la categoría al añadir una transacción."
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cette app a besoin de l'accès à la photothèque pour sélectionner factures et reçus"
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SnapLedger utilise l'appareil photo pour photographier factures et reçus et remplir automatiquement le montant, le commerçant, la date et la catégorie lors de l'ajout d'une transaction."
           }
         }
       }
     },
-    "NSUserNotificationsUsageDescription": {
-      "extractionState": "manual",
-      "localizations": {
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "SnapLedger sendet Erinnerungen für wiederkehrende Transaktionen, wenn Sie zustimmen."
+    "NSPhotoLibraryUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese App benötigt Zugriff auf die Mediathek zum Auswählen von Rechnungen und Belegen"
           }
         },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "SnapLedger sends reminders for upcoming recurring transactions when you opt in."
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This app needs photo library access to select bills and receipts for automatic data extraction"
           }
         },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "SnapLedger envía recordatorios de transacciones recurrentes cuando lo activas."
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta app necesita acceso a la fototeca para seleccionar facturas y recibos"
           }
         },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "SnapLedger envoie des rappels pour les transactions récurrentes si vous l'activez."
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette app a besoin de l'accès à la photothèque pour sélectionner factures et reçus"
+          }
+        }
+      }
+    },
+    "NSUserNotificationsUsageDescription" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SnapLedger sendet Erinnerungen für wiederkehrende Transaktionen, wenn Sie zustimmen."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SnapLedger sends reminders for upcoming recurring transactions when you opt in."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SnapLedger envía recordatorios de transacciones recurrentes cuando lo activas."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SnapLedger envoie des rappels pour les transactions récurrentes si vous l'activez."
           }
         }
       }
     }
   },
-  "version": "1.0"
+  "version" : "1.0"
 }

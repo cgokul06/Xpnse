@@ -7,11 +7,20 @@
 
 import SwiftUI
 import Combine
+import UIKit
 
 struct CoordinatedHomeView: View {
+    @EnvironmentObject var appCoordinator: AppCoordinator
     @EnvironmentObject var homeCoordinator: NavigationCoordinator<HomeRoute>
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject var billScannerService: BillScannerService = BillScannerService()
     @State private var engagement = UserEngagementCoordinator.shared
+    @State private var appLock = AppLockController.shared
+    @State private var showAppLockPromo = false
+    /// Prevents re-showing after dismiss / sheet-driven onAppear races until next real foreground.
+    @State private var didOfferPromoThisForeground = false
+    @State private var pendingAppLockSettingsDeepLink = false
+    @State private var wasInBackground = false
 
     var body: some View {
         NavigationStack(path: $homeCoordinator.path) {
@@ -48,21 +57,63 @@ struct CoordinatedHomeView: View {
             engagement.noteAppBecameActive()
             syncBusyWork(for: homeCoordinator.path)
             engagement.reconcile()
+            evaluateAppLockPromo()
         }
         .onChange(of: homeCoordinator.path) { _, newPath in
             syncBusyWork(for: newPath)
             engagement.reconcile()
+            // Never re-prompt while navigated away from home (e.g. Settings after Enable).
+        }
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .background:
+                wasInBackground = true
+            case .active:
+                if wasInBackground {
+                    wasInBackground = false
+                    evaluateAppLockPromo()
+                }
+            default:
+                break
+            }
         }
         .onReceive(Timer.publish(every: 5, on: .main, in: .common).autoconnect()) { _ in
             engagement.reconcile()
             engagement.checkPresentationGate()
+            evaluateAppLockPromo()
         }
-        .sheet(item: presentedEngagementBinding) { presentation in
+        // Edge-attached custom sheet: iOS 26 system `.medium` sheets are inset (Liquid Glass).
+        .fullScreenCover(item: presentedEngagementBinding) { presentation in
             switch presentation {
             case .appReview(let opportunity):
-                FeedbackFlowView(opportunity: opportunity)
-                    .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
+                XpnseEdgeAttachedSheet {
+                    FeedbackFlowView(opportunity: opportunity)
+                }
+            }
+        }
+        .fullScreenCover(isPresented: $showAppLockPromo, onDismiss: {
+            // Ensure we never re-open from dismiss/onAppear races after a choice.
+            didOfferPromoThisForeground = true
+            guard pendingAppLockSettingsDeepLink else { return }
+            pendingAppLockSettingsDeepLink = false
+            AppDeepLinkRouter.shared.openSettingsAppLock(
+                appCoordinator: appCoordinator,
+                homeCoordinator: homeCoordinator
+            )
+        }) {
+            XpnseEdgeAttachedSheet {
+                AppLockPromoView(
+                    onEnable: {
+                        didOfferPromoThisForeground = true
+                        pendingAppLockSettingsDeepLink = true
+                        showAppLockPromo = false
+                    },
+                    onDismiss: {
+                        didOfferPromoThisForeground = true
+                        pendingAppLockSettingsDeepLink = false
+                        showAppLockPromo = false
+                    }
+                )
             }
         }
     }
@@ -76,6 +127,17 @@ struct CoordinatedHomeView: View {
                 }
             }
         )
+    }
+
+    private func evaluateAppLockPromo() {
+        guard !showAppLockPromo else { return }
+        guard !appLock.isLocked else { return }
+        // Only offer on the home root — not after Enable navigates into Settings.
+        guard homeCoordinator.path.isEmpty else { return }
+        guard !didOfferPromoThisForeground else { return }
+        guard appLock.canOfferSoftPrompt else { return }
+        didOfferPromoThisForeground = true
+        showAppLockPromo = true
     }
 
     private func syncBusyWork(for path: [HomeRoute]) {

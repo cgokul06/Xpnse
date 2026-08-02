@@ -7,8 +7,6 @@
 
 import SwiftUI
 
-import SwiftUI
-
 struct BottomSpacerIfNoSafeArea: ViewModifier {
     @State private var bottomInset: CGFloat = 0
     var spacing: CGFloat

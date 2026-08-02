@@ -34,6 +34,8 @@ enum AppAnalytics {
         static let editRecurring = "edit_recurring"
         static let legalPrivacy = "legal_privacy"
         static let legalTerms = "legal_terms"
+        static let feedbackFlow = "feedback_flow"
+        static let appLockPromo = "app_lock_promo"
     }
 
     /// Stable non-PII button identifiers for `button_click` events.
@@ -74,6 +76,14 @@ enum AppAnalytics {
         static let groupByDate = "group_by_date"
         static let groupByCategory = "group_by_category"
         static let searchTransactions = "search_transactions"
+        static let reviewLovingIt = "review_loving_it"
+        static let reviewHaveSuggestion = "review_have_suggestion"
+        static let reviewLeaveReview = "review_leave_review"
+        static let reviewSendFeedback = "review_send_feedback"
+        static let reviewDismiss = "review_dismiss"
+        static let appLockPromoEnable = "app_lock_promo_enable"
+        static let appLockPromoNotNow = "app_lock_promo_not_now"
+        static let appLockToggle = "app_lock_toggle"
     }
 
     enum Event {
@@ -101,6 +111,11 @@ enum AppAnalytics {
         static let reviewFeedbackCancelled = "review_feedback_cancelled"
         static let reviewDismissed = "review_dismissed"
         static let reviewAppStoreOpened = "review_app_store_opened"
+        static let appLockPromoPresented = "app_lock_promo_presented"
+        static let appLockPromoEnable = "app_lock_promo_enable"
+        static let appLockPromoDismiss = "app_lock_promo_dismiss"
+        static let appLockEnabled = "app_lock_enabled"
+        static let appLockDisabled = "app_lock_disabled"
     }
 
     static func logScreen(_ name: String) {

@@ -9,18 +9,31 @@ import Foundation
 enum AppDeepLink: Equatable {
     case home
     case addTransaction
+    case settingsAppLock
 
     init?(url: URL) {
         guard url.scheme?.lowercased() == AppGroupConstants.urlScheme else { return nil }
 
-        switch url.host?.lowercased() {
+        let host = url.host?.lowercased() ?? ""
+        let path = url.path
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            .lowercased()
+
+        switch host {
         case "home":
             self = .home
         case "add-transaction":
             self = .addTransaction
+        case "settings" where path == "app-lock":
+            self = .settingsAppLock
         default:
             return nil
         }
+    }
+
+    /// Canonical in-app URL for opening Settings → App Lock.
+    static var settingsAppLockURL: URL {
+        URL(string: "\(AppGroupConstants.urlScheme)://settings/app-lock")!
     }
 }
 
@@ -33,6 +46,14 @@ final class AppDeepLinkRouter: ObservableObject {
     func handle(_ url: URL) {
         guard let link = AppDeepLink(url: url) else { return }
         pendingLink = link
+    }
+
+    func openSettingsAppLock(
+        appCoordinator: AppCoordinator,
+        homeCoordinator: NavigationCoordinator<HomeRoute>
+    ) {
+        pendingLink = .settingsAppLock
+        consumePendingLink(appCoordinator: appCoordinator, homeCoordinator: homeCoordinator)
     }
 
     func consumePendingLink(
@@ -50,6 +71,16 @@ final class AppDeepLinkRouter: ObservableObject {
         case .addTransaction:
             homeCoordinator.popToRoot()
             homeCoordinator.push(.transactions)
+        case .settingsAppLock:
+            homeCoordinator.popToRoot()
+            if homeCoordinator.path.last != .settings {
+                homeCoordinator.push(.settings)
+            }
+            NotificationCenter.default.post(name: .focusAppLockSettings, object: nil)
         }
     }
+}
+
+extension Notification.Name {
+    static let focusAppLockSettings = Notification.Name("focusAppLockSettings")
 }

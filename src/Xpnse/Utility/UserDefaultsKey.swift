@@ -17,6 +17,12 @@ enum UserDefaultsKey: String {
     case installationId
     /// Codable `ReviewState` blob for the user-satisfaction engine.
     case reviewState
+    /// App Lock (Face ID / device passcode) enabled.
+    case appLockEnabled
+    /// Epoch seconds of last successful unlock (1-hour grace).
+    case appLockLastUnlockAt
+    /// Soft-sell promo has been shown once this install (never again).
+    case appLockPromoShown
 }
 
 /// Wrapper for UserDefaults
@@ -51,6 +57,14 @@ class UserDefaultsHelper {
         defaults.integer(forKey: key.rawValue)
     }
 
+    func double(forKey key: UserDefaultsKey) -> Double {
+        defaults.double(forKey: key.rawValue)
+    }
+
+    func object(forKey key: UserDefaultsKey) -> Any? {
+        defaults.object(forKey: key.rawValue)
+    }
+
     func remove(forKey key: UserDefaultsKey) {
         defaults.removeObject(forKey: key.rawValue)
     }
@@ -74,7 +88,10 @@ class UserDefaultsHelper {
             .calendarAggregator,
             .excludeRecurringFromTopSpends,
             .installationId,
-            .reviewState
+            .reviewState,
+            .appLockEnabled,
+            .appLockLastUnlockAt,
+            .appLockPromoShown
         ]
 
         for key in keys {

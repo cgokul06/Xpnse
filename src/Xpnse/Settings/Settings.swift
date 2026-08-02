@@ -24,6 +24,9 @@ struct Settings: View {
     @State private var isWorking = false
     @State private var featureFlags = FeatureFlags.shared
     @State private var presentedLegalDocument: LegalDocument?
+    @State private var appLock = AppLockController.shared
+    @State private var isTogglingAppLock = false
+    @State private var highlightAppLock = false
 
     var body: some View {
         ScrollView {
@@ -61,6 +64,8 @@ struct Settings: View {
                     .simultaneousGesture(TapGesture().onEnded {
                         AppAnalytics.logButtonClick(AppAnalytics.Button.openCurrency, source: AppAnalytics.Screen.settings)
                     })
+
+                    appLockRow
                 }
 
                 if featureFlags.exportImportEnabled {
@@ -182,6 +187,13 @@ struct Settings: View {
         .onAppear {
             AppAnalytics.logScreen(AppAnalytics.Screen.settings)
         }
+        .onReceive(NotificationCenter.default.publisher(for: .focusAppLockSettings)) { _ in
+            highlightAppLock = true
+            Task {
+                try? await Task.sleep(for: .seconds(1.5))
+                highlightAppLock = false
+            }
+        }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
@@ -299,6 +311,61 @@ struct Settings: View {
         let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"
         return L10n.tr("settings.version", short, build)
+    }
+
+    private var appLockRow: some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("settings.app_lock")
+                    .font(.system(size: 16, weight: .medium))
+                    .xpnseAdaptiveForeground()
+                Text("settings.app_lock_subtitle")
+                    .font(.system(size: 13, weight: .regular))
+                    .xpnseAdaptiveForeground(muted: true)
+            }
+            Spacer(minLength: 8)
+            Toggle(
+                "",
+                isOn: Binding(
+                    get: { appLock.isEnabled },
+                    set: { newValue in
+                        Task { await toggleAppLock(to: newValue) }
+                    }
+                )
+            )
+            .labelsHidden()
+            .disabled(isTogglingAppLock || !appLock.canEvaluateDeviceOwnerAuthentication)
+            .id(appLock.isEnabled)
+        }
+        .padding(.vertical, 12)
+        .padding(.horizontal, 12)
+        .background(
+            AdaptiveBrandSurface.rowBackground(for: colorScheme)
+                .overlay {
+                    if highlightAppLock {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .stroke(Color.accentColor, lineWidth: 2)
+                    }
+                }
+        )
+        .xpnseRoundedCorner()
+        .id("appLockRow")
+    }
+
+    private func toggleAppLock(to enabled: Bool) async {
+        guard !isTogglingAppLock else { return }
+        isTogglingAppLock = true
+        defer { isTogglingAppLock = false }
+        AppAnalytics.logButtonClick(
+            AppAnalytics.Button.appLockToggle,
+            source: AppAnalytics.Screen.settings
+        )
+        let success = await appLock.setEnabled(enabled)
+        guard success else { return }
+        AppAnalytics.logEvent(
+            enabled ? AppAnalytics.Event.appLockEnabled : AppAnalytics.Event.appLockDisabled
+        )
+        AppAnalytics.logFeatureExposure(featureKey: "app_lock", enabled: enabled)
     }
 
     private func actionLabel(text: String) -> some View {

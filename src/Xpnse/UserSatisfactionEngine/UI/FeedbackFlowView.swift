@@ -27,24 +27,18 @@ struct FeedbackFlowView: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                sheetChrome
-                    .ignoresSafeArea()
-
-                Group {
-                    switch step {
-                    case .enjoyment:
-                        enjoymentStep
-                    case .thankYou:
-                        thankYouStep
-                    case .feedbackForm:
-                        feedbackFormStep
-                    }
+            Group {
+                switch step {
+                case .enjoyment:
+                    enjoymentStep
+                case .thankYou:
+                    thankYouStep
+                case .feedbackForm:
+                    feedbackFormStep
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 4)
-                .padding(.bottom, 24)
             }
+            .padding(.horizontal, 20)
+            .padding(.top, 4)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button {
@@ -62,17 +56,14 @@ struct FeedbackFlowView: View {
             .toolbarBackground(sheetFill, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
         }
-        .presentationBackground { sheetFill }
-        .presentationCornerRadius(28)
-        .interactiveDismissDisabled(isSubmitting)
+        .xpnseEdgeSheetDismissDisabled(isSubmitting)
+        .onAppear {
+            AppAnalytics.logScreen(AppAnalytics.Screen.feedbackFlow)
+        }
     }
 
     private var sheetFill: Color {
         AdaptiveBrandSurface.sheetSurfaceBackground(for: colorScheme)
-    }
-
-    private var sheetChrome: some View {
-        sheetFill
     }
 
     // MARK: - Steps
@@ -104,6 +95,10 @@ struct FeedbackFlowView: View {
 
             VStack(spacing: 12) {
                 Button {
+                    AppAnalytics.logButtonClick(
+                        AppAnalytics.Button.reviewLovingIt,
+                        source: AppAnalytics.Screen.feedbackFlow
+                    )
                     AppAnalytics.logEvent(AppAnalytics.Event.reviewPositiveSelected)
                     step = .thankYou
                 } label: {
@@ -118,6 +113,10 @@ struct FeedbackFlowView: View {
                 )
 
                 Button {
+                    AppAnalytics.logButtonClick(
+                        AppAnalytics.Button.reviewHaveSuggestion,
+                        source: AppAnalytics.Screen.feedbackFlow
+                    )
                     AppAnalytics.logEvent(AppAnalytics.Event.reviewNegativeSelected)
                     step = .feedbackForm
                 } label: {
@@ -170,6 +169,10 @@ struct FeedbackFlowView: View {
             Spacer(minLength: 0)
 
             Button {
+                AppAnalytics.logButtonClick(
+                    AppAnalytics.Button.reviewLeaveReview,
+                    source: AppAnalytics.Screen.feedbackFlow
+                )
                 AppStoreReviewRequester.requestReview()
                 coordinator.reportAppStoreReviewOpened()
                 dismiss()
@@ -225,6 +228,10 @@ struct FeedbackFlowView: View {
             Spacer()
 
             Button {
+                AppAnalytics.logButtonClick(
+                    AppAnalytics.Button.reviewSendFeedback,
+                    source: AppAnalytics.Screen.feedbackFlow
+                )
                 Task { await submitFeedback() }
             } label: {
                 Text("Send Feedback")
@@ -252,6 +259,10 @@ struct FeedbackFlowView: View {
     // MARK: - Actions
 
     private func cancelFlow() {
+        AppAnalytics.logButtonClick(
+            AppAnalytics.Button.reviewDismiss,
+            source: AppAnalytics.Screen.feedbackFlow
+        )
         if step == .feedbackForm {
             AppAnalytics.logEvent(AppAnalytics.Event.reviewFeedbackCancelled)
         }

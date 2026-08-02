@@ -90,6 +90,11 @@ final class UserSatisfactionEngine {
         persist()
     }
 
+    /// Lifetime transaction count used by soft-sell and engagement gates.
+    var lifetimeTransactionsCount: Int {
+        state.lifetimeTransactions
+    }
+
     // MARK: - Event handling
 
     private func handle(_ event: SatisfactionEvent) {

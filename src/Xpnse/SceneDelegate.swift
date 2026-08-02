@@ -18,6 +18,12 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         }
     }
 
+    func sceneWillResignActive(_ scene: UIScene) {
+        Task { @MainActor in
+            AppLockController.shared.showPrivacyCoverIfNeeded()
+        }
+    }
+
     func sceneDidBecomeActive(_ scene: UIScene) {
         let style = (scene as? UIWindowScene)?.traitCollection.userInterfaceStyle
             ?? SceneDelegate.window?.traitCollection.userInterfaceStyle
@@ -25,6 +31,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         WidgetAppearanceStore.sync(from: style)
         WidgetCenter.shared.reloadAllTimelines()
         Task { @MainActor in
+            AppLockController.shared.evaluateLockStateOnActivation()
             UserSatisfactionEngine.shared.track(.appBecameActive)
             UserEngagementCoordinator.shared.attach(engine: .shared)
             UserEngagementCoordinator.shared.noteAppBecameActive()
@@ -40,6 +47,7 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func sceneDidEnterBackground(_ scene: UIScene) {
         Task { @MainActor in
+            AppLockController.shared.noteDidEnterBackground()
             UserSatisfactionEngine.shared.track(.appEnteredBackground)
             UserEngagementCoordinator.shared.noteAppEnteredBackground()
         }
