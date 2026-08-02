@@ -37,6 +37,13 @@ enum AdaptiveBrandSurface {
         colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.08)
     }
 
+    /// Opaque fill for modal sheets — slightly lifted from the primary canvas so sheets read as separate.
+    static func sheetSurfaceBackground(for colorScheme: ColorScheme) -> Color {
+        colorScheme == .dark
+            ? Color(red: 0.16, green: 0.16, blue: 0.16)
+            : Color(red: 0.94, green: 0.94, blue: 0.94)
+    }
+
     static func dropdownExpandedBackground(for colorScheme: ColorScheme) -> Color {
         // Opaque fill so underlying form rows never show through the open menu.
         colorScheme == .dark

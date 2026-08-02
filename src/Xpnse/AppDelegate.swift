@@ -20,8 +20,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             UserEngagementCoordinator.shared.attach(engine: .shared)
             await CategoryStore.shared.load()
             await RemoteConfigService.shared.fetchAndActivateIfNeeded(force: true)
+            await reconcileSatisfactionLifetimeCounts()
         }
         return true
+    }
+
+    @MainActor
+    private func reconcileSatisfactionLifetimeCounts() async {
+        guard let transactions = try? await SwiftDataTransactionRepository.shared.fetchAll() else {
+            return
+        }
+        UserSatisfactionEngine.shared.reconcileLifetimeTransactionCount(transactions.count)
     }
 
     func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {

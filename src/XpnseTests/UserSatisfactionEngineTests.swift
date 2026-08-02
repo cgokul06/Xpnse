@@ -314,14 +314,28 @@ final class UserSatisfactionEngineTests: XCTestCase {
         XCTAssertNil(engine.pendingReviewOpportunity)
     }
 
-    func testOpportunityCopyForTransactionMilestone() {
+    func testOpportunityUsesGenericSubtitle() {
         var state = eligibleState(now: clock.now())
         state.reviewTransactionCounter = 49
         let engine = makeEngine(state: state)
         engine.track(.transactionAdded)
         XCTAssertEqual(
             engine.pendingReviewOpportunity?.title,
-            "You've successfully tracked 50 expenses!"
+            ReviewOpportunity.genericSubtitle
         )
+        XCTAssertEqual(engine.pendingReviewOpportunity?.milestone, 50)
+    }
+
+    func testReconcileLifetimeTransactionCountRaisesOnly() {
+        var state = ReviewState.fresh(now: clock.now(), appVersion: "1.0.0")
+        state.lifetimeTransactions = 5
+        let engine = makeEngine(state: state)
+
+        engine.reconcileLifetimeTransactionCount(42)
+        XCTAssertEqual(store.load()?.lifetimeTransactions, 42)
+        XCTAssertEqual(engine.snapshotForFeedback().lifetimeTransactions, 42)
+
+        engine.reconcileLifetimeTransactionCount(10)
+        XCTAssertEqual(store.load()?.lifetimeTransactions, 42)
     }
 }

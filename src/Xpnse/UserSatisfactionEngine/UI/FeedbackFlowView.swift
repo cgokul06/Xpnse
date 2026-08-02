@@ -28,7 +28,7 @@ struct FeedbackFlowView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                PrimaryGradient()
+                sheetChrome
                     .ignoresSafeArea()
 
                 Group {
@@ -42,28 +42,44 @@ struct FeedbackFlowView: View {
                     }
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 12)
+                .padding(.top, 4)
                 .padding(.bottom, 24)
             }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button {
                         cancelFlow()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .bold()
+                            .padding(.all, 8)
                     }
                     .disabled(isSubmitting)
-                    .xpnseAdaptiveForeground()
+                    .foregroundStyle(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(sheetFill, for: .navigationBar)
+            .toolbarBackground(.visible, for: .navigationBar)
         }
+        .presentationBackground { sheetFill }
+        .presentationCornerRadius(28)
         .interactiveDismissDisabled(isSubmitting)
+    }
+
+    private var sheetFill: Color {
+        AdaptiveBrandSurface.sheetSurfaceBackground(for: colorScheme)
+    }
+
+    private var sheetChrome: some View {
+        sheetFill
     }
 
     // MARK: - Steps
 
     private var enjoymentStep: some View {
-        VStack(spacing: 28) {
-            Spacer(minLength: 12)
+        VStack(spacing: 14) {
+            Spacer(minLength: 4)
 
             Text("❤️")
                 .font(.system(size: 48))
@@ -74,18 +90,17 @@ struct FeedbackFlowView: View {
                     .multilineTextAlignment(.center)
                     .xpnseAdaptiveForeground()
 
-                Text(opportunity.title)
-                    .font(.system(size: 16, weight: .medium))
-                    .multilineTextAlignment(.center)
-                    .xpnseAdaptiveForeground(muted: true)
-
-                Text("Your feedback helps us build a better app for everyone.")
-                    .font(.system(size: 14, weight: .medium))
-                    .multilineTextAlignment(.center)
-                    .xpnseAdaptiveForeground(muted: true)
+                VStack(spacing: 2) {
+                    Text("Your feedback helps us build")
+                    Text("a better app for everyone.")
+                }
+                .font(.system(size: 16, weight: .medium))
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .xpnseAdaptiveForeground(muted: true)
             }
 
-            Spacer()
+            Spacer(minLength: 0)
 
             VStack(spacing: 12) {
                 Button {
@@ -120,8 +135,8 @@ struct FeedbackFlowView: View {
     }
 
     private var thankYouStep: some View {
-        VStack(spacing: 28) {
-            Spacer(minLength: 12)
+        VStack(spacing: 14) {
+            Spacer(minLength: 4)
 
             Text("✨")
                 .font(.system(size: 48))
@@ -130,20 +145,29 @@ struct FeedbackFlowView: View {
                 Text("Thank you!")
                     .font(.system(size: 28, weight: .bold))
                     .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
                     .xpnseAdaptiveForeground()
 
-                Text("Would you mind leaving us a quick App Store review?")
-                    .font(.system(size: 16, weight: .medium))
-                    .multilineTextAlignment(.center)
-                    .xpnseAdaptiveForeground(muted: true)
+                VStack(spacing: 2) {
+                    Text("Would you mind leaving us")
+                    Text("a quick App Store review?")
+                }
+                .font(.system(size: 16, weight: .medium))
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .xpnseAdaptiveForeground(muted: true)
 
-                Text("Your support helps more people discover SnapLedger.")
-                    .font(.system(size: 14, weight: .medium))
-                    .multilineTextAlignment(.center)
-                    .xpnseAdaptiveForeground(muted: true)
+                VStack(spacing: 2) {
+                    Text("Your support helps more people")
+                    Text("discover SnapLedger.")
+                }
+                .font(.system(size: 14, weight: .medium))
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .xpnseAdaptiveForeground(muted: true)
             }
 
-            Spacer()
+            Spacer(minLength: 0)
 
             Button {
                 AppStoreReviewRequester.requestReview()
@@ -167,10 +191,12 @@ struct FeedbackFlowView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("Help us improve SnapLedger")
                     .font(.system(size: 24, weight: .bold))
+                    .fixedSize(horizontal: false, vertical: true)
                     .xpnseAdaptiveForeground()
 
                 Text("What would make the app better for you?")
                     .font(.system(size: 15, weight: .medium))
+                    .fixedSize(horizontal: false, vertical: true)
                     .xpnseAdaptiveForeground(muted: true)
             }
             .padding(.top, 8)
@@ -239,7 +265,11 @@ struct FeedbackFlowView: View {
         isSubmitting = true
         submitError = nil
         do {
-            let snapshot = engine.snapshotForFeedback()
+            if let transactions = try? await SwiftDataTransactionRepository.shared.fetchAll() {
+                engine.reconcileLifetimeTransactionCount(transactions.count)
+            }
+            let recurringCount = (try? await SwiftDataRecurringRepository.shared.fetchAll())?.count ?? 0
+            let snapshot = engine.snapshotForFeedback(recurringTransactionsCount: recurringCount)
             try await FeedbackUploadService.upload(
                 FeedbackPayload(type: "suggestion", message: message, snapshot: snapshot)
             )

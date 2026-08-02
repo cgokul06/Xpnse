@@ -43,6 +43,9 @@ struct ReviewOpportunity: Identifiable, Equatable, Sendable {
         self.milestone = milestone
     }
 
+    /// Shared subtitle for every review prompt — keep situational copy out of the UI.
+    static let genericSubtitle = "Your feedback helps us build a better app for everyone."
+
     static func make(
         analyticsEvent: SatisfactionAnalyticsEvent,
         parameters: [String: String],
@@ -52,16 +55,16 @@ struct ReviewOpportunity: Identifiable, Equatable, Sendable {
         case .triggerInsights:
             return ReviewOpportunity(
                 trigger: .insightsGenerated,
-                title: "Your spending insights are ready.",
-                message: "Your feedback helps us build a better app for everyone.",
+                title: genericSubtitle,
+                message: genericSubtitle,
                 createdAt: now,
                 priority: 1
             )
         case .triggerSevenDayStreak:
             return ReviewOpportunity(
                 trigger: .sevenDayStreak,
-                title: "You're building an amazing financial habit.",
-                message: "Seven days of tracking — keep the streak going.",
+                title: genericSubtitle,
+                message: genericSubtitle,
                 createdAt: now,
                 priority: 2
             )
@@ -69,8 +72,8 @@ struct ReviewOpportunity: Identifiable, Equatable, Sendable {
             let milestone = Int(parameters["milestone"] ?? "") ?? 0
             return ReviewOpportunity(
                 trigger: .transactionMilestone,
-                title: "You've successfully tracked \(milestone) expenses!",
-                message: "Your feedback helps us build a better app for everyone.",
+                title: genericSubtitle,
+                message: genericSubtitle,
                 createdAt: now,
                 priority: 3,
                 milestone: milestone
@@ -79,8 +82,8 @@ struct ReviewOpportunity: Identifiable, Equatable, Sendable {
             let milestone = Int(parameters["milestone"] ?? "") ?? 0
             return ReviewOpportunity(
                 trigger: .receiptMilestone,
-                title: "You've scanned \(milestone) receipts!",
-                message: "Your feedback helps us build a better app for everyone.",
+                title: genericSubtitle,
+                message: genericSubtitle,
                 createdAt: now,
                 priority: 4,
                 milestone: milestone

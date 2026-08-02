@@ -67,16 +67,27 @@ final class UserSatisfactionEngine {
         handle(event)
     }
 
-    func snapshotForFeedback() -> ReviewStateSnapshot {
+    func snapshotForFeedback(recurringTransactionsCount: Int = 0) -> ReviewStateSnapshot {
         let now = clock.now()
         let days = calendar.dateComponents([.day], from: state.installationDate, to: now).day ?? 0
         return ReviewStateSnapshot(
             lifetimeTransactions: state.lifetimeTransactions,
             lifetimeReceiptScans: state.lifetimeReceiptScans,
+            recurringTransactionsCount: max(0, recurringTransactionsCount),
             launchCount: state.launchCount,
             daysSinceInstall: max(0, days),
             appVersion: versionProvider.shortVersion
         )
+    }
+
+    /// Raises `lifetimeTransactions` to match the real local store count.
+    /// The event counter only tracks adds observed after the engine shipped, so
+    /// existing / imported transactions must be reconciled from SwiftData.
+    func reconcileLifetimeTransactionCount(_ count: Int) {
+        let normalized = max(0, count)
+        guard normalized > state.lifetimeTransactions else { return }
+        state.lifetimeTransactions = normalized
+        persist()
     }
 
     // MARK: - Event handling

@@ -65,6 +65,7 @@ struct ReviewState: Codable, Equatable {
 struct ReviewStateSnapshot: Equatable {
     let lifetimeTransactions: Int
     let lifetimeReceiptScans: Int
+    let recurringTransactionsCount: Int
     let launchCount: Int
     let daysSinceInstall: Int
     let appVersion: String

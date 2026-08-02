@@ -96,6 +96,12 @@ struct ExportImportService {
 
         scheduleSuggestionRebuildAfterImport()
         await RecurringReminderScheduler.shared.reconcileAllPendingReminders()
+
+        if let transactions = try? await transactionRepository.fetchAll() {
+            await MainActor.run {
+                UserSatisfactionEngine.shared.reconcileLifetimeTransactionCount(transactions.count)
+            }
+        }
     }
 
     private func mergeCategoriesOneByOne(_ imported: [CategoryDefinition], payload: BackupPayload) async throws {

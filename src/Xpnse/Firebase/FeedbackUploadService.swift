@@ -30,6 +30,7 @@ enum FeedbackUploadService {
             "iOSVersion": systemVersion,
             "locale": Locale.current.identifier,
             "transactionsCount": payload.snapshot.lifetimeTransactions,
+            "recurringTransactionsCount": payload.snapshot.recurringTransactionsCount,
             "launchCount": payload.snapshot.launchCount,
             "daysSinceInstall": payload.snapshot.daysSinceInstall,
             "receiptScans": payload.snapshot.lifetimeReceiptScans,
