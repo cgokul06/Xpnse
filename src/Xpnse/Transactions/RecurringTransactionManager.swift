@@ -2,6 +2,7 @@ import Foundation
 
 protocol TransactionSink {
     func addTransaction(_ transaction: Transaction) async
+    func hasMaterializedRecurringOccurrence(seriesId: String, occurrenceEpoch: TimeInterval) async -> Bool
 }
 
 /// Manager for recurring transactions: persists and processes them using a repository backing (e.g. Firestore).
@@ -126,6 +127,29 @@ final class RecurringTransactionManager {
                         changed = true
                         continue
                     }
+                }
+
+                // Skip if this occurrence was already written (e.g. overlapping process runs).
+                let alreadyExists = await sink.hasMaterializedRecurringOccurrence(
+                    seriesId: items[i].id.uuidString,
+                    occurrenceEpoch: next.timeIntervalSince1970
+                )
+                if alreadyExists {
+                    items[i].lastTransactionAddedOn = next
+                    guard let newNext = items[i].recurrence.nextOccurrence(after: next, calendar: calendar) else {
+                        items[i].nextOccurrence = nil
+                        changed = true
+                        break
+                    }
+                    if let end = endDate, newNext > end {
+                        items[i].nextOccurrence = nil
+                        changed = true
+                        break
+                    }
+                    items[i].nextOccurrence = newNext
+                    next = newNext
+                    changed = true
+                    continue
                 }
 
                 await sink.addTransaction(

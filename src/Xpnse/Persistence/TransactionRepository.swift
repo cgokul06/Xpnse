@@ -17,6 +17,7 @@ protocol TransactionRepository {
     func delete(_ transaction: Transaction) async throws
     func fetch(startDate: Date, endDate: Date) async throws -> [Transaction]
     func fetchAll() async throws -> [Transaction]
+    func hasRecurringOccurrence(seriesId: String, occurrenceEpoch: TimeInterval) async throws -> Bool
     func clearAll() async throws
 }
 
@@ -104,6 +105,18 @@ final class SwiftDataTransactionRepository: TransactionRepository {
             sortBy: [SortDescriptor(\.date, order: .reverse)]
         )
         return try context.fetch(descriptor).map { $0.toDomain() }
+    }
+
+    @MainActor
+    func hasRecurringOccurrence(seriesId: String, occurrenceEpoch: TimeInterval) async throws -> Bool {
+        let context = context()
+        let descriptor = FetchDescriptor<TransactionEntity>(
+            predicate: #Predicate { entity in
+                entity.recurringSeriesId == seriesId
+                    && entity.recurringOccurrenceDate == occurrenceEpoch
+            }
+        )
+        return try context.fetch(descriptor).first != nil
     }
 
     @MainActor

@@ -35,14 +35,26 @@ final class FirebaseTransactionManager {
         self.recurringTransactionManager = recurringTransactionManager
     }
 
+    private var recurringProcessTask: Task<Void, Never>?
+
     func processRecurringTransactions() {
         Task { await processRecurringTransactionsAsync() }
     }
 
     @MainActor
     func processRecurringTransactionsAsync() async {
-        await recurringTransactionManager.loadAndProcess(sink: self)
-        await RecurringReminderScheduler.shared.reconcileAllPendingReminders()
+        if let recurringProcessTask {
+            await recurringProcessTask.value
+            return
+        }
+
+        let task = Task { @MainActor in
+            await self.recurringTransactionManager.loadAndProcess(sink: self)
+            await RecurringReminderScheduler.shared.reconcileAllPendingReminders()
+        }
+        recurringProcessTask = task
+        await task.value
+        recurringProcessTask = nil
     }
 
     private var listeners: Set<String> = []
@@ -207,4 +219,11 @@ final class FirebaseTransactionManager {
     }
 }
 
-extension FirebaseTransactionManager: TransactionSink {}
+extension FirebaseTransactionManager: TransactionSink {
+    func hasMaterializedRecurringOccurrence(seriesId: String, occurrenceEpoch: TimeInterval) async -> Bool {
+        (try? await transactionRepository.hasRecurringOccurrence(
+            seriesId: seriesId,
+            occurrenceEpoch: occurrenceEpoch
+        )) ?? false
+    }
+}

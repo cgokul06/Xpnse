@@ -38,10 +38,6 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         }
     }
 
-    func sceneWillEnterForeground(_ scene: UIScene) {
-        FirebaseTransactionManager.shared.processRecurringTransactions()
-    }
-
     func sceneDidEnterBackground(_ scene: UIScene) {
         Task { @MainActor in
             UserSatisfactionEngine.shared.track(.appEnteredBackground)
