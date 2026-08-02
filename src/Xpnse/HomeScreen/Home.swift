@@ -59,7 +59,9 @@ struct Home: View {
     }
 
     private var listScrollBottomInset: CGFloat {
-        max(0, HomeBottomBarMetrics.visibleListScrollInset - displayedBottomBarHiddenAmount)
+        // Keep list bottom padding stable while the action bar hides. Shrinking this
+        // in lockstep with the bar can make short months non-scrollable mid-offset.
+        HomeBottomBarMetrics.visibleListScrollInset
     }
 
     var body: some View {
@@ -263,18 +265,27 @@ struct Home: View {
         }
 
         let delta = update.delta
+        let overflow = update.contentHeight - update.visibleHeight
+        // Short months: hiding grows the viewport and eats overflow. If there isn't room to
+        // fully collapse the bar, keep it fully visible — never leave it half-hidden.
+        let minOverflowToCollapse =
+            HomeBottomBarMetrics.collapseDistance + HomeBottomBarMetrics.contentInset
+        if overflow < minOverflowToCollapse {
+            bottomBarHiddenAmount = 0
+            return
+        }
+
         if abs(delta) > HomeBottomBarMetrics.programmaticScrollDeltaThreshold {
             bottomBarHiddenAmount = min(
                 update.offsetY,
                 HomeBottomBarMetrics.collapseDistance
             )
-            return
+        } else {
+            bottomBarHiddenAmount = min(
+                max(0, bottomBarHiddenAmount + delta),
+                HomeBottomBarMetrics.collapseDistance
+            )
         }
-
-        bottomBarHiddenAmount = min(
-            max(0, bottomBarHiddenAmount + delta),
-            HomeBottomBarMetrics.collapseDistance
-        )
     }
 
     private var topView: some View {

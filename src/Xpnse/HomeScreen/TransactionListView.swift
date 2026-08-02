@@ -373,6 +373,7 @@ struct TransactionListView: View {
         guard newMetrics != scrollMetrics else { return }
 
         let previousOffsetY = scrollMetrics.offsetY
+        let wasScrollable = scrollMetrics.isScrollable
         scrollMetrics = newMetrics
 
         if isSearching, abs(newMetrics.offsetY - previousOffsetY) > 0 {
@@ -385,6 +386,19 @@ struct TransactionListView: View {
                     offsetY: newMetrics.offsetY,
                     previousOffsetY: previousOffsetY,
                     delta: newMetrics.offsetY - previousOffsetY,
+                    visibleHeight: newMetrics.visibleHeight,
+                    contentHeight: newMetrics.contentHeight
+                )
+            )
+        } else if wasScrollable || newMetrics.offsetY > 0.5 {
+            // Short months: hiding the bottom bar can shrink overflow below zero while
+            // offsetY is still mid-list. Bounce is disabled, so force recovery.
+            pendingProgrammaticScroll = .top
+            onScrollOffsetChange?(
+                TransactionListScrollUpdate(
+                    offsetY: 0,
+                    previousOffsetY: previousOffsetY,
+                    delta: -previousOffsetY,
                     visibleHeight: newMetrics.visibleHeight,
                     contentHeight: newMetrics.contentHeight
                 )
