@@ -780,7 +780,7 @@ struct AddTransactionView: View {
             id: isEditing ? (self.transaction?.id ?? UUID().uuidString) : UUID().uuidString,
             type: transactionType,
             categoryId: self.selectedCategoryId,
-            amount: Double(amount) ?? 0.0,
+            amount: Double(truncating: (AmountFormatter.parseDecimal(amount) ?? 0) as NSDecimalNumber),
             date: selectedDate.timeIntervalSince1970,
             title: description,
             merchant: normalizedMerchantOrNil
@@ -817,7 +817,7 @@ struct AddTransactionView: View {
                     merchant: normalizedMerchantOrNil,
                     type: transactionType.rawValue,
                     categoryIdentifier: selectedCategoryId,
-                    amount: Decimal(Double(amount) ?? 0.0),
+                    amount: AmountFormatter.parseDecimal(amount) ?? 0,
                     startDate: selectedDate,
                     endDate: computedEndDate,
                     recurrence: mappedRecurrenceFrequency(),

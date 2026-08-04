@@ -417,7 +417,7 @@ private struct EditRecurringTransactionView: View {
             merchant: normalizedMerchantOrNil,
             type: transactionType.rawValue,
             categoryIdentifier: selectedCategoryId,
-            amount: Decimal(string: amount) ?? original.amount,
+            amount: AmountFormatter.parseDecimal(amount) ?? original.amount,
             startDate: recurringStartDate,
             endDate: computedEndDate,
             recurrence: recurrence,

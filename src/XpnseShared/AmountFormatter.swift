@@ -22,16 +22,50 @@ enum AmountFormatter {
         format((value as NSDecimalNumber).doubleValue, currencyCode: currencyCode)
     }
 
-    /// Decimal amount without currency (e.g. entry fields). Prefer `format(_:currencyCode:)` for display.
+    /// Editable amount string without currency (TextField). No grouping separators.
     static func format(_ value: Double) -> String {
-        formatDecimal(value)
+        formatForEditing(Decimal(value))
     }
 
     static func format(_ value: Decimal) -> String {
-        formatDecimal((value as NSDecimalNumber).doubleValue)
+        formatForEditing(value)
     }
 
-    /// Decimal amount without currency (e.g. entry fields).
+    /// Plain editable amount: no grouping, POSIX decimal point, up to 2 fraction digits.
+    static func formatForEditing(_ value: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.usesGroupingSeparator = false
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = 2
+        return formatter.string(from: value as NSDecimalNumber) ?? "\(value)"
+    }
+
+    /// Parses an amount typed in an entry field (plain or locale-grouped).
+    static func parseDecimal(_ string: String) -> Decimal? {
+        let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        let posix = NumberFormatter()
+        posix.numberStyle = .decimal
+        posix.locale = Locale(identifier: "en_US_POSIX")
+        posix.usesGroupingSeparator = false
+        if let number = posix.number(from: trimmed) {
+            return number.decimalValue
+        }
+
+        let localized = NumberFormatter()
+        localized.numberStyle = .decimal
+        localized.locale = .current
+        if let number = localized.number(from: trimmed) {
+            return number.decimalValue
+        }
+
+        return nil
+    }
+
+    /// Decimal amount without currency (display). Prefer `format(_:currencyCode:)` for money.
     static func formatDecimal(_ value: Double, fractionDigits: Int = 2) -> String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
