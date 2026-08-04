@@ -31,207 +31,24 @@ struct Settings: View {
     @State private var numberFormatPreference = NumberFormatPreference.current
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-
-                // Currency Section
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("settings.preferences")
-                        .font(.system(size: 20, weight: .bold))
-                        .xpnseAdaptiveForeground()
-
-                    NavigationLink {
-                        CurrencyListView(selectedCurrencyCode: selectedCurrency) { selected in
-                            selectedCurrency = selected.code
-                            CurrencyManager.shared.selectedCurrency = selected
-                        }
-                    } label: {
-                        HStack(spacing: 10) {
-                            Text("settings.currency")
-                                .font(.system(size: 16, weight: .medium))
-                                .xpnseAdaptiveForeground()
-                            Spacer()
-                            Text("\(CurrencyManager.shared.selectedCurrency.symbol) \(CurrencyManager.shared.selectedCurrency.code)")
-                                .font(.system(size: 16, weight: .semibold))
-                                .xpnseAdaptiveForeground()
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 12, weight: .semibold))
-                                .xpnseAdaptiveForeground(muted: true)
-                        }
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 12)
-                        .background(AdaptiveBrandSurface.rowBackground(for: colorScheme))
-                        .xpnseRoundedCorner()
-                    }
-                    .simultaneousGesture(TapGesture().onEnded {
-                        AppAnalytics.logButtonClick(AppAnalytics.Button.openCurrency, source: AppAnalytics.Screen.settings)
-                    })
-
-                    NavigationLink {
-                        NumberFormatSettingsView()
-                    } label: {
-                        HStack(spacing: 10) {
-                            Text("settings.number_format")
-                                .font(.system(size: 16, weight: .medium))
-                                .xpnseAdaptiveForeground()
-                            Spacer()
-                            Text(numberFormatPreferenceLabel)
-                                .font(.system(size: 16, weight: .semibold))
-                                .xpnseAdaptiveForeground()
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 12, weight: .semibold))
-                                .xpnseAdaptiveForeground(muted: true)
-                        }
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 12)
-                        .background(AdaptiveBrandSurface.rowBackground(for: colorScheme))
-                        .xpnseRoundedCorner()
-                    }
-
-                    appLockRow
-                }
-
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("settings.widgets")
-                        .font(.system(size: 20, weight: .bold))
-                        .xpnseAdaptiveForeground()
-
-                    widgetPrivacyRow
-                }
-
-                if featureFlags.exportImportEnabled {
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("settings.data_portability")
-                            .font(.system(size: 20, weight: .bold))
-                            .xpnseAdaptiveForeground()
-
-                        Button {
-                            AppAnalytics.logButtonClick(AppAnalytics.Button.exportBackup, source: AppAnalytics.Screen.settings)
-                            AppAnalytics.logFeatureExposure(
-                                featureKey: FeatureFlags.Key.exportImportEnabled.rawValue,
-                                enabled: true
-                            )
-                            self.startExport()
-                        } label: {
-                            self.actionLabel(text: L10n.tr("settings.export"))
-                        }
-
-                        Button {
-                            AppAnalytics.logButtonClick(AppAnalytics.Button.importBackup, source: AppAnalytics.Screen.settings)
-                            AppAnalytics.logFeatureExposure(
-                                featureKey: FeatureFlags.Key.exportImportEnabled.rawValue,
-                                enabled: true
-                            )
-                            self.showImporter = true
-                        } label: {
-                            self.actionLabel(text: L10n.tr("settings.import"))
-                        }
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("settings.categories")
-                        .font(.system(size: 20, weight: .bold))
-                        .xpnseAdaptiveForeground()
-
-                    NavigationLink {
-                        ManageCategoriesView()
-                    } label: {
-                        self.actionLabel(text: L10n.tr("category.manage"))
-                    }
-                    .simultaneousGesture(TapGesture().onEnded {
-                        AppAnalytics.logButtonClick(AppAnalytics.Button.manageCategories, source: AppAnalytics.Screen.settings)
-                    })
-                }
-
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("common.recurring")
-                        .font(.system(size: 20, weight: .bold))
-                        .xpnseAdaptiveForeground()
-
-                    NavigationLink {
-                        RecurringTransactionsView()
-                    } label: {
-                        self.actionLabel(text: L10n.tr("settings.manage_recurring"))
-                    }
-                    .simultaneousGesture(TapGesture().onEnded {
-                        AppAnalytics.logButtonClick(AppAnalytics.Button.manageRecurring, source: AppAnalytics.Screen.settings)
-                    })
-                }
-
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("settings.support")
-                        .font(.system(size: 20, weight: .bold))
-                        .xpnseAdaptiveForeground()
-
-                    NavigationLink {
-                        SendFeedbackView(marksReviewOutcome: false, showsCloseButton: false)
-                    } label: {
-                        self.actionLabel(text: L10n.tr("settings.send_feedback"))
-                    }
-                    .simultaneousGesture(TapGesture().onEnded {
-                        AppAnalytics.logButtonClick(
-                            AppAnalytics.Button.sendFeedback,
-                            source: AppAnalytics.Screen.settings
-                        )
-                    })
-                }
-
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("settings.legal")
-                        .font(.system(size: 20, weight: .bold))
-                        .xpnseAdaptiveForeground()
-
-                    Button {
-                        AppAnalytics.logButtonClick(AppAnalytics.Button.openPrivacy, source: AppAnalytics.Screen.settings)
-                        presentedLegalDocument = .privacyPolicy
-                    } label: {
-                        self.actionLabel(text: L10n.tr("settings.privacy_policy"))
-                    }
-
-                    Button {
-                        AppAnalytics.logButtonClick(AppAnalytics.Button.openTerms, source: AppAnalytics.Screen.settings)
-                        presentedLegalDocument = .termsAndConditions
-                    } label: {
-                        self.actionLabel(text: L10n.tr("settings.terms_conditions"))
-                    }
-                }
-
-                VStack {
-                    Button(role: .destructive) {
-                        AppAnalytics.logButtonClick(AppAnalytics.Button.clearLocalData, source: AppAnalytics.Screen.settings)
-                        showClearDataConfirm = true
-                    } label: {
-                        Text("settings.clear_local_data")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(.red)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                    }
-                }
-
-                #if DEBUG
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Debug")
-                        .font(.system(size: 20, weight: .bold))
-                        .xpnseAdaptiveForeground()
-
-                    Button(role: .destructive) {
-                        // Forces a fatal crash so Crashlytics can upload on next launch.
-                        fatalError("SnapLedger DEBUG Crashlytics test crash")
-                    } label: {
-                        self.actionLabel(text: "Test Crashlytics Crash")
-                    }
-                }
-                #endif
-
-                Text(appVersionLabel)
-                    .font(.system(size: 12, weight: .medium))
-                    .xpnseAdaptiveForeground(muted: true)
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 8)
+        List {
+            generalSection
+            privacySecuritySection
+            transactionsSection
+            if featureFlags.exportImportEnabled {
+                dataSection
             }
-            .padding()
+            // Premium section reserved for future paid plans.
+            supportSection
+            legalSection
+            dangerZoneSection
+            #if DEBUG
+            debugSection
+            #endif
+            versionFooter
         }
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
         .gradientNavigationBackground()
         .onAppear {
             AppAnalytics.logScreen(AppAnalytics.Screen.settings)
@@ -247,13 +64,13 @@ struct Settings: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
-                Button(action: {
-                    self.dismiss()
-                }, label: {
+                Button {
+                    dismiss()
+                } label: {
                     Image(systemName: "xmark")
                         .bold()
                         .padding(.all, 8)
-                })
+                }
                 .foregroundStyle(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
             }
 
@@ -357,6 +174,299 @@ struct Settings: View {
         }
     }
 
+    // MARK: - Sections
+
+    private var generalSection: some View {
+        Section {
+            NavigationLink {
+                CurrencyListView(selectedCurrencyCode: selectedCurrency) { selected in
+                    selectedCurrency = selected.code
+                    CurrencyManager.shared.selectedCurrency = selected
+                }
+                .onAppear {
+                    AppAnalytics.logButtonClick(AppAnalytics.Button.openCurrency, source: AppAnalytics.Screen.settings)
+                }
+            } label: {
+                settingsLabel(
+                    titleKey: "settings.currency",
+                    systemImage: "indianrupeesign.circle",
+                    value: "\(CurrencyManager.shared.selectedCurrency.symbol) \(CurrencyManager.shared.selectedCurrency.code)"
+                )
+            }
+
+            NavigationLink {
+                NumberFormatSettingsView()
+            } label: {
+                settingsLabel(
+                    titleKey: "settings.number_format",
+                    systemImage: "number",
+                    value: numberFormatPreferenceLabel
+                )
+            }
+
+            NavigationLink {
+                ManageCategoriesView()
+                    .onAppear {
+                        AppAnalytics.logButtonClick(AppAnalytics.Button.manageCategories, source: AppAnalytics.Screen.settings)
+                    }
+            } label: {
+                settingsLabel(titleKey: "settings.categories", systemImage: "square.grid.2x2")
+            }
+        } header: {
+            Text("settings.general")
+        }
+    }
+
+    private var privacySecuritySection: some View {
+        Section {
+            Toggle(isOn: Binding(
+                get: { appLock.isEnabled },
+                set: { newValue in
+                    Task { await toggleAppLock(to: newValue) }
+                }
+            )) {
+                settingsLabel(
+                    titleKey: "settings.app_lock",
+                    systemImage: "lock.fill",
+                    subtitleKey: "settings.app_lock_subtitle"
+                )
+            }
+            .disabled(isTogglingAppLock || !appLock.canEvaluateDeviceOwnerAuthentication)
+            .id(appLock.isEnabled)
+            .listRowBackground(
+                AdaptiveBrandSurface.rowBackground(for: colorScheme)
+                    .overlay {
+                        if highlightAppLock {
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .stroke(Color.accentColor, lineWidth: 2)
+                        }
+                    }
+            )
+            .accessibilityHint(Text("settings.app_lock_subtitle"))
+
+            Toggle(isOn: Binding(
+                get: { widgetPrivacyEnabled },
+                set: { setWidgetPrivacyEnabled($0) }
+            )) {
+                settingsLabel(
+                    titleKey: "settings.widget_privacy.title",
+                    systemImage: "eye.slash",
+                    subtitleKey: "settings.widget_privacy.subtitle"
+                )
+            }
+            .accessibilityHint(Text("settings.widget_privacy.subtitle"))
+        } header: {
+            Text("settings.privacy_security")
+        }
+    }
+
+    private var transactionsSection: some View {
+        Section {
+            NavigationLink {
+                RecurringTransactionsView()
+                    .onAppear {
+                        AppAnalytics.logButtonClick(AppAnalytics.Button.manageRecurring, source: AppAnalytics.Screen.settings)
+                    }
+            } label: {
+                settingsLabel(
+                    titleKey: "settings.recurring_transactions",
+                    systemImage: "repeat"
+                )
+            }
+        } header: {
+            Text("settings.transactions")
+        }
+    }
+
+    private var dataSection: some View {
+        Section {
+            Button {
+                AppAnalytics.logButtonClick(AppAnalytics.Button.exportBackup, source: AppAnalytics.Screen.settings)
+                AppAnalytics.logFeatureExposure(
+                    featureKey: FeatureFlags.Key.exportImportEnabled.rawValue,
+                    enabled: true
+                )
+                startExport()
+            } label: {
+                settingsLabel(
+                    titleKey: "settings.export_data",
+                    systemImage: "square.and.arrow.up",
+                    subtitleKey: "settings.export_data_subtitle"
+                )
+            }
+            .tint(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
+
+            Button {
+                AppAnalytics.logButtonClick(AppAnalytics.Button.importBackup, source: AppAnalytics.Screen.settings)
+                AppAnalytics.logFeatureExposure(
+                    featureKey: FeatureFlags.Key.exportImportEnabled.rawValue,
+                    enabled: true
+                )
+                showImporter = true
+            } label: {
+                settingsLabel(
+                    titleKey: "settings.import_data",
+                    systemImage: "square.and.arrow.down",
+                    subtitleKey: "settings.import_data_subtitle"
+                )
+            }
+            .tint(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
+        } header: {
+            Text("settings.data")
+        }
+    }
+
+    private var supportSection: some View {
+        Section {
+            NavigationLink {
+                SendFeedbackView(marksReviewOutcome: false, showsCloseButton: false)
+                    .onAppear {
+                        AppAnalytics.logButtonClick(
+                            AppAnalytics.Button.sendFeedback,
+                            source: AppAnalytics.Screen.settings
+                        )
+                    }
+            } label: {
+                settingsLabel(
+                    titleKey: "settings.send_feedback",
+                    systemImage: "bubble.left.and.text.bubble.right"
+                )
+            }
+        } header: {
+            Text("settings.support")
+        }
+    }
+
+    private var legalSection: some View {
+        Section {
+            Button {
+                AppAnalytics.logButtonClick(AppAnalytics.Button.openPrivacy, source: AppAnalytics.Screen.settings)
+                presentedLegalDocument = .privacyPolicy
+            } label: {
+                settingsLabel(
+                    titleKey: "settings.privacy_policy",
+                    systemImage: "hand.raised.fill"
+                )
+            }
+            .tint(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
+
+            Button {
+                AppAnalytics.logButtonClick(AppAnalytics.Button.openTerms, source: AppAnalytics.Screen.settings)
+                presentedLegalDocument = .termsAndConditions
+            } label: {
+                settingsLabel(
+                    titleKey: "settings.terms_conditions",
+                    systemImage: "doc.text"
+                )
+            }
+            .tint(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
+        } header: {
+            Text("settings.legal")
+        }
+    }
+
+    private var dangerZoneSection: some View {
+        Section {
+            Button(role: .destructive) {
+                AppAnalytics.logButtonClick(AppAnalytics.Button.clearLocalData, source: AppAnalytics.Screen.settings)
+                showClearDataConfirm = true
+            } label: {
+                settingsLabel(
+                    titleKey: "settings.clear_local_data",
+                    systemImage: "trash",
+                    subtitleKey: "settings.clear_local_data_subtitle",
+                    destructive: true
+                )
+            }
+            .accessibilityAddTraits(.isButton)
+        } header: {
+            Text("settings.danger_zone")
+        }
+        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+        .padding(.top, 8)
+    }
+
+    #if DEBUG
+    private var debugSection: some View {
+        Section {
+            Button(role: .destructive) {
+                fatalError("SnapLedger DEBUG Crashlytics test crash")
+            } label: {
+                settingsLabel(
+                    titleKey: "settings.debug_crash",
+                    systemImage: "bolt.trianglebadge.exclamationmark.fill",
+                    destructive: true
+                )
+            }
+        } header: {
+            Text("settings.debug")
+        }
+    }
+    #endif
+
+    private var versionFooter: some View {
+        Section {
+            EmptyView()
+        } footer: {
+            VStack(spacing: 4) {
+                Text("SnapLedger")
+                    .font(.footnote.weight(.semibold))
+                Text(appVersionLabel)
+                    .font(.caption)
+            }
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity)
+            .padding(.top, 8)
+            .accessibilityElement(children: .combine)
+        }
+    }
+
+    // MARK: - Row chrome
+
+    private func settingsLabel(
+        titleKey: String,
+        systemImage: String,
+        value: String? = nil,
+        subtitleKey: String? = nil,
+        destructive: Bool = false
+    ) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            Image(systemName: systemImage)
+                .symbolRenderingMode(.hierarchical)
+                .font(.body)
+                .foregroundStyle(destructive ? Color.red : AdaptiveBrandSurface.primaryForeground(for: colorScheme))
+                .frame(width: 28, alignment: .center)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(LocalizedStringKey(titleKey))
+                    .font(.body)
+                    .foregroundStyle(destructive ? Color.red : AdaptiveBrandSurface.primaryForeground(for: colorScheme))
+                    .multilineTextAlignment(.leading)
+                if let subtitleKey {
+                    Text(LocalizedStringKey(subtitleKey))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if let value {
+                Text(value)
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        .contentShape(Rectangle())
+        .allowsHitTesting(false)
+    }
+
+    // MARK: - Helpers
+
     private var appVersionLabel: String {
         let short = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"
@@ -366,79 +476,12 @@ struct Settings: View {
     private var numberFormatPreferenceLabel: String {
         switch numberFormatPreference {
         case .auto:
-            L10n.tr("settings.number_format.auto")
+            L10n.tr("settings.number_format.auto_short")
         case .lakhCrore:
             L10n.tr("settings.number_format.lakh_crore")
         case .million:
             L10n.tr("settings.number_format.million")
         }
-    }
-
-    private var appLockRow: some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("settings.app_lock")
-                    .font(.system(size: 16, weight: .medium))
-                    .xpnseAdaptiveForeground()
-                Text("settings.app_lock_subtitle")
-                    .font(.system(size: 13, weight: .regular))
-                    .xpnseAdaptiveForeground(muted: true)
-            }
-            Spacer(minLength: 8)
-            Toggle(
-                "",
-                isOn: Binding(
-                    get: { appLock.isEnabled },
-                    set: { newValue in
-                        Task { await toggleAppLock(to: newValue) }
-                    }
-                )
-            )
-            .labelsHidden()
-            .disabled(isTogglingAppLock || !appLock.canEvaluateDeviceOwnerAuthentication)
-            .id(appLock.isEnabled)
-        }
-        .padding(.vertical, 12)
-        .padding(.horizontal, 12)
-        .background(
-            AdaptiveBrandSurface.rowBackground(for: colorScheme)
-                .overlay {
-                    if highlightAppLock {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(Color.accentColor, lineWidth: 2)
-                    }
-                }
-        )
-        .xpnseRoundedCorner()
-        .id("appLockRow")
-    }
-
-    private var widgetPrivacyRow: some View {
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("settings.widget_privacy.title")
-                    .font(.system(size: 16, weight: .medium))
-                    .xpnseAdaptiveForeground()
-                Text("settings.widget_privacy.subtitle")
-                    .font(.system(size: 13, weight: .regular))
-                    .xpnseAdaptiveForeground(muted: true)
-            }
-            Spacer(minLength: 8)
-            Toggle(
-                "",
-                isOn: Binding(
-                    get: { widgetPrivacyEnabled },
-                    set: { newValue in
-                        setWidgetPrivacyEnabled(newValue)
-                    }
-                )
-            )
-            .labelsHidden()
-        }
-        .padding(.vertical, 12)
-        .padding(.horizontal, 12)
-        .background(AdaptiveBrandSurface.rowBackground(for: colorScheme))
-        .xpnseRoundedCorner()
     }
 
     private func toggleAppLock(to enabled: Bool) async {
@@ -461,17 +504,6 @@ struct Settings: View {
         WidgetPrivacyManager.setEnabled(enabled)
         widgetPrivacyEnabled = enabled
         WidgetPrivacyManager.reloadAllWidgets()
-    }
-
-    private func actionLabel(text: String) -> some View {
-        Text(text)
-            .font(.system(size: 16, weight: .medium))
-            .xpnseAdaptiveForeground()
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, 12)
-            .padding(.horizontal, 12)
-            .background(AdaptiveBrandSurface.rowBackground(for: colorScheme))
-            .xpnseRoundedCorner()
     }
 
     private func startExport() {

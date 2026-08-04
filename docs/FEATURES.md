@@ -264,32 +264,37 @@ Compact formatting is used in dense summary UI (balance card chips, chart axes, 
 
 Open **Settings** from the home screen gear icon.
 
-### Preferences
+### Preferences / General
 
 - **Currency** — change default display currency
 - **Number Format** — Auto, Lakhs & Crores, or Millions & Billions (see [Currency](#currency))
+- **Categories** — manage built-in and custom categories
+
+### Privacy & Security
+
 - **App Lock** — optional Face ID / device passcode lock when returning to the app
+- **Hide Financial Info** — mask amounts on the Balance widget until revealed (see [Home screen widgets](#home-screen-widgets))
 
-### Widgets
+### Transactions
 
-- **Hide Financial Information** — mask amounts on the Balance widget until revealed (see [Home screen widgets](#home-screen-widgets))
+- **Recurring Transactions** — manage repeating schedules
 
-### Data portability
+### Data
 
-- **Export All Data** — generates a pretty-printed JSON backup (`snapledger_backup.json`) containing:
+- **Export Data** — generates a pretty-printed JSON backup (`snapledger_backup.json`) containing:
   - Transactions (including optional merchant)
   - Recurring rules (including optional merchant)
   - Custom categories
   - Currency preference
   - Schema version and timestamps (current schema version **7**)
-- **Import All Data** — restores from a compatible JSON backup (supports schema versions up to current)
+- **Import Data** — restores from a compatible JSON backup (supports schema versions up to current)
 
-### Categories & recurring
+### Support & Legal
 
-- **Manage Categories**
-- **Manage Recurring Transactions**
+- **Send Feedback**
+- **Privacy Policy** / **Terms & Conditions**
 
-### Clear local data
+### Danger Zone
 
 - **Clear Local Data** — removes all locally stored transactions (destructive, confirmation via button role)
 
