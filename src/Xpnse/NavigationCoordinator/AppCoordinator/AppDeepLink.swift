@@ -9,6 +9,7 @@ import Foundation
 enum AppDeepLink: Equatable {
     case home
     case addTransaction
+    case shareInbox
     case settingsAppLock
 
     init?(url: URL) {
@@ -24,6 +25,8 @@ enum AppDeepLink: Equatable {
             self = .home
         case "add-transaction":
             self = .addTransaction
+        case "share-inbox":
+            self = .shareInbox
         case "settings" where path == "app-lock":
             self = .settingsAppLock
         default:
@@ -71,6 +74,9 @@ final class AppDeepLinkRouter: ObservableObject {
         case .addTransaction:
             homeCoordinator.popToRoot()
             homeCoordinator.push(.transactions)
+        case .shareInbox:
+            homeCoordinator.popToRoot()
+            SharedTextImportController.shared.markPendingFromDeepLink()
         case .settingsAppLock:
             homeCoordinator.popToRoot()
             if homeCoordinator.path.last != .settings {

@@ -28,6 +28,7 @@ struct CoordinatedHomeView: View {
     @EnvironmentObject var homeCoordinator: NavigationCoordinator<HomeRoute>
     @Environment(\.scenePhase) private var scenePhase
     @StateObject var billScannerService: BillScannerService = BillScannerService()
+    @ObservedObject private var sharedTextImport = SharedTextImportController.shared
     @State private var engagement = UserEngagementCoordinator.shared
     @State private var appLock = AppLockController.shared
     @State private var showAppLockPromo = false
@@ -75,6 +76,33 @@ struct CoordinatedHomeView: View {
             syncBusyWork(for: homeCoordinator.path)
             engagement.reconcile()
             evaluateAppLockPromo()
+            if SharedTextInboxStore.hasContent {
+                sharedTextImport.markPendingFromDeepLink()
+            }
+        }
+        .task(id: sharedTextImport.pendingRequestID) {
+            await sharedTextImport.processIfNeeded(
+                billScannerService: billScannerService,
+                homeCoordinator: homeCoordinator
+            )
+        }
+        .overlay {
+            if sharedTextImport.isAnalyzing {
+                sharedTextAnalyzingOverlay
+            }
+        }
+        .alert(
+            L10n.tr("share.alert_title"),
+            isPresented: Binding(
+                get: { sharedTextImport.alertMessage != nil },
+                set: { if !$0 { sharedTextImport.alertMessage = nil } }
+            )
+        ) {
+            Button(L10n.tr("common.ok"), role: .cancel) {
+                sharedTextImport.alertMessage = nil
+            }
+        } message: {
+            Text(sharedTextImport.alertMessage ?? "")
         }
         .onChange(of: homeCoordinator.path) { _, newPath in
             syncBusyWork(for: newPath)
@@ -218,5 +246,25 @@ struct CoordinatedHomeView: View {
         case .insights:
             break
         }
+    }
+
+    private var sharedTextAnalyzingOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.35)
+                .ignoresSafeArea()
+            VStack(spacing: 16) {
+                ProgressView()
+                    .controlSize(.large)
+                    .tint(.white)
+                Text("share.analyzing")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(28)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(Text("share.analyzing"))
     }
 }

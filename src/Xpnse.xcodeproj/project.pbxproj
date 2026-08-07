@@ -14,6 +14,7 @@
 		5163E0A92E335C6300CBAE96 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 5163E0A82E335C6300CBAE96 /* GoogleSignInSwift */; };
 		51F800012F800001A0000001 /* FirebaseRemoteConfig in Frameworks */ = {isa = PBXBuildFile; productRef = 51F800022F800001A0000002 /* FirebaseRemoteConfig */; };
 		51WGT00E2F30001A00000E /* XpnseWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 51WGT0012F30001A000001 /* XpnseWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		51SHR00E2F30001A00000E /* XpnseShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 51SHR0012F30001A000001 /* XpnseShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -31,6 +32,13 @@
 			remoteGlobalIDString = 51WGT0042F30001A000004;
 			remoteInfo = XpnseWidgets;
 		};
+		51SHR00B2F30001A00000B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 51B3C7652E191B9500B0C61E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 51SHR0042F30001A000004;
+			remoteInfo = XpnseShare;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -41,6 +49,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				51WGT00E2F30001A00000E /* XpnseWidgets.appex in Embed Foundation Extensions */,
+				51SHR00E2F30001A00000E /* XpnseShare.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -51,6 +60,7 @@
 		51B3C76D2E191B9500B0C61E /* Xpnse.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Xpnse.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		51TEST0012F800001A000001 /* XpnseTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = XpnseTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		51WGT0012F30001A000001 /* XpnseWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = XpnseWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		51SHR0012F30001A000001 /* XpnseShare.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = XpnseShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -68,6 +78,13 @@
 				Info.plist,
 			);
 			target = 51WGT0042F30001A000004 /* XpnseWidgets */;
+		};
+		51SHR00F2F30001A00000F /* Exceptions for "XpnseShare" folder in "XpnseShare" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 51SHR0042F30001A000004 /* XpnseShare */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -96,6 +113,14 @@
 				51WGT00F2F30001A00000F /* Exceptions for "XpnseWidgets" folder in "XpnseWidgets" target */,
 			);
 			path = XpnseWidgets;
+			sourceTree = "<group>";
+		};
+		51SHR0032F30001A000003 /* XpnseShare */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				51SHR00F2F30001A00000F /* Exceptions for "XpnseShare" folder in "XpnseShare" target */,
+			);
+			path = XpnseShare;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -128,6 +153,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		51SHR0052F30001A000005 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -138,6 +170,7 @@
 				51B3C76F2E191B9500B0C61E /* Xpnse */,
 				51WGT0022F30001A000002 /* XpnseShared */,
 				51WGT0032F30001A000003 /* XpnseWidgets */,
+				51SHR0032F30001A000003 /* XpnseShare */,
 				51TEST0022F800001A000002 /* XpnseTests */,
 			);
 			sourceTree = "<group>";
@@ -147,6 +180,7 @@
 			children = (
 				51B3C76D2E191B9500B0C61E /* Xpnse.app */,
 				51WGT0012F30001A000001 /* XpnseWidgets.appex */,
+				51SHR0012F30001A000001 /* XpnseShare.appex */,
 				51TEST0012F800001A000001 /* XpnseTests.xctest */,
 			);
 			name = Products;
@@ -170,6 +204,7 @@
 			);
 			dependencies = (
 				51WGT00C2F30001A00000C /* PBXTargetDependency */,
+				51SHR00C2F30001A00000C /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				51B3C76F2E191B9500B0C61E /* Xpnse */,
@@ -230,6 +265,27 @@
 			productReference = 51WGT0012F30001A000001 /* XpnseWidgets.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		51SHR0042F30001A000004 /* XpnseShare */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 51SHR0082F30001A000008 /* Build configuration list for PBXNativeTarget "XpnseShare" */;
+			buildPhases = (
+				51SHR0072F30001A000007 /* Sources */,
+				51SHR0052F30001A000005 /* Frameworks */,
+				51SHR0062F30001A000006 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				51WGT0022F30001A000002 /* XpnseShared */,
+				51SHR0032F30001A000003 /* XpnseShare */,
+			);
+			name = XpnseShare;
+			productName = XpnseShare;
+			productReference = 51SHR0012F30001A000001 /* XpnseShare.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -248,6 +304,9 @@
 						TestTargetID = 51B3C76C2E191B9500B0C61E;
 					};
 					51WGT0042F30001A000004 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+					51SHR0042F30001A000004 = {
 						CreatedOnToolsVersion = 26.0;
 					};
 				};
@@ -275,6 +334,7 @@
 			targets = (
 				51B3C76C2E191B9500B0C61E /* Xpnse */,
 				51WGT0042F30001A000004 /* XpnseWidgets */,
+				51SHR0042F30001A000004 /* XpnseShare */,
 				51TEST0032F800001A000003 /* XpnseTests */,
 			);
 		};
@@ -296,6 +356,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		51WGT0062F30001A000006 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		51SHR0062F30001A000006 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -376,6 +443,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		51SHR0072F30001A000007 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -388,6 +462,11 @@
 			isa = PBXTargetDependency;
 			target = 51WGT0042F30001A000004 /* XpnseWidgets */;
 			targetProxy = 51WGT00B2F30001A00000B /* PBXContainerItemProxy */;
+		};
+		51SHR00C2F30001A00000C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 51SHR0042F30001A000004 /* XpnseShare */;
+			targetProxy = 51SHR00B2F30001A00000B /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -718,6 +797,64 @@
 			};
 			name = Release;
 		};
+		51SHR0092F30001A000009 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = XpnseShare/XpnseShare.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 99BB8PQ3VU;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = XpnseShare/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "SnapLedger-Debug";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.snapledgerapp.ios.share;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		51SHR00A2F30001A00000A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = "XpnseShare/XpnseShare-Release.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 99BB8PQ3VU;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = XpnseShare/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = SnapLedger;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.snapledger.ios.share;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -753,6 +890,15 @@
 			buildConfigurations = (
 				51WGT0092F30001A000009 /* Debug */,
 				51WGT00A2F30001A00000A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		51SHR0082F30001A000008 /* Build configuration list for PBXNativeTarget "XpnseShare" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				51SHR0092F30001A000009 /* Debug */,
+				51SHR00A2F30001A00000A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

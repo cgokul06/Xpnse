@@ -22,8 +22,9 @@ SnapLedger is a native iOS expense-tracking app that helps you record income and
 11. [Insights](#insights)
 12. [Notifications](#notifications)
 13. [Deep links](#deep-links)
-14. [Architecture & data storage](#architecture--data-storage)
-15. [Requirements & dependencies](#requirements--dependencies)
+14. [Share to SnapLedger](#share-to-snapledger)
+15. [Architecture & data storage](#architecture--data-storage)
+16. [Requirements & dependencies](#requirements--dependencies)
 
 ---
 
@@ -44,6 +45,7 @@ SnapLedger is a native iOS expense-tracking app that helps you record income and
 | Backup & restore | Export and import full JSON backups |
 | Widgets | Balance snapshot and quick-add shortcuts; optional privacy hide |
 | Insights | Deterministic analytics + on-device AI coaching cards |
+| Share to SnapLedger | Share text from other apps; on-device AI extracts a transaction and opens Add Transaction prefilled |
 
 ---
 
@@ -383,8 +385,22 @@ Custom URL scheme: `snapledger://`
 |---|---|
 | `snapledger://home` | Open home dashboard |
 | `snapledger://add-transaction` | Open add-transaction screen |
+| `snapledger://share-inbox` | Process shared text from the Share Extension |
 
-Used by widgets and can be invoked from Shortcuts or other apps.
+Used by widgets, the Share Extension, and can be invoked from Shortcuts or other apps.
+
+---
+
+## Share to SnapLedger
+
+From the iOS share sheet in other apps, choose **SnapLedger** when sharing **text**:
+
+1. The Share Extension writes the text into the App Group inbox and opens the app
+2. SnapLedger shows an analyzing overlay and runs on-device Foundation Models
+3. If the text is transaction-related, **Add Transaction** opens with amount, description, category, type, and date prefilled
+4. If the text is unrelated (or analysis fails), an alert explains why and the form is not opened
+
+Images and files are not supported in this version.
 
 ---
 

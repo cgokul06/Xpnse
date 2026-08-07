@@ -44,6 +44,76 @@ class BillScannerService: ObservableObject {
         isScanning = false
     }
 
+    /// Analyzes shared plain text for a transaction (Share Extension → Add Transaction).
+    func analyzeSharedText(_ text: String) async {
+        isScanning = true
+        errorMessage = nil
+        extractedTransaction = nil
+        AppAnalytics.logEvent(AppAnalytics.Event.shareTextAnalyzeStart)
+
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            errorMessage = L10n.tr("share.empty_text")
+            AppAnalytics.logEvent(
+                AppAnalytics.Event.shareTextAnalyzeResult,
+                parameters: [AppAnalytics.Param.result: "empty"]
+            )
+            isScanning = false
+            return
+        }
+
+        do {
+            let analysis = try await parseSharedTextWithLanguageModel(trimmed)
+            guard analysis.isTransactionRelated else {
+                errorMessage = L10n.tr("share.not_transaction")
+                AppAnalytics.logEvent(
+                    AppAnalytics.Event.shareTextAnalyzeResult,
+                    parameters: [AppAnalytics.Param.result: "not_related"]
+                )
+                isScanning = false
+                return
+            }
+
+            var scanned = analysis.asScannedTransaction()
+            let defaultCategory = BuiltinCategories.defaultCategoryId(for: scanned.type)
+
+            // Enforce missing-field policy (do not trust invented model filler).
+            if !analysis.titleFoundInText {
+                scanned.title = ""
+            }
+            if analysis.categoryFoundInText {
+                scanned.categoryId = CategoryStore.shared.mapScannedCategoryId(
+                    scanned.categoryId,
+                    transactionType: scanned.type
+                )
+            } else {
+                scanned.categoryId = defaultCategory
+            }
+            if !analysis.dateFoundInText {
+                let formatter = DateFormatter()
+                formatter.locale = Locale(identifier: "en_US_POSIX")
+                formatter.timeZone = .current
+                formatter.dateFormat = "yyyy-MM-dd"
+                scanned.date = formatter.string(from: Date())
+                scanned.dateFormat = "yyyy-MM-dd"
+            }
+
+            extractedTransaction = scanned
+            AppAnalytics.logEvent(
+                AppAnalytics.Event.shareTextAnalyzeResult,
+                parameters: [AppAnalytics.Param.result: "success"]
+            )
+        } catch {
+            errorMessage = error.localizedDescription
+            AppAnalytics.logEvent(
+                AppAnalytics.Event.shareTextAnalyzeResult,
+                parameters: [AppAnalytics.Param.result: "fail"]
+            )
+        }
+
+        isScanning = false
+    }
+
     // MARK: - Data Extraction
 
     private func extractTransactionFromImage(_ image: UIImage) async throws -> ScannedTransaction {
@@ -97,6 +167,51 @@ class BillScannerService: ObservableObject {
             transactionType: scanned.type
         )
         return scanned
+    }
+
+    private func parseSharedTextWithLanguageModel(
+        _ sharedText: String
+    ) async throws -> SharedTextTransactionAnalysis {
+        await CategoryStore.shared.load()
+        let expenseGuide = CategoryStore.shared.categoryGuideDescription(for: .expense)
+        let savingsGuide = CategoryStore.shared.categoryGuideDescription(for: .savings)
+        let incomeGuide = CategoryStore.shared.categoryGuideDescription(for: .income)
+        let prompt = """
+        Decide whether the following shared text describes a financial transaction \
+        (purchase, payment, transfer, bill, refund, income, or savings). \
+        Set isTransactionRelated to true only when it clearly does; otherwise false.
+
+        When isTransactionRelated is true:
+        - Extract amount when present.
+        - titleFoundInText: true only if a merchant, payee, or description is explicitly stated; \
+          otherwise false and set title to an empty string. Never invent a title.
+        - categoryFoundInText: true only if a specific category is clearly stated or strongly implied; \
+          otherwise false and set categoryId to the type default \
+          (expense→\(BuiltinCategories.defaultCategoryId(for: .expense)), \
+          savings→\(BuiltinCategories.defaultCategoryId(for: .savings)), \
+          income→\(BuiltinCategories.defaultCategoryId(for: .income))). Never guess a category.
+        - dateFoundInText: true only if an explicit calendar date appears; \
+          otherwise false and set date to today's date with dateFormat yyyy-MM-dd. Never invent a date.
+        - When categoryFoundInText is true, categoryId must be from: \
+          expense (\(expenseGuide)); savings (\(savingsGuide)); income (\(incomeGuide)).
+        Prefer expense when type is unclear but still transaction-related.
+
+        When isTransactionRelated is false, use false for the *FoundInText flags and empty/zero placeholders.
+
+        Shared text:
+        \(sharedText)
+        """
+
+        guard FoundationModelsAvailability.isAvailable else {
+            throw BillScannerError.modelUnavailable(
+                FoundationModelsAvailability.unavailabilityMessage
+                    ?? L10n.tr("scanner.model_unavailable")
+            )
+        }
+
+        let session = LanguageModelSession()
+        let response = try await session.respond(to: prompt, generating: SharedTextTransactionAnalysis.self)
+        return response.content
     }
 
     // MARK: - Error Handling

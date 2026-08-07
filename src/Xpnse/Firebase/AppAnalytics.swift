@@ -94,6 +94,8 @@ enum AppAnalytics {
         static let txnDelete = "txn_delete"
         static let receiptScanStart = "receipt_scan_start"
         static let receiptScanResult = "receipt_scan_result"
+        static let shareTextAnalyzeStart = "share_text_analyze_start"
+        static let shareTextAnalyzeResult = "share_text_analyze_result"
         static let categoryAdd = "category_add"
         static let categoryEdit = "category_edit"
         static let exportBackup = "export_backup"

@@ -4,8 +4,8 @@
 
 SnapLedger is a native iOS expense-tracking app built with **SwiftUI** and **Swift 5**, targeting **iOS 26.0**. It uses SwiftData for local persistence, Firebase for auth/profile sync, Crashlytics, Analytics, and Remote Config feature gating, and Apple's FoundationModels for receipt scanning. There is no backend server, no web component, and no Docker infrastructure.
 
-**Debug app bundle ID:** `com.snapledgerapp.ios` · **Debug widget:** `com.snapledgerapp.ios.widgets` · **Debug App Group:** `group.com.snapledgerapp.ios.shared`  
-**Prod (Release) app:** `com.snapledger.ios` · **Prod widget:** `com.snapledger.ios.widgets` · **Prod App Group:** `group.com.snapledger.ios.shared`
+**Debug app bundle ID:** `com.snapledgerapp.ios` · **Debug widget:** `com.snapledgerapp.ios.widgets` · **Debug share:** `com.snapledgerapp.ios.share` · **Debug App Group:** `group.com.snapledgerapp.ios.shared`  
+**Prod (Release) app:** `com.snapledger.ios` · **Prod widget:** `com.snapledger.ios.widgets` · **Prod share:** `com.snapledger.ios.share` · **Prod App Group:** `group.com.snapledger.ios.shared`
 
 See [docs/FIREBASE_ENVIRONMENTS.md](docs/FIREBASE_ENVIRONMENTS.md) for dual Firebase / GoogleService-Info setup.
 
