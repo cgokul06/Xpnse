@@ -102,6 +102,17 @@ final class CompactNumberFormatterTests: XCTestCase {
         XCTAssertEqual(NumberFormatPreference.million.resolvedStyle, .million)
     }
 
+    func testSalaryAmountDoesNotRoundUpToWholeLakh() {
+        // Regression: 198000 must be 1.98L, not Apple compactName's 2L.
+        XCTAssertEqual(lakhCrore.format(Decimal(198_000)), "1.98L")
+        XCTAssertEqual(million.format(Decimal(198_000)), "198K")
+    }
+
+    func testSubThousandKeepsTwoFractionDigitsWhenNeeded() {
+        XCTAssertEqual(lakhCrore.format(Decimal(string: "172.80")!), "172.8")
+        XCTAssertEqual(million.format(Decimal(string: "99.99")!), "99.99")
+    }
+
     func testFormatCompactComposesCurrencySymbol() {
         let compact = AmountFormatter.formatCompact(
             Decimal(125000),

@@ -23,8 +23,16 @@ enum AmountFormatter {
     }
 
     /// Editable amount string without currency (TextField). No grouping separators.
+    /// Formats via `NumberFormatter` on the `Double` so binary float noise (e.g. 172.799999998) rounds to 2 dp.
     static func format(_ value: Double) -> String {
-        formatForEditing(Decimal(value))
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.usesGroupingSeparator = false
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = 2
+        return formatter.string(from: NSNumber(value: value))
+            ?? formatForEditing(Decimal(value))
     }
 
     static func format(_ value: Decimal) -> String {

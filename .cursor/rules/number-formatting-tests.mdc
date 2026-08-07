@@ -1,0 +1,17 @@
+---
+description: Run number formatting tests before any git commit; amount/number accuracy is top priority.
+alwaysApply: true
+---
+
+# Number formatting tests before commits
+
+Amount and number formatting is **top priority**. Before creating any git commit:
+
+1. On macOS, run:
+   ```bash
+   ./scripts/run-number-tests.sh
+   ```
+2. Do **not** commit if `AmountFormatterTests` or `CompactNumberFormatterTests` fail.
+3. Prefer fixing the regression over disabling or weakening assertions.
+
+These suites cover edit-field float precision (`172.80` → `172.8`), parse/round-trip (including grouped thousands), exact currency (no compact leakage), and compact lakh/crore vs million thresholds (`198000` → `1.98L`).

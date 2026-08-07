@@ -119,7 +119,7 @@ struct AddTransactionView: View {
             return
         }
 
-        self.amount = "\(txn.amount)"
+        self.amount = AmountFormatter.format(txn.amount)
         self.selectedDate = Date(timeIntervalSince1970: txn.date)
         self.description = txn.title
         self.merchant = txn.merchant ?? ""

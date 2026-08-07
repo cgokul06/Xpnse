@@ -52,11 +52,38 @@ After **every code change**, always run a build/error check before considering t
 - On macOS/Xcode: run a project build in Xcode (or `xcodebuild`) and fix any new errors.
 - On Linux Cloud Agent: run `swiftc -parse` for changed Swift files, and run `swiftlint lint` when relevant.
 
+### Number formatting tests (mandatory before commits)
+
+Amount / number formatting is high priority. Before **any git commit** on macOS, run the number test suite and do not commit if it fails:
+
+```bash
+# From repo root — runs AmountFormatterTests + CompactNumberFormatterTests
+./scripts/run-number-tests.sh
+```
+
+Or equivalently:
+
+```bash
+cd src
+xcodebuild test \
+  -scheme SnapLedger-Debug \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -only-testing:XpnseTests/AmountFormatterTests \
+  -only-testing:XpnseTests/CompactNumberFormatterTests
+```
+
+Covered scenarios (see `src/XpnseTests/`):
+
+- Edit-field seeding without binary float noise (`172.80` → `172.8`, not `172.799999998`)
+- `parseDecimal` / round-trip (including locale-grouped thousands like `198,000`)
+- Exact currency formatting (no compact K/L/Cr leakage)
+- Compact lakh/crore vs million thresholds (including `198000` → `1.98L`)
+
 ### What you cannot do on this VM
 
 - `xcodebuild` / full project compilation — requires macOS + Xcode 26
 - Run the app in iOS Simulator — requires macOS
-- Run automated tests — no test targets exist in the project
+- Run `xcodebuild test` / number tests — requires macOS + Xcode
 - Resolve SPM package dependencies — the project uses Xcode-managed SPM, not a standalone `Package.swift`
 
 ### Building and running the app (requires macOS)
