@@ -11,6 +11,8 @@ See [docs/FIREBASE_ENVIRONMENTS.md](docs/FIREBASE_ENVIRONMENTS.md) for dual Fire
 
 **Schemes:** `SnapLedger-Debug` (Debug config) · `SnapLedger` (Release/Prod config)
 
+**Versioning:** Marketing + build numbers live in [`src/Config/Version.xcconfig`](src/Config/Version.xcconfig). Archiving `SnapLedger` / `SnapLedger-Debug` runs [`scripts/bump-build-number.sh --commit`](scripts/bump-build-number.sh), which increments `CURRENT_PROJECT_VERSION` and commits only that file. Bump `MARKETING_VERSION` manually for store releases.
+
 Key directories:
 - `src/Xpnse/` — all Swift source (76 files)
 - `src/Xpnse.xcodeproj/` — Xcode project definition

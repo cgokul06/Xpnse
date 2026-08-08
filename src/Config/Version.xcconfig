@@ -1,0 +1,5 @@
+// Marketing version (CFBundleShortVersionString). Bump manually for App Store releases.
+MARKETING_VERSION = 1.2.0
+
+// Build number (CFBundleVersion). Auto-incremented on Archive via scripts/bump-build-number.sh.
+CURRENT_PROJECT_VERSION = 1

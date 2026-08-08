@@ -88,5 +88,23 @@
    <ArchiveAction
       buildConfiguration = "Release"
       revealArchiveInOrganizer = "YES">
+      <PreActions>
+         <ExecutionAction
+            ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
+            <ActionContent
+               title = "Bump Build Number"
+               scriptText = "set -euo pipefail&#10;&quot;${PROJECT_DIR}/../scripts/bump-build-number.sh&quot; --commit&#10;">
+               <EnvironmentBuildable>
+                  <BuildableReference
+                     BuildableIdentifier = "primary"
+                     BlueprintIdentifier = "51B3C76C2E191B9500B0C61E"
+                     BuildableName = "Xpnse.app"
+                     BlueprintName = "Xpnse"
+                     ReferencedContainer = "container:Xpnse.xcodeproj">
+                  </BuildableReference>
+               </EnvironmentBuildable>
+            </ActionContent>
+         </ExecutionAction>
+      </PreActions>
    </ArchiveAction>
 </Scheme>
