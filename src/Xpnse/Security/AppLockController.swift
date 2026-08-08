@@ -111,6 +111,12 @@ final class AppLockController {
             isLocked = !isWithinGracePeriod
             return
         }
+
+        // Backgrounding while still in grace leaves shouldLockWhenActive false.
+        // If the process stays suspended past grace, re-check here on activation.
+        if !isWithinGracePeriod {
+            isLocked = true
+        }
     }
 
     func markUnlocked() {
