@@ -34,6 +34,9 @@ struct Home: View {
     @StateObject private var homeViewModel: HomeScreenViewModel = HomeScreenViewModel()
     @State private var monthDragOffset: CGFloat = 0
     @State private var monthDragAxis: MonthDragAxis?
+    /// When false, only the current month mounts a full `TransactionListView` (neighbors are shells).
+    /// Set true for the duration of a horizontal swipe / animated month change.
+    @State private var mountsNeighborMonthLists = false
     @State private var monthScrollAnchors: [Int: TransactionListPersistedAnchor] = [:]
     @State private var isSummaryCardShowingDonut = false
     @State private var transactionListGrouping: TransactionListGrouping = TransactionListPreferences.grouping
@@ -341,11 +344,29 @@ struct Home: View {
     }
 
     private func monthContentPanel(for key: Int, pageWidth: CGFloat) -> some View {
-        transactionListPanel(for: key, pageWidth: pageWidth)
-            .id(key)
-            .frame(width: pageWidth, alignment: .topLeading)
-            .frame(maxHeight: .infinity, alignment: .topLeading)
-            .contentShape(Rectangle())
+        Group {
+            if shouldMountFullMonthList(for: key) {
+                transactionListPanel(for: key, pageWidth: pageWidth)
+            } else {
+                monthPlaceholderPanel()
+            }
+        }
+        .id(key)
+        .frame(width: pageWidth, alignment: .topLeading)
+        .frame(maxHeight: .infinity, alignment: .topLeading)
+        .contentShape(Rectangle())
+    }
+
+    private func shouldMountFullMonthList(for key: Int) -> Bool {
+        key == homeViewModel.currentKey || mountsNeighborMonthLists
+    }
+
+    /// Cheap stand-in so offscreen pager slots don't retain list / sticky / upcoming state.
+    private func monthPlaceholderPanel() -> some View {
+        Color.clear
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .padding(.horizontal, 16)
+            .accessibilityHidden(true)
     }
 
     private func monthHasTransactions(for key: Int) -> Bool {
@@ -365,6 +386,7 @@ struct Home: View {
 
                     if absHorizontal > absVertical * 1.25 {
                         monthDragAxis = .horizontal
+                        mountsNeighborMonthLists = true
                     } else {
                         monthDragAxis = .vertical
                         return
@@ -372,6 +394,9 @@ struct Home: View {
                 }
 
                 guard monthDragAxis == .horizontal else { return }
+                if !mountsNeighborMonthLists {
+                    mountsNeighborMonthLists = true
+                }
                 monthDragOffset = rubberBandedOffset(horizontal, pageWidth: pageWidth)
             }
             .onEnded { value in
@@ -380,6 +405,8 @@ struct Home: View {
                 guard monthDragAxis == .horizontal else {
                     if monthDragOffset != 0 {
                         snapMonthOffsetToZero()
+                    } else {
+                        mountsNeighborMonthLists = false
                     }
                     return
                 }
@@ -420,16 +447,33 @@ struct Home: View {
     private func snapMonthOffsetToZero() {
         withAnimation(MonthPagerAnimation.slide) {
             monthDragOffset = 0
+        } completion: {
+            mountsNeighborMonthLists = false
         }
     }
 
     private func commitMonthChange(direction: Int, pageWidth: CGFloat) {
         let targetOffset: CGFloat = direction > 0 ? -pageWidth : pageWidth
+        let needsNeighborMount = !mountsNeighborMonthLists
+        mountsNeighborMonthLists = true
 
-        withAnimation(MonthPagerAnimation.slide) {
-            monthDragOffset = targetOffset
-        } completion: {
-            applyMonthChange(direction: direction)
+        let runSlide = {
+            withAnimation(MonthPagerAnimation.slide) {
+                monthDragOffset = targetOffset
+            } completion: {
+                applyMonthChange(direction: direction)
+                mountsNeighborMonthLists = false
+            }
+        }
+
+        if needsNeighborMount {
+            // Button-driven changes: mount neighbors one frame before sliding.
+            Task { @MainActor in
+                await Task.yield()
+                runSlide()
+            }
+        } else {
+            runSlide()
         }
     }
 
