@@ -8,7 +8,7 @@ import FoundationModels
 
 @Generable
 struct InsightsNarrativeResult {
-    @Guide(description: "1-3 sentences in second person (you/your) about the current focus month only. Cover where you stand now, why it matters, and a gentle next step. Never mention prior months or say 'the user'.")
+    @Guide(description: "1-3 sentences in second person (you/your) about the current focus month only. Cover where you stand now, why it matters, and a gentle next step. For savings vs the 20–30% guide, paste healthBreakdown.savingsRateAssessment verbatim — never invent above/below/strong. Never mention prior months or say 'the user'.")
     var healthSummary: String
 
     @Guide(description: "Short second-person spending personality label, e.g. 'Planned spender' or 'You seem like a steady saver'. Never 'the user'.")
@@ -66,7 +66,7 @@ final class InsightsNarrativeService {
             create: true
         )) ?? fm.urls(for: .documentDirectory, in: .userDomainMask)[0]
         let lang = L10n.preferredLanguageCode
-        return base.appendingPathComponent("insights-narrative-cache-v5-\(lang).json")
+        return base.appendingPathComponent("insights-narrative-cache-v6-\(lang).json")
     }
 
     func narratives(for snapshot: InsightsSnapshot) async -> (InsightsNarratives, wasFreshlyGenerated: Bool) {
@@ -93,6 +93,9 @@ final class InsightsNarrativeService {
         let result = await work.value
         if result.hasContent {
             memoryCache[key] = result
+            if memoryCache.count > 12 {
+                memoryCache = Dictionary(uniqueKeysWithValues: memoryCache.suffix(12))
+            }
             persist(key: key, value: result)
             return (result, true)
         }
@@ -124,11 +127,13 @@ final class InsightsNarrativeService {
         Use ONLY the JSON snapshot below. Do not invent amounts, merchants, or categories.
         The financial health star rating is already computed in `healthBreakdown.finalStars` and `healthBreakdown.totalScore`.
         Do NOT change or recalculate the score. Explain it using `healthBreakdown.reasons`.
-        For savings rate, use `healthBreakdown.savingsRateAssessment` verbatim — it already states whether the rate is below, within, or above the guide. Never say a higher percent is "below" a lower range (e.g. 38% is above 20–30%, not below).
+        For savings rate, use `healthBreakdown.savingsRateAssessment` verbatim — it already states whether the rate is below, within, or above the guide.
+        Never invert comparisons: 19% is below 20–30% (not strong/above); 38% is above 20–30% (not below).
+        Do not paraphrase the savings-rate comparison in your own words if you might get the direction wrong — paste the assessment string.
         Financial health scope (mandatory):
         - Discuss ONLY the current focus month (`focusMonthLabel`). Never mention prior months by name, past savings targets, or historical failures.
         - All `healthBreakdown.reasons` refer to this month — keep the summary forward-looking and about where you stand now.
-        Example tone (adapt into \(languageName)): "Your financial health is rated 4/5. You're on track with forecast savings this month, though shopping ran above your usual level."
+        Example tone (adapt into \(languageName)): "Your financial health is rated 4/5. Forecast savings rate is 19% — below the 20–30% guide. Shopping ran above your usual level."
         \(FinancialHealthRules.rulesPromptText())
         Snapshot JSON:
         \(json)
@@ -139,8 +144,18 @@ final class InsightsNarrativeService {
             let response = try await session.respond(to: prompt, generating: InsightsNarrativeResult.self)
             guard !Task.isCancelled else { return .empty }
             let content = response.content
-            return InsightsNarratives(
-                healthSummary: content.healthSummary.trimmingCharacters(in: .whitespacesAndNewlines),
+            let rawSummary = content.healthSummary.trimmingCharacters(in: .whitespacesAndNewlines)
+            let forecastRate = snapshot.forecast.expectedIncome > 0.01
+                ? snapshot.forecast.expectedSavings / snapshot.forecast.expectedIncome
+                : 0
+            let aligned = FinancialHealthScoring.alignedHealthSummary(
+                modelText: rawSummary,
+                assessment: snapshot.healthBreakdown.savingsRateAssessment,
+                ratePercent: snapshot.healthBreakdown.forecastSavingsRatePercent,
+                forecastRate: forecastRate
+            )
+            let narratives = InsightsNarratives(
+                healthSummary: aligned.text,
                 personalityLabel: content.personalityLabel.trimmingCharacters(in: .whitespacesAndNewlines),
                 personalityBlurb: content.personalityBlurb.trimmingCharacters(in: .whitespacesAndNewlines),
                 merchantGloss: content.merchantGloss.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -151,7 +166,26 @@ final class InsightsNarrativeService {
                     .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
                     .filter { !$0.isEmpty }
             )
+            DeviceDebugLogger.log(
+                "insights narrative generated",
+                category: "insights.health",
+                data: [
+                    "assessment": snapshot.healthBreakdown.savingsRateAssessment,
+                    "assessmentPct": snapshot.healthBreakdown.forecastSavingsRatePercent,
+                    "rawHealthSummary": rawSummary,
+                    "finalHealthSummary": narratives.healthSummary,
+                    "corrected": aligned.corrected,
+                    "stars": snapshot.healthBreakdown.finalStars,
+                    "totalScore": snapshot.healthBreakdown.totalScore
+                ]
+            )
+            return narratives
         } catch {
+            DeviceDebugLogger.log(
+                "insights narrative failed",
+                category: "insights.health",
+                data: ["error": String(describing: error)]
+            )
             return .empty
         }
     }

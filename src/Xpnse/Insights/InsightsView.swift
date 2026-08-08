@@ -7,6 +7,7 @@ import SwiftUI
 
 struct InsightsView: View {
     @StateObject private var viewModel = InsightsViewModel()
+    @State private var createRecurringSuggestion: InsightsPotentialRecurring?
 
     var body: some View {
         ZStack {
@@ -37,6 +38,11 @@ struct InsightsView: View {
         .onDisappear {
             viewModel.onDisappear()
         }
+        .sheet(item: $createRecurringSuggestion) { suggestion in
+            EditRecurringTransactionView(suggestion: suggestion) {
+                viewModel.onAppear()
+            }
+        }
     }
 
     private var insightsContent: some View {
@@ -48,7 +54,6 @@ struct InsightsView: View {
 
                 if let snapshot = viewModel.snapshot, snapshot.hasMeaningfulData {
                     InsightHealthCard(
-                        score: snapshot.healthBreakdown.finalStars,
                         totalScore: snapshot.healthBreakdown.totalScore,
                         savingsRate: snapshot.forecast.expectedIncome > 0
                             ? snapshot.forecast.expectedSavings / snapshot.forecast.expectedIncome
@@ -58,25 +63,25 @@ struct InsightsView: View {
                         personalityBlurb: viewModel.narratives.personalityBlurb
                     )
 
-                    InsightBiggestChangesCard(
-                        changes: snapshot.biggestChanges,
-                        currencyCode: CurrencyManager.shared.selectedCurrency.code
-                    )
+                    if !snapshot.biggestChanges.isEmpty {
+                        InsightBiggestChangesCard(
+                            changes: snapshot.biggestChanges,
+                            currencyCode: CurrencyManager.shared.selectedCurrency.code
+                        )
+                    }
 
                     InsightTopMerchantsCard(
                         merchants: snapshot.topMerchants,
                         currencyCode: CurrencyManager.shared.selectedCurrency.code,
-                        gloss: viewModel.narratives.merchantGloss,
-                        excludeRecurring: Binding(
-                            get: { viewModel.excludeRecurringFromTopSpends },
-                            set: { viewModel.setExcludeRecurringFromTopSpends($0) }
-                        )
+                        gloss: viewModel.narratives.merchantGloss
                     )
 
-                    InsightCategoryHealthCard(
-                        baselines: snapshot.categoryBaselines,
-                        currencyCode: CurrencyManager.shared.selectedCurrency.code
-                    )
+                    if !snapshot.categoryBaselines.isEmpty {
+                        InsightCategoryHealthCard(
+                            baselines: snapshot.categoryBaselines,
+                            currencyCode: CurrencyManager.shared.selectedCurrency.code
+                        )
+                    }
 
                     InsightForecastCard(
                         forecast: snapshot.forecast,
@@ -87,6 +92,15 @@ struct InsightsView: View {
                         InsightEventsCard(
                             events: snapshot.events,
                             currencyCode: CurrencyManager.shared.selectedCurrency.code
+                        )
+                    }
+
+                    if !snapshot.potentialRecurring.isEmpty {
+                        InsightPotentialRecurringCard(
+                            items: snapshot.potentialRecurring,
+                            currencyCode: CurrencyManager.shared.selectedCurrency.code,
+                            onMakeRecurring: { createRecurringSuggestion = $0 },
+                            onMarkNotRecurring: { viewModel.dismissPotentialRecurring($0) }
                         )
                     }
 

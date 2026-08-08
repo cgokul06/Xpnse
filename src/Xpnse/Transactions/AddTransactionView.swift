@@ -79,7 +79,11 @@ struct AddTransactionView: View {
     private var recurringDateRangeValid: Bool {
         guard isRecurring else { return true }
         guard hasRecurringEndDate else { return true }
-        return recurringEndDate >= selectedDate
+        let cal = Calendar.current
+        let endDay = cal.startOfDay(for: recurringEndDate)
+        let startDay = cal.startOfDay(for: selectedDate)
+        let today = cal.startOfDay(for: Date())
+        return endDay > startDay && endDay >= today
     }
 
     private var isRecurringReminderScheduleValid: Bool {
@@ -286,7 +290,14 @@ struct AddTransactionView: View {
                 }
                 .onChange(of: selectedDate) { _, newValue in
                     recurrenceFrequency = recurrenceFrequency.aligned(to: newValue)
+                    if hasRecurringEndDate {
+                        ensureRecurringEndDateAfterStart(start: newValue)
+                    }
                     clampReminderDateTimeToTransactionDay(newValue)
+                }
+                .onChange(of: hasRecurringEndDate) { _, enabled in
+                    guard enabled else { return }
+                    ensureRecurringEndDateAfterStart(start: selectedDate)
                 }
 
                 if isDeleting {
@@ -423,6 +434,18 @@ struct AddTransactionView: View {
         }
         if next != reminderDateTime {
             reminderDateTime = next
+        }
+    }
+
+    /// End date must be after start and on/after today.
+    private func ensureRecurringEndDateAfterStart(start: Date) {
+        let cal = Calendar.current
+        let startDay = cal.startOfDay(for: start)
+        let today = cal.startOfDay(for: Date())
+        let dayAfterStart = cal.date(byAdding: .day, value: 1, to: startDay) ?? startDay
+        let minimumEnd = max(dayAfterStart, today)
+        if cal.startOfDay(for: recurringEndDate) < minimumEnd {
+            recurringEndDate = minimumEnd
         }
     }
 

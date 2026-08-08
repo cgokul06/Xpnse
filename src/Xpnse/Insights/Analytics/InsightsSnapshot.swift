@@ -76,6 +76,22 @@ struct InsightsSubscription: Codable, Equatable, Sendable, Identifiable {
     let monthly: Double
 }
 
+/// A non-recurring expense the model thinks looks like a loan / EMI / subscription.
+struct InsightsPotentialRecurring: Codable, Equatable, Sendable, Identifiable {
+    let id: String
+    let title: String
+    let merchant: String?
+    let amount: Double
+    let categoryId: String
+    let date: Double
+    let type: String
+    let reason: String
+    /// One of: daily, weekly, biweekly, monthly, bimonthly, quarterly.
+    let suggestedFrequency: String
+    /// Model/heuristic confidence 0–100; only items ≥ 80 are shown.
+    let confidencePercent: Int
+}
+
 struct InsightsForecast: Codable, Equatable, Sendable {
     let expectedIncome: Double
     let expectedExpense: Double
@@ -124,6 +140,7 @@ struct InsightsSnapshot: Codable, Equatable, Sendable {
     let forecast: InsightsForecast
     let outliers: [InsightsOutlier]
     let subscriptions: [InsightsSubscription]
+    let potentialRecurring: [InsightsPotentialRecurring]
     let events: [InsightsFinancialEvent]
     let categoryBaselines: [InsightsCategoryBaseline]
     let healthScore: Int
@@ -137,5 +154,31 @@ struct InsightsSnapshot: Codable, Equatable, Sendable {
         months.contains { $0.expense > 0 || $0.income > 0 }
             || !topMerchants.isEmpty
             || !categoryAllocation.isEmpty
+            || !potentialRecurring.isEmpty
+    }
+
+    func replacing(potentialRecurring newValue: [InsightsPotentialRecurring]) -> InsightsSnapshot {
+        InsightsSnapshot(
+            focusMonthLabel: focusMonthLabel,
+            focusYear: focusYear,
+            focusMonth: focusMonth,
+            currencySymbol: currencySymbol,
+            months: months,
+            categoryAllocation: categoryAllocation,
+            topMerchants: topMerchants,
+            biggestChanges: biggestChanges,
+            forecast: forecast,
+            outliers: outliers,
+            subscriptions: subscriptions,
+            potentialRecurring: newValue,
+            events: events,
+            categoryBaselines: categoryBaselines,
+            healthScore: healthScore,
+            healthBreakdown: healthBreakdown,
+            savingsRate: savingsRate,
+            subscriptionShareOfExpense: subscriptionShareOfExpense,
+            lifestyleExpense: lifestyleExpense,
+            contentHash: contentHash
+        )
     }
 }

@@ -13,7 +13,8 @@ enum SwiftDataStack {
         let schema = Schema([
             TransactionEntity.self,
             RecurringTransactionEntity.self,
-            CategoryEntity.self
+            CategoryEntity.self,
+            PotentialRecurringDismissEntity.self
         ])
 
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)

@@ -11,8 +11,6 @@ import Foundation
 enum UserDefaultsKey: String {
     case selectedCurrencyCode
     case calendarAggregator
-    /// When true, Insights Top Spends ranks only non-recurring-generated expenses.
-    case excludeRecurringFromTopSpends
     /// UUID for this app installation only (cleared on uninstall).
     case installationId
     /// Codable `ReviewState` blob for the user-satisfaction engine.
@@ -31,6 +29,8 @@ enum UserDefaultsKey: String {
     case transactionListSortOrder
     /// Bitmask of visible transaction types on Home (`TransactionListTypeFilter`). Absent → all.
     case transactionListTypeFilter
+    /// Version of one-shot orphaned category-id migration (bump to re-run).
+    case categoryOrphanMigrationVersion
 }
 
 /// Wrapper for UserDefaults
@@ -94,7 +94,6 @@ class UserDefaultsHelper {
         let keys: [UserDefaultsKey] = [
             .selectedCurrencyCode,
             .calendarAggregator,
-            .excludeRecurringFromTopSpends,
             .installationId,
             .reviewState,
             .appLockEnabled,
@@ -103,7 +102,8 @@ class UserDefaultsHelper {
             .groupTransactionsByCategory,
             .showUpcomingRecurring,
             .transactionListSortOrder,
-            .transactionListTypeFilter
+            .transactionListTypeFilter,
+            .categoryOrphanMigrationVersion
         ]
 
         for key in keys {

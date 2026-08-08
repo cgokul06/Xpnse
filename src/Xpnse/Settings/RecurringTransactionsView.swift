@@ -181,6 +181,8 @@ struct EditRecurringTransactionView: View {
     @State private var isMerchantChangeBecauseOfSelection: Bool = false
 
     private let original: RecurringTransaction
+    private let isCreating: Bool
+    private let sourceTransactionId: String?
     private let onSaved: () -> Void
     private let transactionManager = FirebaseTransactionManager.shared
 
@@ -193,11 +195,17 @@ struct EditRecurringTransactionView: View {
     }
 
     private var canEditStartDate: Bool {
-        Calendar.current.startOfDay(for: original.startDate) > Calendar.current.startOfDay(for: Date())
+        if isCreating { return true }
+        return Calendar.current.startOfDay(for: original.startDate) > Calendar.current.startOfDay(for: Date())
     }
 
     private var isDateRangeValid: Bool {
-        !hasRecurringEndDate || recurringEndDate >= recurringStartDate
+        guard hasRecurringEndDate else { return true }
+        let cal = Calendar.current
+        let endDay = cal.startOfDay(for: recurringEndDate)
+        let startDay = cal.startOfDay(for: recurringStartDate)
+        let today = cal.startOfDay(for: Date())
+        return endDay > startDay && endDay >= today
     }
 
     private var isReminderScheduleValid: Bool {
@@ -214,8 +222,14 @@ struct EditRecurringTransactionView: View {
         return trimmed.isEmpty ? nil : trimmed
     }
 
+    private var navigationTitleKey: LocalizedStringKey {
+        isCreating ? "insights.create_recurring" : "txn.update_recurring"
+    }
+
     init(item: RecurringTransaction, onSaved: @escaping () -> Void) {
         self.original = item
+        self.isCreating = false
+        self.sourceTransactionId = nil
         let type = TransactionType(rawValue: item.type) ?? .expense
         self._transactionType = State(initialValue: type)
         self._amount = State(initialValue: AmountFormatter.format(item.amount))
@@ -231,6 +245,47 @@ struct EditRecurringTransactionView: View {
         self._recurringEndDate = State(initialValue: item.endDate ?? item.startDate)
         self._remindRecurring = State(initialValue: item.notificationReminderEnabled)
         self._reminderDateTime = State(initialValue: Self.initialReminderDateTime(for: item))
+        self.onSaved = onSaved
+    }
+
+    /// Insights "Make recurring" — same form as update, prefilled from the suggestion.
+    init(suggestion: InsightsPotentialRecurring, onSaved: @escaping () -> Void) {
+        let start = Date(timeIntervalSince1970: suggestion.date)
+        let type = TransactionType(rawValue: suggestion.type) ?? .expense
+        let amount = Decimal(suggestion.amount)
+        let recurrence = PotentialRecurringDetectionService.recurrence(
+            for: suggestion.suggestedFrequency,
+            on: start
+        )
+        let draft = RecurringTransaction(
+            title: suggestion.title,
+            merchant: suggestion.merchant,
+            type: type.rawValue,
+            categoryIdentifier: suggestion.categoryId,
+            amount: amount,
+            startDate: start,
+            recurrence: recurrence,
+            lastTransactionAddedOn: start,
+            metadata: [
+                "createdFrom": "InsightsPotentialRecurring",
+                "sourceTransactionId": suggestion.id
+            ]
+        )
+        self.original = draft
+        self.isCreating = true
+        self.sourceTransactionId = suggestion.id
+        self._transactionType = State(initialValue: type)
+        self._amount = State(initialValue: AmountFormatter.format(amount))
+        self._selectedCategoryId = State(initialValue: suggestion.categoryId)
+        self._description = State(initialValue: suggestion.title)
+        self._merchant = State(initialValue: suggestion.merchant ?? "")
+        self._initialTransactionDate = State(initialValue: start)
+        self._recurringStartDate = State(initialValue: start)
+        self._recurrence = State(initialValue: recurrence)
+        self._hasRecurringEndDate = State(initialValue: false)
+        self._recurringEndDate = State(initialValue: start)
+        self._remindRecurring = State(initialValue: false)
+        self._reminderDateTime = State(initialValue: Self.defaultReminderDateTime(for: start))
         self.onSaved = onSaved
     }
 
@@ -278,6 +333,18 @@ struct EditRecurringTransactionView: View {
         }
     }
 
+    /// End date must be after start and on/after today.
+    private func ensureEndDateAfterStart(start: Date) {
+        let cal = Calendar.current
+        let startDay = cal.startOfDay(for: start)
+        let today = cal.startOfDay(for: Date())
+        let dayAfterStart = cal.date(byAdding: .day, value: 1, to: startDay) ?? startDay
+        let minimumEnd = max(dayAfterStart, today)
+        if cal.startOfDay(for: recurringEndDate) < minimumEnd {
+            recurringEndDate = minimumEnd
+        }
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -295,7 +362,9 @@ struct EditRecurringTransactionView: View {
                         categorySelectionSection
                         recurrenceSection
                         reminderSection
-                        deleteRecurringButton
+                        if !isCreating {
+                            deleteRecurringButton
+                        }
                         Spacer()
                     }
                     .padding(.horizontal, 20)
@@ -337,7 +406,7 @@ struct EditRecurringTransactionView: View {
                         .xpnseAdaptiveForeground()
                 }
                 ToolbarItem(placement: .principal) {
-                    Text("txn.update_recurring")
+                    Text(navigationTitleKey)
                         .font(.title3)
                         .fontWeight(.bold)
                         .xpnseAdaptiveForeground()
@@ -377,10 +446,14 @@ struct EditRecurringTransactionView: View {
             .onChange(of: recurringStartDate) { _, newValue in
                 initialTransactionDate = newValue
                 recurrence = recurrence.aligned(to: newValue)
-                if hasRecurringEndDate, recurringEndDate < newValue {
-                    recurringEndDate = newValue
+                if hasRecurringEndDate {
+                    ensureEndDateAfterStart(start: newValue)
                 }
                 clampReminderDateTimeToTransactionDay(newValue)
+            }
+            .onChange(of: hasRecurringEndDate) { _, enabled in
+                guard enabled else { return }
+                ensureEndDateAfterStart(start: recurringStartDate)
             }
             .onAppear {
                 AppAnalytics.logScreen(AppAnalytics.Screen.editRecurring)
@@ -411,29 +484,7 @@ struct EditRecurringTransactionView: View {
                 reminderDateTime: reminderDateTime
             )
         }()
-        let updated = RecurringTransaction(
-            id: original.id,
-            title: description,
-            merchant: normalizedMerchantOrNil,
-            type: transactionType.rawValue,
-            categoryIdentifier: selectedCategoryId,
-            amount: AmountFormatter.parseDecimal(amount) ?? original.amount,
-            startDate: recurringStartDate,
-            endDate: computedEndDate,
-            recurrence: recurrence,
-            nextOccurrence: resolvedNextOccurrence(
-                original: original,
-                startDate: recurringStartDate,
-                endDate: computedEndDate,
-                recurrence: recurrence
-            ),
-            lastTransactionAddedOn: original.lastTransactionAddedOn,
-            state: original.state,
-            notificationReminderEnabled: remindRecurring,
-            notificationReminderOffsetFromEndOfDay: reminderOffset,
-            notificationScheduledForOccurrenceDate: nil,
-            metadata: original.metadata
-        )
+
         if let merchantName = normalizedMerchantOrNil {
             merchantSuggestionEngine.upsert(
                 from: TransactionAdapter(
@@ -443,7 +494,59 @@ struct EditRecurringTransactionView: View {
                 )
             )
         }
-        await transactionManager.updateRecurringTransaction(updated)
+
+        if isCreating {
+            let created = RecurringTransaction(
+                title: description,
+                merchant: normalizedMerchantOrNil,
+                type: transactionType.rawValue,
+                categoryIdentifier: selectedCategoryId,
+                amount: AmountFormatter.parseDecimal(amount) ?? original.amount,
+                startDate: recurringStartDate,
+                endDate: computedEndDate,
+                recurrence: recurrence,
+                lastTransactionAddedOn: recurringStartDate,
+                notificationReminderEnabled: remindRecurring,
+                notificationReminderOffsetFromEndOfDay: reminderOffset,
+                notificationScheduledForOccurrenceDate: nil,
+                metadata: original.metadata
+            )
+            await transactionManager.createRecurringTransaction(created)
+            if let sourceTransactionId {
+                await transactionManager.linkTransaction(
+                    id: sourceTransactionId,
+                    toRecurringSeriesId: created.id.uuidString,
+                    occurrenceDate: recurringStartDate.timeIntervalSince1970
+                )
+            }
+            await transactionManager.processRecurringTransactionsAsync()
+        } else {
+            let updated = RecurringTransaction(
+                id: original.id,
+                title: description,
+                merchant: normalizedMerchantOrNil,
+                type: transactionType.rawValue,
+                categoryIdentifier: selectedCategoryId,
+                amount: AmountFormatter.parseDecimal(amount) ?? original.amount,
+                startDate: recurringStartDate,
+                endDate: computedEndDate,
+                recurrence: recurrence,
+                nextOccurrence: resolvedNextOccurrence(
+                    original: original,
+                    startDate: recurringStartDate,
+                    endDate: computedEndDate,
+                    recurrence: recurrence
+                ),
+                lastTransactionAddedOn: original.lastTransactionAddedOn,
+                state: original.state,
+                notificationReminderEnabled: remindRecurring,
+                notificationReminderOffsetFromEndOfDay: reminderOffset,
+                notificationScheduledForOccurrenceDate: nil,
+                metadata: original.metadata
+            )
+            await transactionManager.updateRecurringTransaction(updated)
+        }
+
         await MainActor.run {
             onSaved()
             dismiss()

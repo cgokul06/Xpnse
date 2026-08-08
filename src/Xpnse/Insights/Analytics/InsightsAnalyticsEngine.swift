@@ -15,10 +15,10 @@ enum InsightsAnalyticsEngine {
         transactions: [Transaction],
         recurringItems: [RecurringTransaction],
         discretionaryCategoryIds: Set<String>,
+        potentialRecurring: [InsightsPotentialRecurring] = [],
         focusDate: Date = Date(),
         calendar: Calendar = .current,
-        currencySymbol: String = CurrencyManager.shared.selectedCurrency.symbol,
-        excludeRecurringFromTopSpends: Bool = false
+        currencySymbol: String = CurrencyManager.shared.selectedCurrency.symbol
     ) -> InsightsSnapshot {
         let focusComps = calendar.dateComponents([.year, .month], from: focusDate)
         let focusYear = focusComps.year ?? calendar.component(.year, from: Date())
@@ -45,9 +45,19 @@ enum InsightsAnalyticsEngine {
             total: focusExpenseTotal
         )
 
-        let topSpendExpenses = excludeRecurringFromTopSpends
-            ? focusExpenses.filter { !$0.isRecurringGenerated }
-            : focusExpenses
+        // Top Spends always excludes recurring (series-linked + template matches).
+        let topSpendExpenses = focusExpenses.filter {
+            !isRecurringForTopSpends($0, recurringItems: recurringItems)
+        }
+        DeviceDebugLogger.log(
+            "top spends filter",
+            category: "insights.topSpends",
+            data: [
+                "focusExpenseCount": focusExpenses.count,
+                "keptCount": topSpendExpenses.count,
+                "excludedCount": focusExpenses.count - topSpendExpenses.count
+            ]
+        )
         let topSpendTotal = topSpendExpenses.reduce(0.0) { $0 + $1.totalAmount }
         let topMerchants = buildTopMerchants(
             expenses: topSpendExpenses,
@@ -152,6 +162,7 @@ enum InsightsAnalyticsEngine {
             forecast: forecast,
             outliers: outliers,
             subscriptions: subscriptions,
+            potentialRecurring: potentialRecurring,
             events: events,
             categoryBaselines: categoryBaselines,
             healthScore: healthBreakdown.finalStars,
@@ -174,6 +185,7 @@ enum InsightsAnalyticsEngine {
             forecast: draft.forecast,
             outliers: draft.outliers,
             subscriptions: draft.subscriptions,
+            potentialRecurring: draft.potentialRecurring,
             events: draft.events,
             categoryBaselines: draft.categoryBaselines,
             healthScore: draft.healthScore,
@@ -271,6 +283,18 @@ enum InsightsAnalyticsEngine {
             .map { $0 }
     }
 
+    /// True for series-generated rows and for expenses that match an active/paused
+    /// recurring expense template (covers legacy / untagged seed spends).
+    private static func isRecurringForTopSpends(
+        _ transaction: Transaction,
+        recurringItems: [RecurringTransaction]
+    ) -> Bool {
+        if transaction.isRecurringGenerated { return true }
+        return recurringItems.contains {
+            RecurringTransactionMatcher.matches(transaction, rule: $0)
+        }
+    }
+
     /// Unique label per expense: spend name + date (never merges same titles).
     private static func spendDisplayLabel(
         for transaction: Transaction,
@@ -290,6 +314,8 @@ enum InsightsAnalyticsEngine {
         baselineMonths: [(Int, Int)],
         calendar: Calendar
     ) -> [InsightsCategoryDelta] {
+        guard !baselineMonths.isEmpty else { return [] }
+
         let focusByCategory = amountsByCategory(focusExpenses)
         let baselineTxns = baselineMonths.flatMap {
             transactionsInMonth(transactions, year: $0.0, month: $0.1, calendar: calendar)
@@ -299,24 +325,36 @@ enum InsightsAnalyticsEngine {
         let divisor = Double(max(baselineMonths.count, 1))
 
         let allIds = Set(focusByCategory.keys).union(baselineTotals.keys)
-        return allIds.compactMap { id -> InsightsCategoryDelta? in
+        let increases = allIds.compactMap { id -> InsightsCategoryDelta? in
             let focus = focusByCategory[id] ?? 0
             let baselineAvg = (baselineTotals[id] ?? 0) / divisor
-            guard focus > 0 || baselineAvg > 0 else { return nil }
-            let percent: Double? = baselineAvg > 0.01 ? ((focus - baselineAvg) / baselineAvg) * 100 : nil
-            let direction = FinancialHealthRules.changeDirection(percentChange: percent)
+            // Only show categories spending above their usual average (>100% of usual).
+            guard baselineAvg > 0.01, focus > baselineAvg else { return nil }
+            let percent = ((focus - baselineAvg) / baselineAvg) * 100
+            guard percent > 0 else { return nil }
             return InsightsCategoryDelta(
                 categoryId: id,
                 name: CategoryStore.shared.categoryDisplayName(for: id),
                 focusAmount: focus,
                 baselineAmount: baselineAvg,
                 percentChange: percent,
-                direction: direction
+                direction: .up
             )
         }
-        .sorted { abs($0.percentChange ?? 0) > abs($1.percentChange ?? 0) }
+        .sorted { ($0.percentChange ?? 0) > ($1.percentChange ?? 0) }
         .prefix(biggestChangesLimit)
         .map { $0 }
+
+        DeviceDebugLogger.log(
+            "biggest changes filter",
+            category: "insights.biggestChanges",
+            data: [
+                "keptCount": increases.count,
+                "names": increases.map(\.name),
+                "percents": increases.map { Int(($0.percentChange ?? 0).rounded()) }
+            ]
+        )
+        return increases
     }
 
     private static func buildCategoryBaselines(
@@ -326,6 +364,17 @@ enum InsightsAnalyticsEngine {
         focusLabel: String,
         calendar: Calendar
     ) -> [InsightsCategoryBaseline] {
+        // Need ≥2 prior months of category history to compare against a meaningful usual.
+        let minimumHistoryMonths = 2
+        guard baselineMonths.count >= minimumHistoryMonths else {
+            DeviceDebugLogger.log(
+                "category health skipped — fewer than 2 baseline months",
+                category: "insights.categoryHealth",
+                data: ["baselineMonthCount": baselineMonths.count]
+            )
+            return []
+        }
+
         let focusByCategory = amountsByCategory(focusExpenses)
         let divisor = Double(max(baselineMonths.count, 1))
 
@@ -344,14 +393,19 @@ enum InsightsAnalyticsEngine {
             return map
         }()
 
+        var droppedForThinHistory = 0
         let baselines = focusByCategory
-            .map { id, focus -> InsightsCategoryBaseline in
+            .compactMap { id, focus -> InsightsCategoryBaseline? in
                 let perMonth = perMonthByCategory[id] ?? baselineMonths.map {
                     (month: "\($0.0)-\($0.1)", amount: 0.0)
                 }
+                let monthsWithData = perMonth.filter { $0.amount > 0.01 }.count
+                guard monthsWithData >= minimumHistoryMonths else {
+                    droppedForThinHistory += 1
+                    return nil
+                }
                 let sum = perMonth.reduce(0.0) { $0 + $1.amount }
                 let avg = sum / divisor
-                // No history in lookback → treat as 200% so the row surfaces as elevated, not "on track".
                 let utilization = avg > 0.01 ? focus / avg : (focus > 0 ? 2.0 : 1.0)
                 let status = FinancialHealthRules.categoryStatus(utilization: utilization)
                 return InsightsCategoryBaseline(
@@ -366,6 +420,18 @@ enum InsightsAnalyticsEngine {
             .sorted { $0.focusAmount > $1.focusAmount }
             .prefix(topCategoryLimit)
             .map { $0 }
+
+        DeviceDebugLogger.log(
+            "category health filter",
+            category: "insights.categoryHealth",
+            data: [
+                "baselineMonthCount": baselineMonths.count,
+                "focusCategoryCount": focusByCategory.count,
+                "keptCount": baselines.count,
+                "droppedForThinHistory": droppedForThinHistory,
+                "keptNames": baselines.map(\.name)
+            ]
+        )
 
         InsightsCalculationLog.categoryBaselines(
             focusLabel: focusLabel,
@@ -939,6 +1005,7 @@ enum InsightsAnalyticsEngine {
             forecast: snapshot.forecast,
             outliers: snapshot.outliers,
             subscriptions: snapshot.subscriptions,
+            potentialRecurring: snapshot.potentialRecurring,
             events: snapshot.events,
             categoryBaselines: snapshot.categoryBaselines,
             healthScore: snapshot.healthScore,

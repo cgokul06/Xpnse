@@ -54,6 +54,20 @@ enum FinancialHealthScoring {
         let forecastSavingsRatePercent = Int((forecastRate * 100).rounded())
         let savingsRateAssessment = savingsRateAssessment(for: forecastRate)
 
+        DeviceDebugLogger.log(
+            "financial health scored",
+            category: "insights.health",
+            data: [
+                "forecastRate": forecastRate,
+                "forecastSavingsRatePercent": forecastSavingsRatePercent,
+                "expectedIncome": input.forecast.expectedIncome,
+                "expectedSavings": input.forecast.expectedSavings,
+                "assessment": savingsRateAssessment,
+                "stars": stars,
+                "totalScore": total
+            ]
+        )
+
         reasons.insert(savingsRateAssessment, at: 0)
 
         reasons.append(
@@ -96,6 +110,130 @@ enum FinancialHealthScoring {
         default:
             return L10n.tr("health.rate.well_above", pct, band)
         }
+    }
+
+    private enum SavingsGuideRelation: Equatable {
+        case below, within, above, negative
+    }
+
+    /// Band for a raw savings rate (same thresholds as `savingsRateAssessment`).
+    private static func guideRelation(for rate: Double) -> SavingsGuideRelation {
+        switch rate {
+        case ..<0: return .negative
+        case ..<0.20: return .below
+        case ...0.30: return .within
+        default: return .above
+        }
+    }
+
+    private static func guideRelation(fromAssessment assessment: String) -> SavingsGuideRelation? {
+        let a = assessment.lowercased()
+        if a.contains("negative") || a.contains("exceeds income") || a.contains("übersteigen")
+            || a.contains("superan") || a.contains("dépassent") {
+            return .negative
+        }
+        // "well below" / "below" / localized unter / debajo / dessous — check below before above.
+        if a.contains("below") || a.contains("unter") || a.contains("debajo") || a.contains("dessous") {
+            return .below
+        }
+        if a.contains("within") || a.contains("innerhalb") || a.contains("dentro")
+            || a.contains("dans le guide") || a.contains("im guide") {
+            return .within
+        }
+        if a.contains("above") || a.contains("über") || a.contains("encima") || a.contains("dessus") {
+            return .above
+        }
+        return nil
+    }
+
+    /// Heuristic relation implied by free-form FM prose (en/de/es/fr).
+    private static func impliedGuideRelation(in summary: String, ratePercent: Int) -> SavingsGuideRelation? {
+        let s = summary.lowercased()
+        let bandMin = Int(FinancialHealthRules.savingsRateHealthyMin * 100)
+        let bandMax = Int(FinancialHealthRules.savingsRateHealthyMax * 100)
+        let mentionsGuide = s.contains("\(bandMin)–\(bandMax)")
+            || s.contains("\(bandMin)-\(bandMax)")
+            || s.contains("guide")
+            || s.contains("richtlinie")
+            || s.contains("guía")
+            || s.contains("guia")
+        let mentionsRate = s.contains("\(ratePercent)%")
+            || s.contains("savings rate")
+            || s.contains("sparquote")
+            || s.contains("taux d'épargne")
+            || s.contains("tasa de ahorro")
+        guard mentionsGuide || mentionsRate else { return nil }
+
+        if s.contains("below") || s.contains("unter") || s.contains("debajo") || s.contains("dessous") {
+            return .below
+        }
+        if s.contains("within") || s.contains("innerhalb") || s.contains("dentro")
+            || s.contains("on track") || s.contains("dans le guide") {
+            return .within
+        }
+        // "strong" next to the rate is treated as an above-claim (observed FM failure mode).
+        if s.contains("well above") || s.contains("above") || s.contains("über")
+            || s.contains("encima") || s.contains("dessus")
+            || s.contains("strong") || s.contains("stark") || s.contains("fort") {
+            return .above
+        }
+        return nil
+    }
+
+    /// If FM prose contradicts the deterministic assessment, lead with the assessment
+    /// and drop guide-comparison sentences from the model text.
+    static func alignedHealthSummary(
+        modelText: String,
+        assessment: String,
+        ratePercent: Int,
+        forecastRate: Double
+    ) -> (text: String, corrected: Bool) {
+        let trimmed = modelText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !assessment.isEmpty else { return (trimmed, false) }
+
+        let expected = guideRelation(fromAssessment: assessment) ?? guideRelation(for: forecastRate)
+        let implied = impliedGuideRelation(in: trimmed, ratePercent: ratePercent)
+
+        if let implied, implied != expected {
+            let cleaned = stripSavingsGuideSentences(from: trimmed, ratePercent: ratePercent)
+            let text = cleaned.isEmpty ? assessment : "\(assessment) \(cleaned)"
+            return (text, true)
+        }
+
+        // Even without a detected contradiction, never invent direction: if the model
+        // omitted the assessment and talked about the guide, prefer assessment first.
+        if trimmed.isEmpty {
+            return (assessment, false)
+        }
+        return (trimmed, false)
+    }
+
+    private static func stripSavingsGuideSentences(from text: String, ratePercent: Int) -> String {
+        let bandMin = Int(FinancialHealthRules.savingsRateHealthyMin * 100)
+        let bandMax = Int(FinancialHealthRules.savingsRateHealthyMax * 100)
+        let parts = text
+            .components(separatedBy: CharacterSet(charactersIn: ".!?"))
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+
+        let kept = parts.filter { sentence in
+            let s = sentence.lowercased()
+            let isSavingsClaim = s.contains("\(ratePercent)%")
+                || s.contains("\(bandMin)–\(bandMax)")
+                || s.contains("\(bandMin)-\(bandMax)")
+                || s.contains("savings rate")
+                || s.contains("sparquote")
+                || s.contains("taux d'épargne")
+                || s.contains("tasa de ahorro")
+                || ((s.contains("guide") || s.contains("richtlinie") || s.contains("guía"))
+                    && (s.contains("above") || s.contains("below") || s.contains("within")
+                        || s.contains("strong") || s.contains("unter") || s.contains("über")))
+            return !isSavingsClaim
+        }
+
+        guard !kept.isEmpty else { return "" }
+        let joined = kept.joined(separator: ". ")
+        return joined.hasSuffix(".") ? joined : joined + "."
     }
 
     // MARK: - 1. Savings (2.0)

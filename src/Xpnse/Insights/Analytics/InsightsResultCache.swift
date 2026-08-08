@@ -66,21 +66,21 @@ enum InsightsResultCache {
         focusDay: Date,
         currencyCode: String,
         categorySpendingRevision: String,
-        excludeRecurringFromTopSpends: Bool = false,
         calendar: Calendar = .current
     ) -> String {
         let day = calendar.dateComponents([.year, .month, .day], from: focusDay)
         let dayKey = "\(day.year ?? 0)-\(day.month ?? 0)-\(day.day ?? 0)"
 
         var lines: [String] = [
-            "schema:category-health-v2",
+            "schema:category-health-v3",
             "schema:financial-health-v5",
-            "schema:top-spends-v4",
+            "schema:top-spends-v5",
+            "schema:biggest-changes-v2",
+            "schema:potential-recurring-v2",
             "schema:expense-trend-v2",
             "day:\(dayKey)",
             "currency:\(currencyCode)",
             "categoryRoles:\(categorySpendingRevision)",
-            "topSpendsExcludeRecurring:\(excludeRecurringFromTopSpends ? 1 : 0)"
         ]
         for (id, updatedAt) in transactionUpdatedAtById.sorted(by: { $0.key < $1.key }) {
             lines.append("t:\(id):\(updatedAt.timeIntervalSince1970)")

@@ -30,6 +30,12 @@ struct Settings: View {
     @State private var widgetPrivacyEnabled = WidgetPrivacyManager.isEnabled
     @State private var numberFormatPreference = NumberFormatPreference.current
 
+    #if DEBUG
+    @State private var debugShareURL: URL?
+    @State private var showDebugShare = false
+    @State private var debugLogEmptyAlert = false
+    #endif
+
     var body: some View {
         List {
             generalSection
@@ -172,6 +178,18 @@ struct Settings: View {
         .fullScreenCover(item: $presentedLegalDocument) { document in
             LegalDocumentView(document: document)
         }
+        #if DEBUG
+        .sheet(isPresented: $showDebugShare) {
+            if let debugShareURL {
+                DebugShareSheet(items: [debugShareURL])
+            }
+        }
+        .alert("settings.debug_logs_empty_title", isPresented: $debugLogEmptyAlert) {
+            Button("common.ok", role: .cancel) {}
+        } message: {
+            Text("settings.debug_logs_empty_message")
+        }
+        #endif
     }
 
     // MARK: - Sections
@@ -389,6 +407,31 @@ struct Settings: View {
     #if DEBUG
     private var debugSection: some View {
         Section {
+            Button {
+                if let url = DeviceDebugLogger.prepareShareURL() {
+                    debugShareURL = url
+                    showDebugShare = true
+                } else {
+                    debugLogEmptyAlert = true
+                }
+            } label: {
+                settingsLabel(
+                    titleKey: "settings.debug_share_logs",
+                    systemImage: "square.and.arrow.up",
+                    subtitleKey: "settings.debug_share_logs_subtitle"
+                )
+            }
+
+            Button(role: .destructive) {
+                DeviceDebugLogger.clear()
+            } label: {
+                settingsLabel(
+                    titleKey: "settings.debug_clear_logs",
+                    systemImage: "trash",
+                    destructive: true
+                )
+            }
+
             Button(role: .destructive) {
                 fatalError("SnapLedger DEBUG Crashlytics test crash")
             } label: {
@@ -534,3 +577,17 @@ struct Settings: View {
         }
     }
 }
+
+#if DEBUG
+import UIKit
+
+private struct DebugShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+#endif

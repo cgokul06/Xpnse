@@ -13,8 +13,8 @@ enum ExportImportError: Error {
 }
 
 struct ExportImportService {
-    /// 7: optional `merchant` on transactions and recurring rules.
-    private static let currentSchemaVersion = 7
+    /// 8: potential-recurring dismissals (Insights "not recurring").
+    private static let currentSchemaVersion = 8
 
     private let transactionRepository: TransactionRepository
     private let recurringRepository: RecurringRepository
@@ -42,6 +42,7 @@ struct ExportImportService {
         let recurringUpdatedAtById = Dictionary(
             uniqueKeysWithValues: recurringUpdatedAt.map { ($0.key.uuidString, $0.value) }
         )
+        let potentialRecurringDismissals = try await PotentialRecurringDismissStore.fetchAllForExport()
 
         let payload = BackupPayload(
             schemaVersion: Self.currentSchemaVersion,
@@ -54,7 +55,8 @@ struct ExportImportService {
             recurringUpdatedAtById: recurringUpdatedAtById,
             categories: categories,
             transactions: transactions,
-            recurringTransactions: recurringTransactions
+            recurringTransactions: recurringTransactions,
+            potentialRecurringDismissals: potentialRecurringDismissals
         )
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
@@ -88,6 +90,7 @@ struct ExportImportService {
 
         try await mergeTransactionsOneByOne(payload.transactions, payload: payload)
         try await mergeRecurringOneByOne(payload.recurringTransactions, payload: payload)
+        try await mergePotentialRecurringDismissals(payload.potentialRecurringDismissals ?? [])
 
         if let selectedCurrencyCode = payload.settings?.selectedCurrencyCode,
            let selectedCurrency = CurrencyManager.shared.currency(for: selectedCurrencyCode) {
@@ -310,6 +313,36 @@ struct ExportImportService {
         return parts.joined(separator: "||")
     }
 
+    private func mergePotentialRecurringDismissals(
+        _ imported: [PotentialRecurringDismissRecord]
+    ) async throws {
+        guard !imported.isEmpty else { return }
+        let existing = try await PotentialRecurringDismissStore.fetchAllForExport()
+        let existingById = Dictionary(uniqueKeysWithValues: existing.map { ($0.id, $0) })
+        let existingByTxn = Dictionary(uniqueKeysWithValues: existing.map { ($0.transactionId, $0) })
+        let existingByFingerprint = Dictionary(uniqueKeysWithValues: existing.map { ($0.fingerprint, $0) })
+
+        var toImport: [PotentialRecurringDismissRecord] = []
+        var seen = Set<String>()
+
+        for record in imported {
+            let key = record.id
+            guard seen.insert(key).inserted else { continue }
+
+            if let local = existingById[record.id]
+                ?? existingByTxn[record.transactionId]
+                ?? existingByFingerprint[record.fingerprint] {
+                if record.updatedAt >= local.updatedAt {
+                    toImport.append(record)
+                }
+            } else {
+                toImport.append(record)
+            }
+        }
+
+        try await PotentialRecurringDismissStore.importRecords(toImport)
+    }
+
     private func scheduleSuggestionRebuildAfterImport() {
         Task(priority: .utility) {
             guard let transactions = try? await transactionRepository.fetchAll() else {
@@ -345,6 +378,7 @@ private struct BackupPayload: Codable {
     let categories: [CategoryDefinition]?
     let transactions: [Transaction]
     let recurringTransactions: [RecurringTransaction]
+    let potentialRecurringDismissals: [PotentialRecurringDismissRecord]?
 }
 
 private struct BackupSettings: Codable {

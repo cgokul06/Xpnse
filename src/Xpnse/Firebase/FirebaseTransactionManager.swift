@@ -50,11 +50,63 @@ final class FirebaseTransactionManager {
 
         let task = Task { @MainActor in
             await self.recurringTransactionManager.loadAndProcess(sink: self)
+            await self.linkUntaggedTransactionsToRecurringSeries()
             await RecurringReminderScheduler.shared.reconcileAllPendingReminders()
         }
         recurringProcessTask = task
         await task.value
         recurringProcessTask = nil
+    }
+
+    /// Attach `recurringSeriesId` to existing txs that match a rule but were never tagged
+    /// (legacy seeds, imports, or rules created after a one-off). Enables the Recurring badge.
+    /// Only tags transactions on/after the rule start date (and on/before end date when set).
+    private func linkUntaggedTransactionsToRecurringSeries() async {
+        do {
+            let rules = await recurringTransactionManager.fetchAll()
+                .filter { $0.state == .active || $0.state == .paused }
+            guard !rules.isEmpty else { return }
+
+            let all = try await transactionRepository.fetchAll()
+            let calendar = Calendar.current
+            let rulesById = Dictionary(uniqueKeysWithValues: rules.map { ($0.id.uuidString, $0) })
+
+            // Clear series tags when a tx falls outside the rule window (e.g. start date moved).
+            for transaction in all {
+                guard let seriesId = transaction.recurringSeriesId,
+                      let rule = rulesById[seriesId],
+                      !RecurringTransactionMatcher.isWithinRuleDateWindow(
+                        transaction,
+                        rule: rule,
+                        calendar: calendar
+                      )
+                else { continue }
+                var updated = transaction
+                updated.recurringSeriesId = nil
+                updated.recurringOccurrenceDate = nil
+                try await transactionRepository.update(updated)
+            }
+
+            let untagged = try await transactionRepository.fetchAll()
+            for transaction in untagged where transaction.recurringSeriesId == nil {
+                guard let rule = rules.first(where: {
+                    RecurringTransactionMatcher.matches(transaction, rule: $0, calendar: calendar)
+                }) else { continue }
+
+                var updated = transaction
+                updated.recurringSeriesId = rule.id.uuidString
+                if updated.recurringOccurrenceDate == nil {
+                    updated.recurringOccurrenceDate = transaction.date
+                }
+                try await transactionRepository.update(updated)
+            }
+        } catch {
+            DeviceDebugLogger.log(
+                "recurring series backfill failed",
+                category: "recurring.link",
+                data: ["error": error.localizedDescription]
+            )
+        }
     }
 
     private var listeners: Set<String> = []
@@ -152,6 +204,7 @@ final class FirebaseTransactionManager {
             try await transactionRepository.clearAll()
             try await SwiftDataRecurringRepository.shared.clearAll()
             try await SwiftDataCategoryRepository.shared.clearAll()
+            try await PotentialRecurringDismissStore.clearAll()
             await CategoryStore.shared.load()
             UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
         } catch {
@@ -162,6 +215,27 @@ final class FirebaseTransactionManager {
     func createRecurringTransaction(_ recurring: RecurringTransaction) async {
         await recurringTransactionManager.create(recurring)
         await RecurringReminderScheduler.shared.handleRecurringSaved(recurring)
+    }
+
+    /// Tag an existing one-off as belonging to a recurring series (Insights convert flow).
+    func linkTransaction(
+        id: String,
+        toRecurringSeriesId seriesId: String,
+        occurrenceDate: Double
+    ) async {
+        do {
+            let all = try await transactionRepository.fetchAll()
+            guard var transaction = all.first(where: { $0.id == id }) else { return }
+            transaction.recurringSeriesId = seriesId
+            transaction.recurringOccurrenceDate = occurrenceDate
+            try await transactionRepository.update(transaction)
+        } catch {
+            DeviceDebugLogger.log(
+                "link transaction to recurring failed",
+                category: "recurring.link",
+                data: ["error": error.localizedDescription]
+            )
+        }
     }
 
     func updateRecurringTransaction(_ recurring: RecurringTransaction) async {

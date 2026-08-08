@@ -8,7 +8,6 @@ import SwiftUI
 struct InsightHealthCard: View {
     @Environment(\.colorScheme) private var colorScheme
 
-    let score: Int
     let totalScore: Double
     let savingsRate: Double
     let summary: String
@@ -20,15 +19,10 @@ struct InsightHealthCard: View {
             XpnsePanelHeader(title: L10n.tr("insights.financial_health"), subtitle: nil)
 
             HStack(spacing: 4) {
-                ForEach(1...5, id: \.self) { index in
-                    Image(systemName: index <= score ? "star.fill" : "star")
-                        .foregroundStyle(
-                            index <= score
-                                ? Color.yellow
-                                : AdaptiveBrandSurface.mutedForeground(for: colorScheme).opacity(0.35)
-                        )
-                        .font(.system(size: 16))
-                }
+                ProportionalStarRating(
+                    rating: totalScore,
+                    emptyColor: AdaptiveBrandSurface.mutedForeground(for: colorScheme).opacity(0.35)
+                )
                 Spacer()
                 VStack(alignment: .trailing, spacing: 2) {
                     Text(String(format: "%.1f/5.0", totalScore))
@@ -65,6 +59,39 @@ struct InsightHealthCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
         .xpnseOutlinedPanel()
+    }
+}
+
+/// Fills stars from a fractional rating (e.g. 3.7 → three full + 70% of the fourth).
+private struct ProportionalStarRating: View {
+    let rating: Double
+    var filledColor: Color = .yellow
+    var emptyColor: Color = .gray.opacity(0.35)
+    var size: CGFloat = 16
+
+    var body: some View {
+        let clamped = min(5, max(0, rating))
+        HStack(spacing: 4) {
+            ForEach(0..<5, id: \.self) { index in
+                let fill = min(1, max(0, clamped - Double(index)))
+                ZStack {
+                    Image(systemName: "star")
+                        .foregroundStyle(emptyColor)
+                    Image(systemName: "star.fill")
+                        .foregroundStyle(filledColor)
+                        .mask(alignment: .leading) {
+                            GeometryReader { geo in
+                                Rectangle()
+                                    .frame(width: geo.size.width * fill)
+                            }
+                        }
+                }
+                .font(.system(size: size))
+                .accessibilityHidden(true)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(String(format: "%.1f out of 5 stars", clamped)))
     }
 }
 
@@ -136,26 +163,13 @@ struct InsightTopMerchantsCard: View {
     let merchants: [InsightsMerchantTotal]
     let currencyCode: String
     let gloss: String
-    @Binding var excludeRecurring: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             XpnsePanelHeader(title: L10n.tr("insights.top_spends"), subtitle: nil)
 
-            Toggle(isOn: $excludeRecurring) {
-                Text(L10n.tr("insights.exclude_recurring"))
-                    .font(.system(size: 13, weight: .medium))
-                    .xpnseAdaptiveForeground(muted: true)
-            }
-            .toggleStyle(.switch)
-            .tint(XpnseColorKey.secondaryButtonBGColor.color)
-
             if merchants.isEmpty {
-                Text(
-                    excludeRecurring
-                        ? L10n.tr("insights.no_non_recurring")
-                        : L10n.tr("insights.top_spends_empty")
-                )
+                Text(L10n.tr("insights.top_spends_empty"))
                     .font(.system(size: 13))
                     .xpnseAdaptiveForeground(muted: true)
             } else {
@@ -391,5 +405,78 @@ struct InsightEventsCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
         .xpnseOutlinedPanel()
+    }
+}
+
+struct InsightPotentialRecurringCard: View {
+    let items: [InsightsPotentialRecurring]
+    let currencyCode: String
+    let onMakeRecurring: (InsightsPotentialRecurring) -> Void
+    let onMarkNotRecurring: (InsightsPotentialRecurring) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            XpnsePanelHeader(
+                title: L10n.tr("insights.potential_recurring"),
+                subtitle: L10n.tr("insights.potential_recurring_subtitle")
+            )
+
+            ForEach(items) { item in
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .firstTextBaseline) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(item.title)
+                                .font(.system(size: 14, weight: .medium))
+                                .xpnseAdaptiveForeground()
+                                .lineLimit(1)
+                            if let merchant = item.merchant, !merchant.isEmpty {
+                                Text(merchant)
+                                    .font(.system(size: 12))
+                                    .xpnseAdaptiveForeground(muted: true)
+                                    .lineLimit(1)
+                            }
+                        }
+                        Spacer()
+                        Text(AmountFormatter.format(item.amount, currencyCode: currencyCode))
+                            .font(.system(size: 13, weight: .semibold))
+                            .xpnseAdaptiveForeground()
+                    }
+
+                    if !item.reason.isEmpty {
+                        Text(item.reason)
+                            .font(.system(size: 12))
+                            .xpnseAdaptiveForeground(muted: true)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Text(L10n.tr("insights.potential_recurring_confidence", item.confidencePercent))
+                        .font(.system(size: 11, weight: .medium))
+                        .xpnseAdaptiveForeground(muted: true)
+
+                    HStack(spacing: 10) {
+                        Button {
+                            onMakeRecurring(item)
+                        } label: {
+                            Text(L10n.tr("insights.make_recurring"))
+                                .font(.system(size: 14, weight: .bold))
+                        }
+                        .buttonStyle(XpnsePrimaryButtonStyle.defaultButton())
+
+                        Button {
+                            onMarkNotRecurring(item)
+                        } label: {
+                            Text(L10n.tr("insights.not_recurring"))
+                                .font(.system(size: 14, weight: .bold))
+                        }
+                        .buttonStyle(XpnseSecondaryButtonStyle.defaultButton())
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .xpnseOutlinedPanel()
+        .animation(.easeInOut(duration: 0.2), value: items.map(\.id))
     }
 }

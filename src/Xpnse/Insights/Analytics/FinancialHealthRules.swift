@@ -64,8 +64,12 @@ enum FinancialHealthRules {
         """
         Soft guidance (evaluate against the snapshot; do not invent numbers):
         - Savings rate guide band: \(Int(savingsRateHealthyMin * 100))–\(Int(savingsRateHealthyMax * 100))% of income (a scoring sweet spot, not a ceiling).
+        - CRITICAL: Copy the direction from `healthBreakdown.savingsRateAssessment` exactly. Never invert it.
+        - Example: 19% is BELOW the \(Int(savingsRateHealthyMin * 100))–\(Int(savingsRateHealthyMax * 100))% guide — never call it strong, above, or well above.
+        - Example: 38% is ABOVE that guide — never call it below.
         - Rates above \(Int(savingsRateHealthyMax * 100))% are strong savings — say "above" the guide, never "below".
-        - Use `healthBreakdown.savingsRateAssessment` as the authoritative savings-rate comparison; do not contradict it.
+        - Rates below \(Int(savingsRateHealthyMin * 100))% are below the guide — never say strong/above/well above.
+        - Prefer pasting `healthBreakdown.savingsRateAssessment` verbatim for the savings-rate sentence.
         - Subscriptions ideally under \(Int(subscriptionsComfortableMax * 100))–\(Int(subscriptionsSoftMax * 100))% of expenses.
         - Category health uses each user's rolling average (below &lt;80%, near 80–105%, above 105–120%, well above &gt;120%).
         - Financial health stars are computed deterministically from `healthBreakdown` (savings, spending discipline, subscriptions, stability, trend). Never invent or adjust the score — only explain it using `healthBreakdown.reasons`. Discuss the current focus month only; never cite prior months.
