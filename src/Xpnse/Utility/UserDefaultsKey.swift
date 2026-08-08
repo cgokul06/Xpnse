@@ -23,6 +23,14 @@ enum UserDefaultsKey: String {
     case appLockLastUnlockAt
     /// Soft-sell promo has been shown once this install (never again).
     case appLockPromoShown
+    /// Home list groups transactions by category when true (otherwise by date).
+    case groupTransactionsByCategory
+    /// Home list shows projected upcoming recurring occurrences when true (default false).
+    case showUpcomingRecurring
+    /// Home list date sort: `TransactionListSortOrder.rawValue`. Absent → descending (newest first).
+    case transactionListSortOrder
+    /// Bitmask of visible transaction types on Home (`TransactionListTypeFilter`). Absent → all.
+    case transactionListTypeFilter
 }
 
 /// Wrapper for UserDefaults
@@ -91,7 +99,11 @@ class UserDefaultsHelper {
             .reviewState,
             .appLockEnabled,
             .appLockLastUnlockAt,
-            .appLockPromoShown
+            .appLockPromoShown,
+            .groupTransactionsByCategory,
+            .showUpcomingRecurring,
+            .transactionListSortOrder,
+            .transactionListTypeFilter
         ]
 
         for key in keys {

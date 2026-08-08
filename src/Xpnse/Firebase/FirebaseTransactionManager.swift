@@ -226,4 +226,14 @@ extension FirebaseTransactionManager: TransactionSink {
             occurrenceEpoch: occurrenceEpoch
         )) ?? false
     }
+
+    func materializedRecurringOccurrenceKeys(
+        startDate: Date,
+        endDate: Date
+    ) async -> Set<String> {
+        (try? await transactionRepository.materializedRecurringOccurrenceKeys(
+            startEpoch: startDate.timeIntervalSince1970,
+            endEpoch: endDate.timeIntervalSince1970
+        )) ?? []
+    }
 }

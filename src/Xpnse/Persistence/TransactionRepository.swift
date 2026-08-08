@@ -18,6 +18,8 @@ protocol TransactionRepository {
     func fetch(startDate: Date, endDate: Date) async throws -> [Transaction]
     func fetchAll() async throws -> [Transaction]
     func hasRecurringOccurrence(seriesId: String, occurrenceEpoch: TimeInterval) async throws -> Bool
+    /// Returns `"seriesId|occurrenceEpoch"` keys for materialized recurring rows in the date range.
+    func materializedRecurringOccurrenceKeys(startEpoch: TimeInterval, endEpoch: TimeInterval) async throws -> Set<String>
     func clearAll() async throws
 }
 
@@ -117,6 +119,32 @@ final class SwiftDataTransactionRepository: TransactionRepository {
             }
         )
         return try context.fetch(descriptor).first != nil
+    }
+
+    @MainActor
+    func materializedRecurringOccurrenceKeys(
+        startEpoch: TimeInterval,
+        endEpoch: TimeInterval
+    ) async throws -> Set<String> {
+        let context = context()
+        let start = startEpoch
+        let end = endEpoch
+        let descriptor = FetchDescriptor<TransactionEntity>(
+            predicate: #Predicate { entity in
+                entity.date >= start && entity.date <= end
+            }
+        )
+        let entities = try context.fetch(descriptor)
+        var keys = Set<String>()
+        keys.reserveCapacity(entities.count)
+        for entity in entities {
+            guard let seriesId = entity.recurringSeriesId,
+                  let occurrenceEpoch = entity.recurringOccurrenceDate else {
+                continue
+            }
+            keys.insert("\(seriesId)|\(occurrenceEpoch)")
+        }
+        return keys
     }
 
     @MainActor

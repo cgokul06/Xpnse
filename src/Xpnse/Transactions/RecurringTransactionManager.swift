@@ -105,7 +105,9 @@ final class RecurringTransactionManager {
                 continue
             }
             let endDate = items[i].endDate
-            while next <= now, endDate.map({ next <= $0 }) ?? true {
+            var safety = 0
+            while next <= now, endDate.map({ next <= $0 }) ?? true, safety < 128 {
+                safety += 1
                 // Never re-materialize on or before the last added day. Editing a rule
                 // can reset `nextOccurrence` earlier in the series; only advance past those days.
                 if let lastAdded = items[i].lastTransactionAddedOn {

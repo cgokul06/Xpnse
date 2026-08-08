@@ -99,11 +99,15 @@ The card flip state persists while swiping between months.
 
 ### Transaction list
 
-- **Transactions** header with a toggle to group by **date** or **category**
-- Each group shows a net total (green for positive, red for negative)
+- **Transactions** header with a **list options** menu:
+  - **Group By** — Category (checkmark when on)
+  - **Sort** — Ascending / Descending (default: Descending, newest first)
+  - **Filter** — Expense / Income / Savings (all on by default); Upcoming (off by default)
+  Persisted. Filters apply to the list and upcoming rows only (balance card stays full-month).
+- Each group shows a net total from real transactions only (green for positive, red for negative)
 - Tap a transaction to **edit** it
 - **Scroll position** is remembered per month when switching away and back
-- **Empty months:** no summary card; full-height empty state with “No transactions found!”
+- **Empty months:** no summary card; full-height empty state with “No transactions found!” (unless upcoming rows are shown)
 
 ### Bottom actions
 
@@ -207,6 +211,8 @@ Create repeating transactions from the add-transaction form or manage them under
 - **Remind me** — schedules a local notification aligned to the recurrence
 
 Recurring rules are processed automatically on app launch and when the app returns to the foreground, materializing due transactions into your history (including merchant when set).
+
+On Home, **Show upcoming recurring** (list options) can preview remaining scheduled occurrences for the viewed month without creating transactions until materialization runs.
 
 ---
 

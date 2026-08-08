@@ -10,6 +10,8 @@ import UIKit
 
 enum TransactionListPersistedAnchor: Hashable {
     case top
+    /// First real (materialized) section — used to tuck upcoming above the fold on open.
+    case firstMaterialized
     case date(Date)
     case category(String)
 }
@@ -96,6 +98,9 @@ struct TransactionListView: View {
     @Binding var isShowingDonut: Bool
     var dateTransactions: [Date: [Transaction]]
     @Binding var grouping: TransactionListGrouping
+    @Binding var showUpcomingRecurring: Bool
+    @Binding var typeFilter: TransactionListTypeFilter
+    @Binding var sortOrder: TransactionListSortOrder
     var savedScrollAnchor: TransactionListPersistedAnchor?
     var onScrollAnchorChange: (TransactionListPersistedAnchor) -> Void
     var onScrollOffsetChange: ((TransactionListScrollUpdate) -> Void)?
@@ -128,21 +133,78 @@ struct TransactionListView: View {
     @State private var debouncedSearchQuery = ""
     @State private var searchDebounceTask: Task<Void, Never>?
     @FocusState private var isSearchFieldFocused: Bool
+    @State private var upcomingItems: [UpcomingRecurringItem] = []
+    @State private var selectedRecurringForEdit: RecurringTransaction?
 
     private static let summaryCardScrollThreshold: CGFloat = SummaryCardMetrics.height + 12
     private static let searchDebounceInterval: Duration = .milliseconds(300)
+    private let calendar = Calendar.current
+    private let transactionManager = FirebaseTransactionManager.shared
 
     private var scrollContentBottomPadding: CGFloat {
         let safeAreaPadding = extendsToBottomSafeArea ? DeviceSafeArea.bottom : 0
         return scrollBottomInset + safeAreaPadding
     }
 
+    private var filteredDateTransactions: [Date: [Transaction]] {
+        var result: [Date: [Transaction]] = [:]
+        for (date, transactions) in dateTransactions {
+            let filtered = transactions.filter { typeFilter.includes($0.type) }
+            if !filtered.isEmpty {
+                result[date] = filtered
+            }
+        }
+        return result
+    }
+
     private var dates: [Date] {
-        dateTransactions.keys.sorted(by: >)
+        sortOrder.datesSorted(Array(filteredDateTransactions.keys))
+    }
+
+    private var sortedUpcomingItems: [UpcomingRecurringItem] {
+        sortOrder.upcomingSorted(
+            upcomingItems.filter { typeFilter.includes($0.transactionType) }
+        )
+    }
+
+    private var upcomingDateGroups: [(date: Date, items: [UpcomingRecurringItem])] {
+        Dictionary(grouping: sortedUpcomingItems) { calendar.startOfDay(for: $0.occurrenceDate) }
+            .map { (date: $0.key, items: sortOrder.upcomingSorted($0.value)) }
+            .sorted { lhs, rhs in
+                switch sortOrder {
+                case .descending: return lhs.date > rhs.date
+                case .ascending: return lhs.date < rhs.date
+                }
+            }
+    }
+
+    /// Upcoming belongs in the transaction list (below the header), not above the balance card.
+    private var showsUpcomingInList: Bool {
+        !sortedUpcomingItems.isEmpty && !isSearchActive
+    }
+
+    private var firstMaterializedAnchor: TransactionListPersistedAnchor? {
+        guard hasTransactions else { return nil }
+        switch grouping {
+        case .date:
+            guard let date = dates.first else { return nil }
+            return .date(date)
+        case .category:
+            guard let section = categorySections.first else { return nil }
+            return .category(section.id)
+        }
+    }
+
+    /// On open, skip past upcoming so only real transactions are in view.
+    private var preferredListEntryAnchor: TransactionListPersistedAnchor {
+        if showsUpcomingInList, firstMaterializedAnchor != nil {
+            return .firstMaterialized
+        }
+        return .top
     }
 
     private var allTransactions: [Transaction] {
-        dates.flatMap { dateTransactions[$0] ?? [] }
+        dates.flatMap { filteredDateTransactions[$0] ?? [] }
     }
 
     private var isSearchActive: Bool {
@@ -157,12 +219,12 @@ struct TransactionListView: View {
         let query = debouncedSearchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !query.isEmpty else { return [] }
 
-        return allTransactions
-            .filter {
+        return sortOrder.transactionsSorted(
+            allTransactions.filter {
                 $0.title.localizedCaseInsensitiveContains(query)
                     || ($0.merchant?.localizedCaseInsensitiveContains(query) ?? false)
             }
-            .sorted { $0.date > $1.date }
+        )
     }
 
     private var categorySections: [CategorySection] {
@@ -174,7 +236,7 @@ struct TransactionListView: View {
                 CategorySection(
                     id: categoryId,
                     category: categoryStore.resolve(id: categoryId),
-                    transactions: transactions.sorted { $0.date > $1.date }
+                    transactions: sortOrder.transactionsSorted(transactions)
                 )
             }
             .sorted { lhs, rhs in
@@ -234,6 +296,11 @@ struct TransactionListView: View {
         !allTransactions.isEmpty
     }
 
+    /// Keep list chrome (options) when the month has data that filters may temporarily hide.
+    private var hasListContent: Bool {
+        !dateTransactions.isEmpty || !upcomingItems.isEmpty || hasTransactions
+    }
+
     private var isPartiallyScrolled: Bool {
         guard scrollMetrics.isScrollable else { return false }
         guard scrollMetrics.visibleHeight > 0 else {
@@ -244,7 +311,7 @@ struct TransactionListView: View {
 
     var body: some View {
         Group {
-            if hasTransactions || isSearching {
+            if hasListContent || isSearching {
                 transactionScrollContent
             } else {
                 noTransactionsFound
@@ -254,13 +321,15 @@ struct TransactionListView: View {
         .contentShape(Rectangle())
         .onChange(of: dateTransactions) { _, _ in
             handleTransactionDataChange()
+            Task { await reloadUpcomingIfNeeded() }
         }
         .onChange(of: grouping) { _, _ in
             stickySectionID = nil
             sectionHeaderFrames = []
-            scrollAnchor = .top
-            onScrollAnchorChange(.top)
-            pendingProgrammaticScroll = .top
+            let entry = preferredListEntryAnchor
+            scrollAnchor = entry
+            onScrollAnchorChange(entry)
+            pendingProgrammaticScroll = entry
         }
         .onChange(of: searchText) { _, newValue in
             scheduleSearchDebounce(for: newValue)
@@ -271,6 +340,26 @@ struct TransactionListView: View {
         }
         .onChange(of: monthKey) { _, _ in
             closeSearch()
+            Task { await reloadUpcomingIfNeeded() }
+        }
+        .onChange(of: showUpcomingRecurring) { _, _ in
+            Task { await reloadUpcomingIfNeeded() }
+        }
+        .onChange(of: typeFilter) { _, _ in
+            stickySectionID = nil
+            sectionHeaderFrames = []
+            let entry = preferredListEntryAnchor
+            scrollAnchor = entry
+            onScrollAnchorChange(entry)
+            pendingProgrammaticScroll = entry
+        }
+        .onChange(of: sortOrder) { _, _ in
+            stickySectionID = nil
+            sectionHeaderFrames = []
+            let entry = preferredListEntryAnchor
+            scrollAnchor = entry
+            onScrollAnchorChange(entry)
+            pendingProgrammaticScroll = entry
         }
         .onChange(of: isSearching) { _, isActive in
             if !isActive {
@@ -280,8 +369,52 @@ struct TransactionListView: View {
         .dismissKeyboardOnOutsideTap(isEnabled: isSearching) {
             handleSearchDismissInteraction()
         }
+        .sheet(item: $selectedRecurringForEdit) { item in
+            EditRecurringTransactionView(item: item) {
+                Task { await reloadUpcomingIfNeeded() }
+            }
+        }
         .task {
             await categoryStore.load()
+            await reloadUpcomingIfNeeded()
+        }
+    }
+
+    private func reloadUpcomingIfNeeded() async {
+        guard showUpcomingRecurring else {
+            await MainActor.run { upcomingItems = [] }
+            return
+        }
+
+        let comparison = CalendarComparison(
+            rawValue: UserDefaultsHelper.shared.integer(forKey: .calendarAggregator)
+        ) ?? .monthly
+        let range = PeriodDateRangeCalculator.dateRange(
+            forOffset: monthKey,
+            comparison: comparison,
+            calendar: calendar
+        )
+        let startOfToday = calendar.startOfDay(for: Date())
+        guard range.end >= startOfToday else {
+            await MainActor.run { upcomingItems = [] }
+            return
+        }
+
+        let rules = await transactionManager.fetchRecurringTransactions()
+        let materializedKeys = await transactionManager.materializedRecurringOccurrenceKeys(
+            startDate: max(range.start, startOfToday),
+            endDate: range.end
+        )
+        let projected = UpcomingRecurringProjector.project(
+            rules: rules,
+            periodStart: range.start,
+            periodEnd: range.end,
+            calendar: calendar,
+            materializedKeys: materializedKeys
+        )
+
+        await MainActor.run {
+            upcomingItems = projected
         }
     }
 
@@ -453,6 +586,8 @@ struct TransactionListView: View {
         switch scrollAnchor {
         case .top:
             return false
+        case .firstMaterialized:
+            return firstMaterializedAnchor == nil
         case .date(let date):
             return grouping == .date && !dates.contains(date)
         case .category(let categoryId):
@@ -463,7 +598,9 @@ struct TransactionListView: View {
 
     private func revealNewestContent(topDate: Date?) {
         let target: TransactionListPersistedAnchor
-        if scrollMetrics.isScrollable, grouping == .date, let topDate {
+        if scrollMetrics.isScrollable, showsUpcomingInList, firstMaterializedAnchor != nil {
+            target = .firstMaterialized
+        } else if scrollMetrics.isScrollable, grouping == .date, let topDate {
             target = .date(topDate)
         } else {
             target = .top
@@ -475,15 +612,29 @@ struct TransactionListView: View {
     }
 
     private func scrollToAnchor(_ anchor: TransactionListPersistedAnchor, proxy: ScrollViewProxy) {
-        let resolvedAnchor = scrollMetrics.isScrollable ? anchor : .top
+        let scrollTarget: TransactionListPersistedAnchor
+        if !scrollMetrics.isScrollable {
+            scrollTarget = .top
+        } else if case .firstMaterialized = anchor {
+            scrollTarget = firstMaterializedAnchor ?? .top
+        } else {
+            scrollTarget = anchor
+        }
 
-        scrollAnchor = resolvedAnchor
-        onScrollAnchorChange(resolvedAnchor)
+        let persisted: TransactionListPersistedAnchor = {
+            if case .firstMaterialized = anchor, firstMaterializedAnchor != nil {
+                return .firstMaterialized
+            }
+            return scrollTarget
+        }()
+
+        scrollAnchor = persisted
+        onScrollAnchorChange(persisted)
 
         var transaction = SwiftUI.Transaction(animation: nil)
         transaction.disablesAnimations = true
         withTransaction(transaction) {
-            proxy.scrollTo(resolvedAnchor, anchor: .top)
+            proxy.scrollTo(scrollTarget, anchor: .top)
         }
     }
 
@@ -498,7 +649,7 @@ struct TransactionListView: View {
     private func applyValidatedSavedAnchor(using proxy: ScrollViewProxy) {
         guard needsScrollRestore else { return }
 
-        if !hasTransactions {
+        if !hasListContent {
             needsScrollRestore = false
             return
         }
@@ -521,18 +672,21 @@ struct TransactionListView: View {
     private func validatedScrollAnchor(
         _ anchor: TransactionListPersistedAnchor?
     ) -> TransactionListPersistedAnchor {
-        guard let anchor else { return .top }
+        guard let anchor else { return preferredListEntryAnchor }
 
         switch anchor {
         case .top:
-            return .top
+            // Default / restored top with upcoming → land on real transactions.
+            return preferredListEntryAnchor
+        case .firstMaterialized:
+            return firstMaterializedAnchor != nil ? .firstMaterialized : .top
         case .date(let date):
-            guard grouping == .date, dates.contains(date) else { return .top }
+            guard grouping == .date, dates.contains(date) else { return preferredListEntryAnchor }
             return anchor
         case .category(let categoryId):
             guard grouping == .category,
                   categorySections.contains(where: { $0.id == categoryId })
-            else { return .top }
+            else { return preferredListEntryAnchor }
             return anchor
         }
     }
@@ -561,7 +715,7 @@ struct TransactionListView: View {
     private var transactionScrollContent: some View {
         ScrollViewReader { proxy in
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 12) {
+                LazyVStack(spacing: 12) {
                     if summary != nil {
                         FlippableSummaryCardView(
                             summary: summary,
@@ -580,13 +734,22 @@ struct TransactionListView: View {
                             }
                         )
 
+                    if showsUpcomingInList {
+                        upcomingSection(subtitle: grouping == .date ? .category : .date)
+                    }
+
                     switch grouping {
                     case .date:
                         if isSearchActive {
                             searchResultsContent
                         } else {
                             ForEach(dates, id: \.self) { date in
-                                dateSection(date: date, transactions: dateTransactions[date] ?? [])
+                                dateSection(
+                                    date: date,
+                                    transactions: sortOrder.transactionsSorted(
+                                        filteredDateTransactions[date] ?? []
+                                    )
+                                )
                                     .id(TransactionListPersistedAnchor.date(date))
                             }
                         }
@@ -641,6 +804,15 @@ struct TransactionListView: View {
                 guard newValue != oldValue else { return }
                 scrollToTop(using: proxy)
             }
+            .onChange(of: upcomingItems.count) { oldCount, newCount in
+                // When upcoming appears at the top of the list, keep real transactions in view.
+                guard newCount > oldCount, showsUpcomingInList, firstMaterializedAnchor != nil else { return }
+                let shouldTuck = scrollAnchor == .top
+                    || scrollAnchor == .firstMaterialized
+                    || scrollMetrics.offsetY < Self.summaryCardScrollThreshold
+                guard shouldTuck else { return }
+                pendingProgrammaticScroll = .firstMaterialized
+            }
             .onAppear {
                 onListAppear?()
                 syncTransactionSnapshot()
@@ -663,7 +835,7 @@ struct TransactionListView: View {
                     .font(.system(size: 18, weight: .medium))
                     .xpnseAdaptiveForeground()
 
-                groupingToggleButton
+                listOptionsButton
 
                 Spacer(minLength: 0)
 
@@ -732,7 +904,10 @@ struct TransactionListView: View {
     private func stickySectionHeader(for id: StickySectionID) -> some View {
         switch id {
         case .date(let date):
-            dateSectionHeader(date: date, transactions: dateTransactions[date] ?? [])
+            dateSectionHeader(
+                date: date,
+                transactions: sortOrder.transactionsSorted(filteredDateTransactions[date] ?? [])
+            )
         case .category(let categoryId):
             if let section = categorySections.first(where: { $0.id == categoryId }) {
                 categorySectionHeader(section)
@@ -740,7 +915,11 @@ struct TransactionListView: View {
         }
     }
 
-    private func dateSectionHeader(date: Date, transactions: [Transaction]) -> some View {
+    private func dateSectionHeader(
+        date: Date,
+        transactions: [Transaction],
+        showsNetTotal: Bool = true
+    ) -> some View {
         HStack(alignment: .center, spacing: 8) {
             Text(date.formattedDate())
                 .font(.system(size: 12, weight: .semibold))
@@ -748,7 +927,9 @@ struct TransactionListView: View {
 
             Spacer(minLength: 0)
 
-            sectionNetTotalLabel(for: transactions)
+            if showsNetTotal {
+                sectionNetTotalLabel(for: transactions)
+            }
         }
         .padding(.vertical, 6)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -808,32 +989,114 @@ struct TransactionListView: View {
         .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
-    private var groupingToggleButton: some View {
-        Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            let nextGrouping: TransactionListGrouping = grouping == .date ? .category : .date
-            AppAnalytics.logButtonClick(
-                nextGrouping == .category
-                    ? AppAnalytics.Button.groupByCategory
-                    : AppAnalytics.Button.groupByDate,
-                source: AppAnalytics.Screen.home
-            )
-            withAnimation(.easeInOut(duration: 0.2)) {
-                grouping = nextGrouping
+    private var listOptionsButton: some View {
+        Menu {
+            Section(L10n.tr("home.list_options.group")) {
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    let next: TransactionListGrouping = grouping == .category ? .date : .category
+                    TransactionListPreferences.grouping = next
+                    AppAnalytics.logButtonClick(
+                        AppAnalytics.Button.toggleGroupByCategory,
+                        source: AppAnalytics.Screen.home
+                    )
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        grouping = next
+                    }
+                } label: {
+                    if grouping == .category {
+                        Label(L10n.tr("home.list_options.category"), systemImage: "checkmark")
+                    } else {
+                        Text(L10n.tr("home.list_options.category"))
+                    }
+                }
+            }
+
+            Section(L10n.tr("home.list_options.sort")) {
+                ForEach(TransactionListSortOrder.allCases, id: \.rawValue) { order in
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        guard sortOrder != order else { return }
+                        TransactionListPreferences.sortOrder = order
+                        AppAnalytics.logButtonClick(
+                            order == .ascending
+                                ? AppAnalytics.Button.setSortAscending
+                                : AppAnalytics.Button.setSortDescending,
+                            source: AppAnalytics.Screen.home
+                        )
+                        sortOrder = order
+                    } label: {
+                        if sortOrder == order {
+                            Label(L10n.tr(order.titleKey), systemImage: "checkmark")
+                        } else {
+                            Text(L10n.tr(order.titleKey))
+                        }
+                    }
+                }
+            }
+
+            Section(L10n.tr("home.list_options.filter")) {
+                ForEach(TransactionListTypeFilter.filterOrder, id: \.0.rawValue) { flag, type in
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        var next = typeFilter
+                        next.set(flag, enabled: !typeFilter.contains(flag))
+                        TransactionListPreferences.typeFilter = next
+                        AppAnalytics.logButtonClick(
+                            analyticsButton(for: flag),
+                            source: AppAnalytics.Screen.home
+                        )
+                        typeFilter = next
+                    } label: {
+                        if typeFilter.contains(flag) {
+                            Label(type.displayName, systemImage: "checkmark")
+                        } else {
+                            Text(type.displayName)
+                        }
+                    }
+                }
+
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    let next = !showUpcomingRecurring
+                    TransactionListPreferences.showUpcomingRecurring = next
+                    AppAnalytics.logButtonClick(
+                        AppAnalytics.Button.toggleShowUpcomingRecurring,
+                        source: AppAnalytics.Screen.home
+                    )
+                    showUpcomingRecurring = next
+                } label: {
+                    if showUpcomingRecurring {
+                        Label(L10n.tr("home.list_options.upcoming"), systemImage: "checkmark")
+                    } else {
+                        Text(L10n.tr("home.list_options.upcoming"))
+                    }
+                }
             }
         } label: {
-            Image(systemName: grouping == .date ? "square.grid.2x2.fill" : "calendar")
+            Image(systemName: "line.3.horizontal.decrease")
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
                 .frame(width: 36, height: 36)
                 .background(AdaptiveBrandSurface.rowBackground(for: colorScheme))
                 .clipShape(RoundedRectangle(cornerRadius: 10))
         }
-        .accessibilityLabel(
-            grouping == .date
-                ? L10n.tr("home.group_by_category")
-                : L10n.tr("home.group_by_date")
-        )
+        .accessibilityLabel(L10n.tr("home.list_options"))
+        .simultaneousGesture(TapGesture().onEnded {
+            AppAnalytics.logButtonClick(
+                AppAnalytics.Button.openListOptions,
+                source: AppAnalytics.Screen.home
+            )
+        })
+    }
+
+    private func analyticsButton(for filter: TransactionListTypeFilter) -> String {
+        switch filter {
+        case .expense: return AppAnalytics.Button.toggleFilterExpense
+        case .income: return AppAnalytics.Button.toggleFilterIncome
+        case .savings: return AppAnalytics.Button.toggleFilterSavings
+        default: return AppAnalytics.Button.openListOptions
+        }
     }
 
     @ViewBuilder
@@ -853,7 +1116,10 @@ struct TransactionListView: View {
         }
     }
 
-    private func dateSection(date: Date, transactions: [Transaction]) -> some View {
+    private func dateSection(
+        date: Date,
+        transactions: [Transaction]
+    ) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             dateSectionHeader(date: date, transactions: transactions)
                 .background(
@@ -905,6 +1171,34 @@ struct TransactionListView: View {
                 }
             }
         }
+    }
+
+    private func upcomingSection(subtitle: TransactionItemSubtitle) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ForEach(upcomingDateGroups, id: \.date) { group in
+                VStack(alignment: .leading, spacing: 8) {
+                    // Upcoming days show the date only — no section net total.
+                    dateSectionHeader(
+                        date: group.date,
+                        transactions: [],
+                        showsNetTotal: false
+                    )
+
+                    ForEach(group.items) { item in
+                        UpcomingRecurringItemView(
+                            item: item,
+                            subtitle: subtitle,
+                            showsLeadingCategoryIcon: grouping == .date
+                        ) {
+                            selectedRecurringForEdit = item.rule
+                        }
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(L10n.tr("home.upcoming"))
     }
 
     private var noTransactionsFound: some View {

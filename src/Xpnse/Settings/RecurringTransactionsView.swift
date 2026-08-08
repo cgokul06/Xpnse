@@ -155,7 +155,7 @@ struct RecurringTransactionsView: View {
     }
 }
 
-private struct EditRecurringTransactionView: View {
+struct EditRecurringTransactionView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
 

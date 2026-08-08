@@ -36,7 +36,10 @@ struct Home: View {
     @State private var monthDragAxis: MonthDragAxis?
     @State private var monthScrollAnchors: [Int: TransactionListPersistedAnchor] = [:]
     @State private var isSummaryCardShowingDonut = false
-    @State private var transactionListGrouping: TransactionListGrouping = .date
+    @State private var transactionListGrouping: TransactionListGrouping = TransactionListPreferences.grouping
+    @State private var showUpcomingRecurring = TransactionListPreferences.showUpcomingRecurring
+    @State private var listTypeFilter = TransactionListPreferences.typeFilter
+    @State private var listSortOrder = TransactionListPreferences.sortOrder
     @State private var bottomBarHiddenAmount: CGFloat = 0
     @State private var isTransactionSearchActive = false
     @State private var featureFlags = FeatureFlags.shared
@@ -450,6 +453,9 @@ struct Home: View {
             isShowingDonut: $isSummaryCardShowingDonut,
             dateTransactions: txnSummary?.transactions ?? [:],
             grouping: $transactionListGrouping,
+            showUpcomingRecurring: $showUpcomingRecurring,
+            typeFilter: $listTypeFilter,
+            sortOrder: $listSortOrder,
             savedScrollAnchor: monthScrollAnchors[key],
             onScrollAnchorChange: { anchor in
                 monthScrollAnchors[key] = anchor
