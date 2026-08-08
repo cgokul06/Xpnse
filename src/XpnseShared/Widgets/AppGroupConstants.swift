@@ -13,9 +13,10 @@ enum AppGroupConstants {
     #endif
     static let snapshotFileName = "widget-month-snapshot.json"
     static let sharedTextInboxFileName = "shared-text-inbox.json"
+    static let sharedImageInboxFileName = "shared-image-inbox.jpg"
     static let urlScheme = "snapledger"
 
-    /// Opens the main app to process shared text from the Share Extension.
+    /// Opens the main app to process shared text/image from the Share Extension.
     static var shareInboxURL: URL {
         URL(string: "\(urlScheme)://share-inbox")!
     }

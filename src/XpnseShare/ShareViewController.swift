@@ -16,6 +16,16 @@ final class ShareViewController: UIViewController {
     private func processSharedItems() async {
         defer { finish() }
 
+        if let imageData = await loadSharedImageData() {
+            do {
+                try SharedImageInboxStore.write(imageData)
+                await openHostApp()
+            } catch {
+                return
+            }
+            return
+        }
+
         guard let text = await loadSharedText() else { return }
 
         do {
@@ -25,6 +35,73 @@ final class ShareViewController: UIViewController {
         }
 
         await openHostApp()
+    }
+
+    private func loadSharedImageData() async -> Data? {
+        guard let item = extensionContext?.inputItems.first as? NSExtensionItem,
+              let attachments = item.attachments
+        else {
+            return nil
+        }
+
+        let imageTypes = [
+            UTType.image.identifier,
+            UTType.jpeg.identifier,
+            UTType.png.identifier,
+            UTType.heic.identifier
+        ]
+
+        for provider in attachments {
+            for type in imageTypes where provider.hasItemConformingToTypeIdentifier(type) {
+                if let data = await loadImageData(from: provider, type: type) {
+                    return data
+                }
+            }
+        }
+
+        return nil
+    }
+
+    private func loadImageData(from provider: NSItemProvider, type: String) async -> Data? {
+        await withCheckedContinuation { continuation in
+            provider.loadItem(forTypeIdentifier: type, options: nil) { item, _ in
+                let data = Self.imageData(from: item)
+                continuation.resume(returning: data)
+            }
+        }
+    }
+
+    private static func imageData(from item: NSSecureCoding?) -> Data? {
+        if let image = item as? UIImage {
+            return jpegOrPNGData(from: image)
+        }
+        if let data = item as? Data {
+            if UIImage(data: data) != nil {
+                return normalizedImageData(data)
+            }
+            return nil
+        }
+        if let url = item as? URL {
+            guard let data = try? Data(contentsOf: url),
+                  UIImage(data: data) != nil
+            else {
+                return nil
+            }
+            return normalizedImageData(data)
+        }
+        return nil
+    }
+
+    private static func normalizedImageData(_ data: Data) -> Data {
+        guard let image = UIImage(data: data) else { return data }
+        return jpegOrPNGData(from: image) ?? data
+    }
+
+    private static func jpegOrPNGData(from image: UIImage) -> Data? {
+        if let jpeg = image.jpegData(compressionQuality: 0.9) {
+            return jpeg
+        }
+        return image.pngData()
     }
 
     private func loadSharedText() async -> String? {

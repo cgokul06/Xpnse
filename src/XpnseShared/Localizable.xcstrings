@@ -8214,25 +8214,54 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Geteilter Text wird analysiert…"
+            "value" : "Geteilter Inhalt wird analysiert…"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Analyzing shared text…"
+            "value" : "Analyzing shared content…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Analizando texto compartido…"
+            "value" : "Analizando contenido compartido…"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Analyse du texte partagé…"
+            "value" : "Analyse du contenu partagé…"
+          }
+        }
+      }
+    },
+    "share.empty_image" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Im Teilen wurde kein gültiges Bild gefunden."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No valid image was found in the share."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se encontró una imagen válida en el contenido compartido."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune image valide trouvée dans le partage."
           }
         }
       }
@@ -8291,6 +8320,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ce texte ne semble pas être une transaction. Partagez un reçu, une confirmation de paiement ou une note de dépense."
+          }
+        }
+      }
+    },
+    "share.receipt_scan_unavailable" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Belegscan ist derzeit nicht verfügbar."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Receipt scanning is currently unavailable."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El escaneo de recibos no está disponible en este momento."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le scan de reçus est actuellement indisponible."
           }
         }
       }

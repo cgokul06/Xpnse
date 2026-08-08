@@ -391,7 +391,7 @@ Custom URL scheme: `snapledger://`
 |---|---|
 | `snapledger://home` | Open home dashboard |
 | `snapledger://add-transaction` | Open add-transaction screen |
-| `snapledger://share-inbox` | Process shared text from the Share Extension |
+| `snapledger://share-inbox` | Process shared text or image from the Share Extension |
 
 Used by widgets, the Share Extension, and can be invoked from Shortcuts or other apps.
 
@@ -399,14 +399,16 @@ Used by widgets, the Share Extension, and can be invoked from Shortcuts or other
 
 ## Share to SnapLedger
 
-From the iOS share sheet in other apps, choose **SnapLedger** when sharing **text**:
+From the iOS share sheet in other apps, choose **SnapLedger** when sharing **text** or a single **bill/receipt image**:
 
-1. The Share Extension writes the text into the App Group inbox and opens the app
-2. SnapLedger shows an analyzing overlay and runs on-device Foundation Models
-3. If the text is transaction-related, **Add Transaction** opens with amount, description, category, type, and date prefilled
-4. If the text is unrelated (or analysis fails), an alert explains why and the form is not opened
+1. The Share Extension writes the content into the App Group inbox and opens the app
+2. SnapLedger shows an analyzing overlay
+3. **Text:** on-device Foundation Models check if it is transaction-related and extract fields
+4. **Image:** the existing receipt scan pipeline (Vision OCR + Foundation Models) extracts transaction fields
+5. On success, **Add Transaction** opens with amount, description, category, type, and date prefilled
+6. If analysis fails or the content is unrelated, an alert explains why and the form is not opened
 
-Images and files are not supported in this version.
+Multi-image shares, PDFs, and other file types are not supported.
 
 ---
 
