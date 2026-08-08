@@ -76,7 +76,7 @@ struct CoordinatedHomeView: View {
             syncBusyWork(for: homeCoordinator.path)
             engagement.reconcile()
             evaluateAppLockPromo()
-            if SharedTextInboxStore.hasContent {
+            if SharedTextInboxStore.hasContent || SharedImageInboxStore.hasContent {
                 sharedTextImport.markPendingFromDeepLink()
             }
         }
@@ -122,10 +122,14 @@ struct CoordinatedHomeView: View {
                 break
             }
         }
-        .onReceive(Timer.publish(every: 5, on: .main, in: .common).autoconnect()) { _ in
-            engagement.reconcile()
-            engagement.checkPresentationGate()
-            evaluateAppLockPromo()
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(5))
+                guard !Task.isCancelled else { break }
+                engagement.reconcile()
+                engagement.checkPresentationGate()
+                evaluateAppLockPromo()
+            }
         }
         // Edge-attached custom sheet: iOS 26 system `.medium` sheets are inset (Liquid Glass).
         .fullScreenCover(item: presentedEngagementBinding, onDismiss: {

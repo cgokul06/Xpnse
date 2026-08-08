@@ -17,11 +17,12 @@ final class HomeScreenViewModel: ObservableObject {
 
     private let transactionManager: FirebaseTransactionManager = .shared
     private let calendar = Calendar.current
-    private let prefetchWindow = 6  // how many units (months, quarters, etc.) to prefetch
+    /// How far from `currentKey` to keep cached summaries (pager needs ±1).
+    private let cacheRadius = 2
     let maxFuturisticRange: Int = 12
     private var cancellables = Set<AnyCancellable>()
 
-    /// Set of keys we currently have cached (-4, -3, -2, -1, 0)
+    /// Set of keys we currently have cached
     private(set) var loadedKeys: Set<Int> = []
 
     init() {
@@ -47,30 +48,26 @@ final class HomeScreenViewModel: ObservableObject {
 
     // MARK: - Initial Prefetch
     func fetchInitialNearbySetOfData() async {
-        // Example: fetch last 6 months including current (0, -1, -2, -3, -4, -5)
-        let preCurrentKeys = (-(prefetchWindow - 1)...0)
-        await fetchData(forKeys: Array(preCurrentKeys))
-        let postCurrentKeys = (1...maxFuturisticRange)
-        await fetchData(forKeys: Array(postCurrentKeys))
+        await fetchData(forKeys: Array((-cacheRadius)...cacheRadius))
+        evictDistantKeys(around: currentKey)
     }
 
     // MARK: - Data Prefetching
     func prefetchIfNeeded(currentKey: Int) async {
-        // If user reaches the second-oldest cached key, prefetch more backwards
-        guard let minKey = loadedKeys.min(), currentKey <= minKey + 1 else { return }
-
-        let nextRange = ((minKey - prefetchWindow)..<minKey)
-        await fetchData(forKeys: Array(nextRange))
+        let keys = retainedKeys(around: currentKey)
+        await fetchData(forKeys: keys)
+        evictDistantKeys(around: currentKey)
     }
 
     func refreshVisibleData() async {
-        let keysToRefresh = loadedKeys.isEmpty ? [0] : Array(loadedKeys)
+        let keysToRefresh = retainedKeys(around: currentKey)
         await fetchData(forKeys: keysToRefresh, forceReload: true)
+        evictDistantKeys(around: currentKey)
     }
 
     private func setupObservers() {
         transactionManager.changesPublisher
-            .receive(on: DispatchQueue.main)
+            .debounce(for: .milliseconds(250), scheduler: DispatchQueue.main)
             .sink { [weak self] _ in
                 guard let self else { return }
                 Task { await self.refreshVisibleData() }
@@ -105,6 +102,24 @@ final class HomeScreenViewModel: ObservableObject {
             } catch {
                 print("❌ Failed to fetch for key \(key): \(error)")
             }
+        }
+    }
+
+    private func retainedKeys(around key: Int) -> [Int] {
+        let lower = key - cacheRadius
+        let upper = min(key + cacheRadius, maxFuturisticRange)
+        guard lower <= upper else { return [key] }
+        return Array(lower...upper)
+    }
+
+    private func evictDistantKeys(around key: Int) {
+        let keep = Set(retainedKeys(around: key))
+        let stale = loadedKeys.subtracting(keep)
+        guard !stale.isEmpty else { return }
+
+        for staleKey in stale {
+            transactionSummaryDict.removeValue(forKey: staleKey)
+            loadedKeys.remove(staleKey)
         }
     }
 
