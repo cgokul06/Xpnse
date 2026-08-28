@@ -56,6 +56,7 @@ struct AddTransactionView: View {
     @State private var didManuallySelectCategory = false
     @State private var lastNormalizedDescription = ""
     @State private var lastNormalizedMerchant = ""
+    @State private var isPushingBillScanner = false
     private let transactionManager: FirebaseTransactionManager = .shared
     private let categoryClassifier = CategoryClassificationService()
     private let merchantClassifier = MerchantClassificationService()
@@ -198,9 +199,7 @@ struct AddTransactionView: View {
                     }
                 }
                 .onChange(of: billScannerService.extractedTransaction) { _, extractedData in
-                    if let data = extractedData {
-                        applyExtractedTransaction(data)
-                    }
+                    handleExtractedTransactionChange(extractedData)
                 }
                 .onChange(of: description) { _, newValue in
                     if isDescriptionChangeBecauseOfSelection {
@@ -343,21 +342,8 @@ struct AddTransactionView: View {
                     }
                 }
             }
-            .onAppear {
-                AppAnalytics.logScreen(
-                    isEditing ? AppAnalytics.Screen.editTransaction : AppAnalytics.Screen.addTransaction
-                )
-                self.mapEditableDatas()
-                self.applyExtractedTransactionIfNeeded()
-                lastNormalizedDescription = SuggestionEngine.normalize(description)
-                lastNormalizedMerchant = SuggestionEngine.normalize(merchant)
-                suggestionEngine.load()
-                merchantSuggestionEngine.load()
-            }
-            .onDisappear {
-                categoryClassifier.cancel()
-                merchantClassifier.cancel()
-            }
+            .onAppear(perform: handleOnAppear)
+            .onDisappear(perform: handleOnDisappear)
             .task {
                 await categoryStore.load()
             }
@@ -948,6 +934,32 @@ struct AddTransactionView: View {
         lastNormalizedMerchant = ""
     }
 
+    private func handleOnAppear() {
+        AppAnalytics.logScreen(
+            isEditing ? AppAnalytics.Screen.editTransaction : AppAnalytics.Screen.addTransaction
+        )
+        mapEditableDatas()
+        applyExtractedTransactionIfNeeded()
+        lastNormalizedDescription = SuggestionEngine.normalize(description)
+        lastNormalizedMerchant = SuggestionEngine.normalize(merchant)
+        isPushingBillScanner = false
+        suggestionEngine.load()
+        merchantSuggestionEngine.load()
+    }
+
+    private func handleOnDisappear() {
+        categoryClassifier.cancel()
+        merchantClassifier.cancel()
+        guard !isPushingBillScanner else { return }
+        billScannerService.clearExtractedTransaction()
+    }
+
+    private func handleExtractedTransactionChange(_ extractedData: ScannedTransaction?) {
+        if let data = extractedData {
+            applyExtractedTransaction(data)
+        }
+    }
+
     private func applyExtractedTransactionIfNeeded() {
         guard !isEditing, let data = billScannerService.extractedTransaction else { return }
         applyExtractedTransaction(data)
@@ -967,6 +979,7 @@ struct AddTransactionView: View {
     }
 
     private func scanBill() {
+        isPushingBillScanner = true
         self.homeCoordinator.push(.billScanner)
     }
 

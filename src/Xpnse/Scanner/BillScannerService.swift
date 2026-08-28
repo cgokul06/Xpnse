@@ -18,6 +18,11 @@ class BillScannerService: ObservableObject {
     @Published var extractedTransaction: ScannedTransaction?
     @Published var errorMessage: String?
 
+    /// Clears one-shot scan/share prefill so a later manual add starts empty.
+    func clearExtractedTransaction() {
+        extractedTransaction = nil
+    }
+
     // MARK: - Scan Methods
 
     func scanBill(from image: UIImage) async {
