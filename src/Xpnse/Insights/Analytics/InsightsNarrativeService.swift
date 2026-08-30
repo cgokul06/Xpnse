@@ -69,7 +69,10 @@ final class InsightsNarrativeService {
         return base.appendingPathComponent("insights-narrative-cache-v6-\(lang).json")
     }
 
-    func narratives(for snapshot: InsightsSnapshot) async -> (InsightsNarratives, wasFreshlyGenerated: Bool) {
+    func narratives(
+        for snapshot: InsightsSnapshot,
+        focusExpenses: [Transaction] = []
+    ) async -> (InsightsNarratives, wasFreshlyGenerated: Bool) {
         let key = "\(snapshot.contentHash)|\(L10n.preferredLanguageCode)"
         if InsightsResultCache.Policy.narrativeReadsEnabled {
             if let cached = memoryCache[key] {
@@ -87,7 +90,7 @@ final class InsightsNarrativeService {
 
         task?.cancel()
         let work = Task<InsightsNarratives, Never> { @MainActor in
-            await self.generate(snapshot: snapshot)
+            await self.generate(snapshot: snapshot, focusExpenses: focusExpenses)
         }
         task = work
         let result = await work.value
@@ -107,12 +110,18 @@ final class InsightsNarrativeService {
         task = nil
     }
 
-    private func generate(snapshot: InsightsSnapshot) async -> InsightsNarratives {
+    private func generate(
+        snapshot: InsightsSnapshot,
+        focusExpenses: [Transaction],
+        slim: Bool = false
+    ) async -> InsightsNarratives {
         guard !Task.isCancelled else { return .empty }
 
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
-        guard let data = try? encoder.encode(snapshot),
+        guard let data = try? encoder.encode(
+            NarrativeModelSnapshot(from: snapshot, focusExpenses: focusExpenses, slim: slim)
+        ),
               let json = String(data: data, encoding: .utf8)
         else { return .empty }
 
@@ -124,7 +133,7 @@ final class InsightsNarrativeService {
         Voice rules (mandatory):
         - Always use second person appropriate for \(languageName).
         - Never write "the user", "user", or third-person observations about the reader.
-        Use ONLY the JSON snapshot below. Do not invent amounts, merchants, or categories.
+        Use ONLY the JSON facts below. Do not invent amounts, merchants, or categories.
         The financial health star rating is already computed in `healthBreakdown.finalStars` and `healthBreakdown.totalScore`.
         Do NOT change or recalculate the score. Explain it using `healthBreakdown.reasons`.
         For savings rate, use `healthBreakdown.savingsRateAssessment` verbatim — it already states whether the rate is below, within, or above the guide.
@@ -133,9 +142,10 @@ final class InsightsNarrativeService {
         Financial health scope (mandatory):
         - Discuss ONLY the current focus month (`focusMonthLabel`). Never mention prior months by name, past savings targets, or historical failures.
         - All `healthBreakdown.reasons` refer to this month — keep the summary forward-looking and about where you stand now.
+        Category facts: each category lists this month's total plus the biggest and smallest single spend in that category. Use those spends when they help; never invent ones that are not listed.
         Example tone (adapt into \(languageName)): "Your financial health is rated 4/5. Forecast savings rate is 19% — below the 20–30% guide. Shopping ran above your usual level."
         \(FinancialHealthRules.rulesPromptText())
-        Snapshot JSON:
+        Facts JSON:
         \(json)
         """
 
@@ -184,10 +194,21 @@ final class InsightsNarrativeService {
             DeviceDebugLogger.log(
                 "insights narrative failed",
                 category: "insights.health",
-                data: ["error": String(describing: error)]
+                data: ["error": String(describing: error), "slim": slim]
             )
+            if !slim, Self.isContextWindowError(error) {
+                return await generate(snapshot: snapshot, focusExpenses: focusExpenses, slim: true)
+            }
             return .empty
         }
+    }
+
+    private static func isContextWindowError(_ error: Error) -> Bool {
+        if let generation = error as? LanguageModelSession.GenerationError,
+           case .exceededContextWindowSize = generation {
+            return true
+        }
+        return String(describing: error).contains("exceededContextWindowSize")
     }
 
     private func loadDiskCache() -> [String: InsightsNarratives] {
@@ -205,6 +226,152 @@ final class InsightsNarrativeService {
         }
         guard let data = try? JSONEncoder().encode(map) else { return }
         try? data.write(to: cacheURL, options: .atomic)
+    }
+}
+
+/// Curated facts for on-device Foundation Models — not the full Insights snapshot.
+private struct NarrativeModelSnapshot: Encodable {
+    struct Forecast: Encodable {
+        let expectedIncome: Int
+        let expectedExpense: Int
+        let expectedSavings: Int
+    }
+
+    struct HealthBreakdown: Encodable {
+        let finalStars: Int
+        let totalScore: Double
+        let forecastSavingsRatePercent: Int
+        let savingsRateAssessment: String
+        let reasons: [String]
+    }
+
+    struct Spend: Encodable {
+        let title: String
+        let amount: Int
+    }
+
+    struct CategoryFacts: Encodable {
+        let name: String
+        let total: Int
+        let percentOfExpense: Int
+        let vsUsual: String?
+        let biggestSpend: Spend?
+        let smallestSpend: Spend?
+
+        enum CodingKeys: String, CodingKey {
+            case name, total, percentOfExpense, vsUsual, biggestSpend, smallestSpend
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(name, forKey: .name)
+            try container.encode(total, forKey: .total)
+            try container.encode(percentOfExpense, forKey: .percentOfExpense)
+            try container.encodeIfPresent(vsUsual, forKey: .vsUsual)
+            try container.encodeIfPresent(biggestSpend, forKey: .biggestSpend)
+            try container.encodeIfPresent(smallestSpend, forKey: .smallestSpend)
+        }
+    }
+
+    let focusMonthLabel: String
+    let currencySymbol: String
+    let forecast: Forecast
+    let healthBreakdown: HealthBreakdown
+    let categories: [CategoryFacts]
+    let notableEvents: [Spend]
+    let monthlySubscriptions: [Spend]
+
+    enum CodingKeys: String, CodingKey {
+        case focusMonthLabel, currencySymbol, forecast, healthBreakdown, categories, notableEvents, monthlySubscriptions
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(focusMonthLabel, forKey: .focusMonthLabel)
+        try container.encode(currencySymbol, forKey: .currencySymbol)
+        try container.encode(forecast, forKey: .forecast)
+        try container.encode(healthBreakdown, forKey: .healthBreakdown)
+        try container.encode(categories, forKey: .categories)
+        if !notableEvents.isEmpty { try container.encode(notableEvents, forKey: .notableEvents) }
+        if !monthlySubscriptions.isEmpty { try container.encode(monthlySubscriptions, forKey: .monthlySubscriptions) }
+    }
+
+    init(from snapshot: InsightsSnapshot, focusExpenses: [Transaction], slim: Bool) {
+        let categoryLimit = slim ? 4 : 8
+        let reasonLimit = slim ? 4 : 8
+        focusMonthLabel = snapshot.focusMonthLabel
+        currencySymbol = snapshot.currencySymbol
+        forecast = Forecast(
+            expectedIncome: snapshot.forecast.expectedIncome.roundedMoney,
+            expectedExpense: snapshot.forecast.expectedExpense.roundedMoney,
+            expectedSavings: snapshot.forecast.expectedSavings.roundedMoney
+        )
+        healthBreakdown = HealthBreakdown(
+            finalStars: snapshot.healthBreakdown.finalStars,
+            totalScore: (snapshot.healthBreakdown.totalScore * 10).rounded() / 10,
+            forecastSavingsRatePercent: snapshot.healthBreakdown.forecastSavingsRatePercent,
+            savingsRateAssessment: snapshot.healthBreakdown.savingsRateAssessment,
+            reasons: Array(snapshot.healthBreakdown.reasons.prefix(reasonLimit))
+        )
+
+        let baselineById = Dictionary(
+            uniqueKeysWithValues: snapshot.categoryBaselines.map { ($0.categoryId, $0.status.rawValue) }
+        )
+        let grouped = Dictionary(grouping: focusExpenses) {
+            CategoryStore.shared.canonicalCategoryId(for: $0.categoryId)
+        }
+        let monthExpenseTotal = max(snapshot.categoryAllocation.reduce(0.0) { $0 + $1.amount }, 0.01)
+
+        categories = grouped
+            .map { id, txns -> CategoryFacts in
+                let total = txns.reduce(0.0) { $0 + $1.totalAmount }
+                let name = CategoryStore.shared.categoryDisplayName(for: id)
+                let ranked = txns.sorted { $0.totalAmount > $1.totalAmount }
+                let biggest = ranked.first
+                let smallest = ranked.last
+                let sameSpend = biggest?.id == smallest?.id
+                return CategoryFacts(
+                    name: name,
+                    total: total.roundedMoney,
+                    percentOfExpense: Int(((total / monthExpenseTotal) * 100).rounded()),
+                    vsUsual: baselineById[id],
+                    biggestSpend: biggest.map { Spend(title: $0.narrativeLabel, amount: $0.totalAmount.roundedMoney) },
+                    smallestSpend: (sameSpend ? nil : smallest).map {
+                        Spend(title: $0.narrativeLabel, amount: $0.totalAmount.roundedMoney)
+                    }
+                )
+            }
+            .sorted { $0.total > $1.total }
+            .prefix(categoryLimit)
+            .map { $0 }
+
+        notableEvents = slim ? [] : snapshot.events.prefix(3).map {
+            Spend(title: $0.title.clipped(to: 36), amount: $0.amount.roundedMoney)
+        }
+        monthlySubscriptions = slim ? [] : snapshot.subscriptions.prefix(4).map {
+            Spend(title: $0.name.clipped(to: 28), amount: $0.monthly.roundedMoney)
+        }
+    }
+}
+
+private extension Double {
+    var roundedMoney: Int { Int(rounded()) }
+}
+
+private extension String {
+    func clipped(to maxLength: Int) -> String {
+        guard count > maxLength else { return self }
+        return String(prefix(maxLength))
+    }
+}
+
+private extension Transaction {
+    var narrativeLabel: String {
+        let merchant = merchant?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !merchant.isEmpty { return merchant.clipped(to: 32) }
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedTitle.isEmpty { return trimmedTitle.clipped(to: 32) }
+        return "Expense"
     }
 }
 

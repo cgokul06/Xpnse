@@ -75,7 +75,7 @@ enum InsightsResultCache {
             "schema:category-health-v3",
             "schema:financial-health-v5",
             "schema:top-spends-v5",
-            "schema:biggest-changes-v2",
+            "schema:biggest-changes-v3",
             "schema:potential-recurring-v2",
             "schema:expense-trend-v2",
             "day:\(dayKey)",

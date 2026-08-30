@@ -212,7 +212,14 @@ final class InsightsViewModel: ObservableObject {
 
             guard !Task.isCancelled else { return }
             publish(trend: builtTrend, snapshot: builtSnapshot, narratives: .empty, revision: revision)
-            scheduleNarratives(for: builtSnapshot, revision: revision)
+            let focusYear = calendar.component(.year, from: now)
+            let focusMonth = calendar.component(.month, from: now)
+            let focusExpenses = expenses.filter { expense in
+                let date = Date(timeIntervalSince1970: expense.date)
+                let parts = calendar.dateComponents([.year, .month], from: date)
+                return parts.year == focusYear && parts.month == focusMonth
+            }
+            scheduleNarratives(for: builtSnapshot, focusExpenses: focusExpenses, revision: revision)
         } catch {
             guard !Task.isCancelled else { return }
             if reason == .appear || !hasContent {
@@ -282,7 +289,11 @@ final class InsightsViewModel: ObservableObject {
         }
     }
 
-    private func scheduleNarratives(for snapshot: InsightsSnapshot, revision: String) {
+    private func scheduleNarratives(
+        for snapshot: InsightsSnapshot,
+        focusExpenses: [Transaction],
+        revision: String
+    ) {
         narrativeTask?.cancel()
         guard snapshot.hasMeaningfulData else {
             narratives = .empty
@@ -293,7 +304,10 @@ final class InsightsViewModel: ObservableObject {
         isGeneratingNarrative = true
         narrativeTask = Task { [weak self] in
             guard let self else { return }
-            let (result, wasFreshlyGenerated) = await self.narrativeService.narratives(for: snapshot)
+            let (result, wasFreshlyGenerated) = await self.narrativeService.narratives(
+                for: snapshot,
+                focusExpenses: focusExpenses
+            )
             guard !Task.isCancelled else { return }
             self.narratives = result
             self.isGeneratingNarrative = false

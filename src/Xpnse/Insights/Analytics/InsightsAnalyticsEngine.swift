@@ -314,21 +314,41 @@ enum InsightsAnalyticsEngine {
         baselineMonths: [(Int, Int)],
         calendar: Calendar
     ) -> [InsightsCategoryDelta] {
-        guard !baselineMonths.isEmpty else { return [] }
+        // Same bar as category health: need ≥2 complete lookback months overall,
+        // and the category itself must have spend in ≥2 of those months.
+        let minimumHistoryMonths = 2
+        guard baselineMonths.count >= minimumHistoryMonths else { return [] }
 
         let focusByCategory = amountsByCategory(focusExpenses)
-        let baselineTxns = baselineMonths.flatMap {
-            transactionsInMonth(transactions, year: $0.0, month: $0.1, calendar: calendar)
-                .filter { $0.type == .expense }
-        }
-        let baselineTotals = amountsByCategory(baselineTxns)
         let divisor = Double(max(baselineMonths.count, 1))
 
-        let allIds = Set(focusByCategory.keys).union(baselineTotals.keys)
-        let increases = allIds.compactMap { id -> InsightsCategoryDelta? in
+        let perMonthByCategory: [String: [(month: String, amount: Double)]] = {
+            var map: [String: [(month: String, amount: Double)]] = [:]
+            for (year, month) in baselineMonths {
+                let key = "\(year)-\(month)"
+                let expenses = transactionsInMonth(transactions, year: year, month: month, calendar: calendar)
+                    .filter { $0.type == .expense }
+                let amounts = amountsByCategory(expenses)
+                for id in Set(focusByCategory.keys).union(amounts.keys) {
+                    map[id, default: []].append((month: key, amount: amounts[id] ?? 0))
+                }
+            }
+            return map
+        }()
+
+        var droppedForThinHistory = 0
+        let increases = focusByCategory.keys.compactMap { id -> InsightsCategoryDelta? in
+            let perMonth = perMonthByCategory[id] ?? baselineMonths.map {
+                (month: "\($0.0)-\($0.1)", amount: 0.0)
+            }
+            let monthsWithData = perMonth.filter { $0.amount > 0.01 }.count
+            guard monthsWithData >= minimumHistoryMonths else {
+                droppedForThinHistory += 1
+                return nil
+            }
+
             let focus = focusByCategory[id] ?? 0
-            let baselineAvg = (baselineTotals[id] ?? 0) / divisor
-            // Only show categories spending above their usual average (>100% of usual).
+            let baselineAvg = perMonth.reduce(0.0) { $0 + $1.amount } / divisor
             guard baselineAvg > 0.01, focus > baselineAvg else { return nil }
             let percent = ((focus - baselineAvg) / baselineAvg) * 100
             guard percent > 0 else { return nil }
@@ -350,6 +370,7 @@ enum InsightsAnalyticsEngine {
             category: "insights.biggestChanges",
             data: [
                 "keptCount": increases.count,
+                "droppedForThinHistory": droppedForThinHistory,
                 "names": increases.map(\.name),
                 "percents": increases.map { Int(($0.percentChange ?? 0).rounded()) }
             ]

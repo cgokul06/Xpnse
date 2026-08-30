@@ -189,6 +189,10 @@ enum MonthExpenseExtrapolationEngine {
             }
 
             let priorLastDay = daysInMonth(month: priorMonth, year: priorYear, calendar: calendar)
+            let lastComparableDay = min(throughDay, priorLastDay)
+            // Shorter lookback months (Feb, 30-day months) have no days 29–31.
+            // A closed range like `31...30` traps; skip those months for this window.
+            guard fromDay <= lastComparableDay else { continue }
 
             var dailyNonRecurring: [Int: Double] = [:]
             for transaction in historicalExpenses where transaction.type == .expense {
@@ -202,7 +206,7 @@ enum MonthExpenseExtrapolationEngine {
                 dailyNonRecurring[day, default: 0] += transaction.totalAmount
             }
 
-            for day in fromDay...min(throughDay, priorLastDay) {
+            for day in fromDay...lastComparableDay {
                 sums[day, default: 0] += dailyNonRecurring[day] ?? 0
                 counts[day, default: 0] += 1
             }
