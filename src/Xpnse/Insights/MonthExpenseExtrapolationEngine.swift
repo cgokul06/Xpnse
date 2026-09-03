@@ -47,8 +47,10 @@ enum MonthExpenseExtrapolationEngine {
         allowedLookbackMonthKeys: Set<String>? = nil,
         calendar: Calendar = .current
     ) -> MonthExpenseExtrapolationResult {
-        let lastDay = daysInMonth(month: month, year: year, calendar: calendar)
-        guard asOfDay < lastDay else {
+        let resolver = MonthlyCycleResolver(configuration: .calendarMonth, calendar: calendar)
+        guard let cycle = resolver.cycleStarting(year: year, month: month),
+              let asOfDate = cycle.dateForDayIndex(asOfDay)
+        else {
             return MonthExpenseExtrapolationResult(
                 year: year,
                 month: month,
@@ -56,24 +58,55 @@ enum MonthExpenseExtrapolationEngine {
                 dailyAmounts: []
             )
         }
-
-        let fixedByDay = scheduledRecurringAmountsByDay(
+        return extrapolateRemainingDays(
+            cycle: cycle,
+            asOfDate: asOfDate,
+            historicalExpenses: historicalExpenses,
             recurringItems: recurringItems,
-            year: year,
-            month: month,
+            lookbackMonths: lookbackMonths,
+            allowedLookbackMonthKeys: allowedLookbackMonthKeys,
+            resolver: resolver,
+            calendar: calendar
+        )
+    }
+
+    static func extrapolateRemainingDays(
+        cycle: BillingCycle,
+        asOfDate: Date,
+        historicalExpenses: [Transaction],
+        recurringItems: [RecurringTransaction],
+        lookbackMonths: Int = defaultLookbackMonths,
+        allowedLookbackMonthKeys: Set<String>? = nil,
+        resolver: MonthlyCycleResolver,
+        calendar: Calendar = .current
+    ) -> MonthExpenseExtrapolationResult {
+        let asOfDay = cycle.dayIndex(of: asOfDate) ?? 0
+        let lastDay = cycle.lengthInDays
+        guard asOfDay < lastDay else {
+            return MonthExpenseExtrapolationResult(
+                year: cycle.startYear,
+                month: cycle.startMonth,
+                asOfDay: asOfDay,
+                dailyAmounts: []
+            )
+        }
+
+        let fixedByDay = scheduledRecurringAmountsByDayIndex(
+            recurringItems: recurringItems,
+            cycle: cycle,
             fromDay: asOfDay + 1,
             throughDay: lastDay,
             calendar: calendar
         )
 
-        let variableByDay = averageVariableAmountsByDay(
+        let variableByDay = averageVariableAmountsByDayIndex(
             historicalExpenses: historicalExpenses,
-            targetYear: year,
-            targetMonth: month,
+            focusCycle: cycle,
             fromDay: asOfDay + 1,
             throughDay: lastDay,
             lookbackMonths: lookbackMonths,
             allowedLookbackMonthKeys: allowedLookbackMonthKeys,
+            resolver: resolver,
             calendar: calendar
         )
 
@@ -86,8 +119,8 @@ enum MonthExpenseExtrapolationEngine {
         }
 
         return MonthExpenseExtrapolationResult(
-            year: year,
-            month: month,
+            year: cycle.startYear,
+            month: cycle.startMonth,
             asOfDay: asOfDay,
             dailyAmounts: dailyAmounts
         )
@@ -210,6 +243,110 @@ enum MonthExpenseExtrapolationEngine {
                 sums[day, default: 0] += dailyNonRecurring[day] ?? 0
                 counts[day, default: 0] += 1
             }
+        }
+
+        var averages: [Int: Double] = [:]
+        for day in fromDay...throughDay {
+            guard let count = counts[day], count > 0 else {
+                averages[day] = 0
+                continue
+            }
+            averages[day] = (sums[day] ?? 0) / Double(count)
+        }
+        return averages
+    }
+
+    static func scheduledRecurringAmountsByDayIndex(
+        recurringItems: [RecurringTransaction],
+        cycle: BillingCycle,
+        fromDay: Int,
+        throughDay: Int,
+        calendar: Calendar = .current
+    ) -> [Int: Double] {
+        guard fromDay <= throughDay,
+              let rangeStart = cycle.dateForDayIndex(fromDay)
+        else { return [:] }
+
+        var totals: [Int: Double] = [:]
+
+        for item in recurringItems {
+            guard item.state == .active,
+                  item.type == TransactionType.expense.rawValue
+            else { continue }
+
+            let amount = NSDecimalNumber(decimal: item.amount).doubleValue
+            guard amount > 0 else { continue }
+
+            var occurrence = item.recurrence.firstOccurrence(
+                onOrAfter: max(rangeStart, calendar.startOfDay(for: item.startDate)),
+                calendar: calendar
+            )
+
+            var safety = 0
+            while let current = occurrence, safety < 64 {
+                safety += 1
+                if let endDate = item.endDate, current > endDate { break }
+                if current >= cycle.nextStart { break }
+
+                if let day = cycle.dayIndex(of: current), day >= fromDay, day <= throughDay {
+                    totals[day, default: 0] += amount
+                }
+
+                guard let next = item.recurrence.nextOccurrence(after: current, calendar: calendar) else {
+                    break
+                }
+                occurrence = next
+            }
+        }
+
+        return totals
+    }
+
+    static func averageVariableAmountsByDayIndex(
+        historicalExpenses: [Transaction],
+        focusCycle: BillingCycle,
+        fromDay: Int,
+        throughDay: Int,
+        lookbackMonths: Int = defaultLookbackMonths,
+        allowedLookbackMonthKeys: Set<String>? = nil,
+        resolver: MonthlyCycleResolver,
+        calendar _: Calendar = .current
+    ) -> [Int: Double] {
+        guard fromDay <= throughDay else { return [:] }
+
+        let lookback = max(1, lookbackMonths)
+        var sums: [Int: Double] = [:]
+        var counts: [Int: Int] = [:]
+        var prior = resolver.previousCycle(from: focusCycle)
+
+        for _ in 1...lookback {
+            let key = prior.identityKey
+            if let allowed = allowedLookbackMonthKeys, !allowed.contains(key) {
+                prior = resolver.previousCycle(from: prior)
+                continue
+            }
+
+            let priorLastDay = prior.lengthInDays
+            let lastComparableDay = min(throughDay, priorLastDay)
+            guard fromDay <= lastComparableDay else {
+                prior = resolver.previousCycle(from: prior)
+                continue
+            }
+
+            var dailyNonRecurring: [Int: Double] = [:]
+            for transaction in historicalExpenses where transaction.type == .expense {
+                guard !transaction.isRecurringGenerated else { continue }
+                let date = Date(timeIntervalSince1970: transaction.date)
+                guard let day = prior.dayIndex(of: date) else { continue }
+                dailyNonRecurring[day, default: 0] += transaction.totalAmount
+            }
+
+            for day in fromDay...lastComparableDay {
+                sums[day, default: 0] += dailyNonRecurring[day] ?? 0
+                counts[day, default: 0] += 1
+            }
+
+            prior = resolver.previousCycle(from: prior)
         }
 
         var averages: [Int: Double] = [:]

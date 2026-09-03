@@ -73,6 +73,21 @@ final class HomeScreenViewModel: ObservableObject {
                 Task { await self.refreshVisibleData() }
             }
             .store(in: &cancellables)
+
+        MonthlyCycleStore.shared.$configuration
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                guard let self else { return }
+                Task { await self.handleMonthlyCycleChange() }
+            }
+            .store(in: &cancellables)
+    }
+
+    private func handleMonthlyCycleChange() async {
+        loadedKeys.removeAll()
+        transactionSummaryDict.removeAll()
+        await refreshVisibleData()
     }
 
     // MARK: - Fetch Logic

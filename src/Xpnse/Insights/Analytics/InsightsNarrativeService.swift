@@ -8,7 +8,7 @@ import FoundationModels
 
 @Generable
 struct InsightsNarrativeResult {
-    @Guide(description: "1-3 sentences in second person (you/your) about the current focus month only. Cover where you stand now, why it matters, and a gentle next step. For savings vs the 20–30% guide, paste healthBreakdown.savingsRateAssessment verbatim — never invent above/below/strong. Never mention prior months or say 'the user'.")
+    @Guide(description: "1-3 sentences in second person (you/your) about the current focus period only (use focusMonthLabel). Cover where you stand now, why it matters, and a gentle next step. For savings vs the 20–30% guide, paste healthBreakdown.savingsRateAssessment verbatim — never invent above/below/strong. Never mention prior periods or say 'the user'.")
     var healthSummary: String
 
     @Guide(description: "Short second-person spending personality label, e.g. 'Planned spender' or 'You seem like a steady saver'. Never 'the user'.")
@@ -140,9 +140,10 @@ final class InsightsNarrativeService {
         Never invert comparisons: 19% is below 20–30% (not strong/above); 38% is above 20–30% (not below).
         Do not paraphrase the savings-rate comparison in your own words if you might get the direction wrong — paste the assessment string.
         Financial health scope (mandatory):
-        - Discuss ONLY the current focus month (`focusMonthLabel`). Never mention prior months by name, past savings targets, or historical failures.
-        - All `healthBreakdown.reasons` refer to this month — keep the summary forward-looking and about where you stand now.
-        Category facts: each category lists this month's total plus the biggest and smallest single spend in that category. Use those spends when they help; never invent ones that are not listed.
+        - Discuss ONLY the current focus period (`focusMonthLabel`). Never mention prior months or cycles by name, past savings targets, or historical failures.
+        - If `focusMonthLabel` is a date range, it is a billing cycle — say "this cycle" or use the label; do not call it "this month". If it is a single month name (for example "Aug 2026"), "this month" is fine.
+        - All `healthBreakdown.reasons` refer to this focus period — keep the summary forward-looking and about where you stand now.
+        Category facts: each category lists this period's total plus the biggest and smallest single spend in that category. Use those spends when they help; never invent ones that are not listed.
         Example tone (adapt into \(languageName)): "Your financial health is rated 4/5. Forecast savings rate is 19% — below the 20–30% guide. Shopping ran above your usual level."
         \(FinancialHealthRules.rulesPromptText())
         Facts JSON:

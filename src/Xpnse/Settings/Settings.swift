@@ -29,6 +29,7 @@ struct Settings: View {
     @State private var highlightAppLock = false
     @State private var widgetPrivacyEnabled = WidgetPrivacyManager.isEnabled
     @State private var numberFormatPreference = NumberFormatPreference.current
+    @ObservedObject private var monthlyCycleStore = MonthlyCycleStore.shared
 
     #if DEBUG
     @State private var debugShareURL: URL?
@@ -39,6 +40,7 @@ struct Settings: View {
     var body: some View {
         List {
             generalSection
+            monthlyCycleSection
             privacySecuritySection
             transactionsSection
             if featureFlags.exportImportEnabled {
@@ -232,6 +234,24 @@ struct Settings: View {
             }
         } header: {
             Text("settings.general")
+        }
+    }
+
+    private var monthlyCycleSection: some View {
+        Section {
+            NavigationLink {
+                MonthlyCycleSettingsView()
+            } label: {
+                settingsLabel(
+                    titleKey: "settings.monthly_cycle.start_day",
+                    systemImage: "calendar",
+                    value: "\(monthlyCycleStore.configuration.startDay)"
+                )
+            }
+        } header: {
+            Text("settings.monthly_cycle")
+        } footer: {
+            Text("settings.monthly_cycle.description")
         }
     }
 

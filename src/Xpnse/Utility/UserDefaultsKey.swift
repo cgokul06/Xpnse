@@ -31,6 +31,8 @@ enum UserDefaultsKey: String {
     case transactionListTypeFilter
     /// Version of one-shot orphaned category-id migration (bump to re-run).
     case categoryOrphanMigrationVersion
+    /// Monthly billing-cycle start day (1...30). Absent → 1. Prefer `MonthlyCyclePreference`.
+    case monthlyCycleStartDay
 }
 
 /// Wrapper for UserDefaults
@@ -103,7 +105,8 @@ class UserDefaultsHelper {
             .showUpcomingRecurring,
             .transactionListSortOrder,
             .transactionListTypeFilter,
-            .categoryOrphanMigrationVersion
+            .categoryOrphanMigrationVersion,
+            .monthlyCycleStartDay
         ]
 
         for key in keys {

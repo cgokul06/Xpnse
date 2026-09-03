@@ -569,7 +569,7 @@ struct Home: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(L10n.tr("home.prev_month"))
+            .accessibilityLabel(MonthlyCycleCopy.tr("home.prev_month"))
 
             GeometryReader { geometry in
                 let textWidth = geometry.size.width
@@ -607,7 +607,7 @@ struct Home: View {
             }
             .buttonStyle(.plain)
             .disabled(!canGoForward)
-            .accessibilityLabel(L10n.tr("home.next_month"))
+            .accessibilityLabel(MonthlyCycleCopy.tr("home.next_month"))
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)

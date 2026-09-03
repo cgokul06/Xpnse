@@ -46,7 +46,10 @@ final class InsightsViewModel: ObservableObject {
         self.transactionRepository = transactionRepository
         self.recurringRepository = recurringRepository
         self.calendar = calendar
-        self.year = calendar.component(.year, from: now)
+        self.year = MonthlyCycleResolver(
+            configuration: MonthlyCyclePreference.current,
+            calendar: calendar
+        ).currentCycle(for: now).startYear
 
         // Paint last known Insights immediately (verified against revision next).
         if InsightsResultCache.Policy.readsEnabledOnInit,
@@ -57,6 +60,14 @@ final class InsightsViewModel: ObservableObject {
         transactionRepository.changesPublisher
             .receive(on: DispatchQueue.main)
             .sink { [weak self] in
+                self?.scheduleReload(reason: .dataChange)
+            }
+            .store(in: &cancellables)
+
+        MonthlyCycleStore.shared.$configuration
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
                 self?.scheduleReload(reason: .dataChange)
             }
             .store(in: &cancellables)
@@ -115,7 +126,9 @@ final class InsightsViewModel: ObservableObject {
 
     private func reload(reason: ReloadReason) async {
         let now = Date()
-        year = calendar.component(.year, from: now)
+        let cycleConfiguration = MonthlyCycleStore.shared.configuration
+        let resolver = MonthlyCycleResolver(configuration: cycleConfiguration, calendar: calendar)
+        year = resolver.currentCycle(for: now).startYear
 
         await CategoryStore.shared.load()
         let spendingRoles = await CategorySpendingClassificationService.shared.roles(
@@ -161,17 +174,21 @@ final class InsightsViewModel: ObservableObject {
             return
         }
 
-        guard let yearStart = startOfYear(year),
-              let fetchStart = calendar.date(
-                byAdding: .month,
-                value: -(MonthExpenseExtrapolationEngine.defaultLookbackMonths + InsightsAnalyticsEngine.lookbackMonths),
-                to: yearStart
-              ),
-              let end = endOfYear(year)
+        guard let firstCycleInYear = resolver.cycleStarting(year: year, month: 1),
+              let lastCycleInYear = resolver.cycleStarting(year: year, month: 12)
         else {
             publish(trend: emptyTrend(), snapshot: nil, narratives: .empty, revision: revision)
             return
         }
+
+        let lookbackCount = MonthExpenseExtrapolationEngine.defaultLookbackMonths
+            + InsightsAnalyticsEngine.lookbackMonths
+        var fetchCursor = firstCycleInYear
+        for _ in 0..<lookbackCount {
+            fetchCursor = resolver.previousCycle(from: fetchCursor)
+        }
+        let fetchStart = fetchCursor.start
+        let end = lastCycleInYear.inclusiveFetchEnd
 
         do {
             async let transactionsTask = transactionRepository.fetch(startDate: fetchStart, endDate: end)
@@ -190,14 +207,17 @@ final class InsightsViewModel: ObservableObject {
                 year: year,
                 recurringItems: recurringItems,
                 calendar: calendar,
-                now: now
+                now: now,
+                configuration: cycleConfiguration
             )
+            let focusCycle = resolver.currentCycle(for: now)
             let potentialRecurring = await PotentialRecurringDetectionService.shared.detect(
                 transactions: transactions,
                 recurringItems: recurringItems,
-                focusYear: calendar.component(.year, from: now),
-                focusMonth: calendar.component(.month, from: now),
-                calendar: calendar
+                focusYear: focusCycle.startYear,
+                focusMonth: focusCycle.startMonth,
+                calendar: calendar,
+                cycleConfiguration: cycleConfiguration
             )
             guard !Task.isCancelled else { return }
 
@@ -207,17 +227,14 @@ final class InsightsViewModel: ObservableObject {
                 discretionaryCategoryIds: spendingRoles.discretionaryIds,
                 potentialRecurring: potentialRecurring,
                 focusDate: now,
-                calendar: calendar
+                calendar: calendar,
+                cycleConfiguration: cycleConfiguration
             )
 
             guard !Task.isCancelled else { return }
             publish(trend: builtTrend, snapshot: builtSnapshot, narratives: .empty, revision: revision)
-            let focusYear = calendar.component(.year, from: now)
-            let focusMonth = calendar.component(.month, from: now)
             let focusExpenses = expenses.filter { expense in
-                let date = Date(timeIntervalSince1970: expense.date)
-                let parts = calendar.dateComponents([.year, .month], from: date)
-                return parts.year == focusYear && parts.month == focusMonth
+                focusCycle.contains(Date(timeIntervalSince1970: expense.date))
             }
             scheduleNarratives(for: builtSnapshot, focusExpenses: focusExpenses, revision: revision)
         } catch {
@@ -237,6 +254,7 @@ final class InsightsViewModel: ObservableObject {
             focusDay: now,
             currencyCode: CurrencyManager.shared.selectedCurrency.code,
             categorySpendingRevision: categorySpendingRevision,
+            monthlyCycleStartDay: MonthlyCycleStore.shared.configuration.startDay,
             calendar: calendar
         )
     }
@@ -339,15 +357,5 @@ final class InsightsViewModel: ObservableObject {
             projectedMonth: nil,
             hasProjection: false
         )
-    }
-
-    private func startOfYear(_ year: Int) -> Date? {
-        calendar.date(from: DateComponents(year: year, month: 1, day: 1))
-    }
-
-    private func endOfYear(_ year: Int) -> Date? {
-        guard let startOfNext = calendar.date(from: DateComponents(year: year + 1, month: 1, day: 1))
-        else { return nil }
-        return startOfNext.addingTimeInterval(-1)
     }
 }

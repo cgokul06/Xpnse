@@ -10,18 +10,14 @@ enum PeriodDateRangeCalculator {
         forOffset offset: Int,
         comparison: CalendarComparison,
         calendar: Calendar = .current,
-        referenceDate: Date = Date()
+        referenceDate: Date = Date(),
+        configuration: MonthlyCycleConfiguration = MonthlyCyclePreference.current
     ) -> (start: Date, end: Date) {
         switch comparison {
         case .monthly:
-            guard let monthDate = calendar.date(byAdding: .month, value: offset, to: referenceDate),
-                  let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: monthDate)),
-                  let startOfNextMonth = calendar.date(byAdding: .month, value: 1, to: startOfMonth),
-                  let endOfMonth = calendar.date(byAdding: .second, value: -1, to: startOfNextMonth)
-            else {
-                return (referenceDate, referenceDate)
-            }
-            return (startOfMonth, endOfMonth)
+            let resolver = MonthlyCycleResolver(configuration: configuration, calendar: calendar)
+            let cycle = resolver.cycle(offset: offset, from: referenceDate)
+            return (cycle.start, cycle.inclusiveFetchEnd)
 
         case .yearly:
             guard let yearDate = calendar.date(byAdding: .year, value: offset, to: referenceDate),

@@ -53,7 +53,8 @@ final class PotentialRecurringDetectionService {
         recurringItems: [RecurringTransaction],
         focusYear: Int,
         focusMonth: Int,
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        cycleConfiguration: MonthlyCycleConfiguration = MonthlyCyclePreference.current
     ) async -> [InsightsPotentialRecurring] {
         await PotentialRecurringDismissStore.refreshCache()
 
@@ -62,7 +63,8 @@ final class PotentialRecurringDetectionService {
             recurringItems: recurringItems,
             focusYear: focusYear,
             focusMonth: focusMonth,
-            calendar: calendar
+            calendar: calendar,
+            cycleConfiguration: cycleConfiguration
         )
         guard !candidates.isEmpty else { return [] }
 
@@ -290,18 +292,22 @@ final class PotentialRecurringDetectionService {
         recurringItems: [RecurringTransaction],
         focusYear: Int,
         focusMonth: Int,
-        calendar: Calendar
+        calendar: Calendar,
+        cycleConfiguration: MonthlyCycleConfiguration
     ) -> [Transaction] {
         var skippedNoObligation = 0
         var skippedOneOff = 0
         var typeCounts: [String: Int] = [:]
+        let resolver = MonthlyCycleResolver(configuration: cycleConfiguration, calendar: calendar)
+        guard let focusCycle = resolver.cycleStarting(year: focusYear, month: focusMonth) else {
+            return []
+        }
         let filtered = transactions
             .filter { tx in
                 guard tx.type == .expense || tx.type == .income || tx.type == .savings else {
                     return false
                 }
-                let comps = calendar.dateComponents([.year, .month], from: Date(timeIntervalSince1970: tx.date))
-                guard comps.year == focusYear, comps.month == focusMonth else { return false }
+                guard focusCycle.contains(Date(timeIntervalSince1970: tx.date)) else { return false }
                 guard !tx.isRecurringGenerated else { return false }
                 guard !recurringItems.contains(where: {
                     RecurringTransactionMatcher.matches(tx, rule: $0)

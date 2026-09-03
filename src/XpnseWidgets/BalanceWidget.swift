@@ -51,7 +51,12 @@ struct BalanceWidgetProvider: TimelineProvider {
 
     private var previewSnapshot: WidgetMonthSnapshot {
         WidgetMonthSnapshot(
-            periodLabel: "May 2026",
+            periodLabel: MonthlyCycleFormatting.periodTitle(
+                for: MonthlyCycleResolver(
+                    configuration: MonthlyCyclePreference.current
+                ).currentCycle(),
+                configuration: MonthlyCyclePreference.current
+            ),
             totalBalance: 3542.15,
             totalIncome: 5240,
             totalExpenses: 1697.85,

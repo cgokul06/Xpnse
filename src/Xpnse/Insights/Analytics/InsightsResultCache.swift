@@ -66,6 +66,7 @@ enum InsightsResultCache {
         focusDay: Date,
         currencyCode: String,
         categorySpendingRevision: String,
+        monthlyCycleStartDay: Int = MonthlyCyclePreference.current.startDay,
         calendar: Calendar = .current
     ) -> String {
         let day = calendar.dateComponents([.year, .month, .day], from: focusDay)
@@ -77,10 +78,11 @@ enum InsightsResultCache {
             "schema:top-spends-v5",
             "schema:biggest-changes-v3",
             "schema:potential-recurring-v2",
-            "schema:expense-trend-v2",
+            "schema:expense-trend-v3",
             "day:\(dayKey)",
             "currency:\(currencyCode)",
             "categoryRoles:\(categorySpendingRevision)",
+            "monthlyCycleStartDay:\(monthlyCycleStartDay)",
         ]
         for (id, updatedAt) in transactionUpdatedAtById.sorted(by: { $0.key < $1.key }) {
             lines.append("t:\(id):\(updatedAt.timeIntervalSince1970)")

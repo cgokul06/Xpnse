@@ -31,7 +31,7 @@ struct FinancialHealthScoringInput: Sendable {
     let subscriptionShareOfExpense: Double
     let subscriptions: [InsightsSubscription]
     let discretionaryCategoryIds: Set<String>
-    let calendar: Calendar
+    let resolver: MonthlyCycleResolver
 }
 
 enum FinancialHealthScoring {
@@ -98,17 +98,17 @@ enum FinancialHealthScoring {
 
         switch rate {
         case ..<0:
-            return L10n.tr("health.rate.negative", pct)
+            return MonthlyCycleCopy.tr("health.rate.negative", pct)
         case 0..<0.05:
-            return L10n.tr("health.rate.well_below", pct, band)
+            return MonthlyCycleCopy.tr("health.rate.well_below", pct, band)
         case 0.05..<0.20:
-            return L10n.tr("health.rate.below", pct, band)
+            return MonthlyCycleCopy.tr("health.rate.below", pct, band)
         case 0.20...0.30:
-            return L10n.tr("health.rate.within", pct, band)
+            return MonthlyCycleCopy.tr("health.rate.within", pct, band)
         case 0.30..<0.40:
-            return L10n.tr("health.rate.above", pct, band)
+            return MonthlyCycleCopy.tr("health.rate.above", pct, band)
         default:
-            return L10n.tr("health.rate.well_above", pct, band)
+            return MonthlyCycleCopy.tr("health.rate.well_above", pct, band)
         }
     }
 
@@ -243,7 +243,7 @@ enum FinancialHealthScoring {
         reasons: inout [String]
     ) -> Double {
         guard forecast.expectedIncome > 0.01 else {
-            reasons.append(L10n.tr("health.savings.no_income"))
+            reasons.append(MonthlyCycleCopy.tr("health.savings.no_income"))
             return 0
         }
 
@@ -254,25 +254,25 @@ enum FinancialHealthScoring {
         switch rate {
         case ..<0.05:
             points = 0
-            reasons.append(L10n.tr("health.savings.below_5", pct))
+            reasons.append(MonthlyCycleCopy.tr("health.savings.below_5", pct))
         case 0.05..<0.10:
             points = 0.5
-            reasons.append(L10n.tr("health.savings.band_5_10", pct))
+            reasons.append(MonthlyCycleCopy.tr("health.savings.band_5_10", pct))
         case 0.10..<0.15:
             points = 1.0
-            reasons.append(L10n.tr("health.savings.band_10_15", pct))
+            reasons.append(MonthlyCycleCopy.tr("health.savings.band_10_15", pct))
         case 0.15..<0.20:
             points = 1.5
-            reasons.append(L10n.tr("health.savings.band_15_20", pct))
+            reasons.append(MonthlyCycleCopy.tr("health.savings.band_15_20", pct))
         case 0.20...0.30:
             points = 2.0
-            reasons.append(L10n.tr("health.savings.optimal", pct))
+            reasons.append(MonthlyCycleCopy.tr("health.savings.optimal", pct))
         case 0.30..<0.40:
             points = 1.9
-            reasons.append(L10n.tr("health.savings.band_30_40", pct))
+            reasons.append(MonthlyCycleCopy.tr("health.savings.band_30_40", pct))
         default:
             points = 1.8
-            reasons.append(L10n.tr("health.savings.above_40", pct))
+            reasons.append(MonthlyCycleCopy.tr("health.savings.above_40", pct))
         }
         return points
     }
@@ -284,7 +284,7 @@ enum FinancialHealthScoring {
         reasons: inout [String]
     ) -> Double {
         guard !input.discretionaryCategoryIds.isEmpty else {
-            reasons.append(L10n.tr("health.spending.no_discretionary"))
+            reasons.append(MonthlyCycleCopy.tr("health.spending.no_discretionary"))
             return 1.0
         }
 
@@ -297,7 +297,7 @@ enum FinancialHealthScoring {
                 year: focusKey.0,
                 month: focusKey.1,
                 categoryId: categoryId,
-                calendar: input.calendar,
+                resolver: input.resolver,
                 events: input.events,
                 excludeEvents: false
             )
@@ -310,7 +310,7 @@ enum FinancialHealthScoring {
                     year: $0.year,
                     month: $0.month,
                     categoryId: categoryId,
-                    calendar: input.calendar,
+                    resolver: input.resolver,
                     events: [],
                     excludeEvents: false
                 )
@@ -325,16 +325,16 @@ enum FinancialHealthScoring {
             totalDeduction += deduction
             let name = CategoryStore.shared.categoryDisplayName(for: categoryId)
             reasons.append(
-                L10n.tr("health.spending.above_usual", name, variancePct, deduction)
+                MonthlyCycleCopy.tr("health.spending.above_usual", name, variancePct, deduction)
             )
         }
 
         let capped = min(1.0, totalDeduction)
         let score = max(0, 1.0 - capped)
         if totalDeduction == 0 {
-            reasons.append(L10n.tr("health.spending.within"))
+            reasons.append(MonthlyCycleCopy.tr("health.spending.within"))
         } else {
-            reasons.append(L10n.tr("health.spending.score", score, capped))
+            reasons.append(MonthlyCycleCopy.tr("health.spending.score", score, capped))
         }
         return score
     }
@@ -369,7 +369,7 @@ enum FinancialHealthScoring {
         default:
             points = 0
         }
-        reasons.append(L10n.tr("health.subscriptions.share", sharePct, points))
+        reasons.append(MonthlyCycleCopy.tr("health.subscriptions.share", sharePct, points))
         return max(0, points)
     }
 
@@ -385,12 +385,12 @@ enum FinancialHealthScoring {
         if forecast.expectedIncome > 0.01 {
             if forecast.expectedSavings < 0 {
                 score -= 0.5
-                reasons.append(L10n.tr("health.stability.negative_savings"))
+                reasons.append(MonthlyCycleCopy.tr("health.stability.negative_savings"))
             } else {
                 let rate = forecast.expectedSavings / forecast.expectedIncome
                 if rate < 0.05 {
                     score -= 0.25
-                    reasons.append(L10n.tr("health.stability.low_rate"))
+                    reasons.append(MonthlyCycleCopy.tr("health.stability.low_rate"))
                 }
             }
         }
@@ -402,7 +402,7 @@ enum FinancialHealthScoring {
         let eventTotal = input.events.filter(\.excludeFromLifestyle).reduce(0.0) { $0 + $1.amount }
         if focusExpense > 0.01, eventTotal / focusExpense > 0.20 {
             score -= 0.2
-            reasons.append(L10n.tr("health.stability.large_events"))
+            reasons.append(MonthlyCycleCopy.tr("health.stability.large_events"))
         }
 
         if !input.discretionaryCategoryIds.isEmpty, !input.completedBaselineMonths.isEmpty {
@@ -411,7 +411,7 @@ enum FinancialHealthScoring {
                 year: input.focusYear,
                 month: input.focusMonth,
                 discretionaryIds: input.discretionaryCategoryIds,
-                calendar: input.calendar,
+                resolver: input.resolver,
                 events: input.events,
                 excludeEvents: true
             )
@@ -421,7 +421,7 @@ enum FinancialHealthScoring {
                     year: $0.year,
                     month: $0.month,
                     discretionaryIds: input.discretionaryCategoryIds,
-                    calendar: input.calendar,
+                    resolver: input.resolver,
                     events: [],
                     excludeEvents: false
                 )
@@ -429,15 +429,15 @@ enum FinancialHealthScoring {
             let priorAverage = priorTotals.reduce(0, +) / Double(priorTotals.count)
             if priorAverage > 0.01, focusDiscretionary > priorAverage * 1.25 {
                 score -= 0.2
-                reasons.append(L10n.tr("health.stability.discretionary_high"))
+                reasons.append(MonthlyCycleCopy.tr("health.stability.discretionary_high"))
             }
         }
 
         let finalScore = max(0, score)
         if finalScore >= 1.0 {
-            reasons.append(L10n.tr("health.stability.stable"))
+            reasons.append(MonthlyCycleCopy.tr("health.stability.stable"))
         } else {
-            reasons.append(L10n.tr("health.stability.score", finalScore))
+            reasons.append(MonthlyCycleCopy.tr("health.stability.score", finalScore))
         }
         return finalScore
     }
@@ -455,16 +455,16 @@ enum FinancialHealthScoring {
             let rate = forecast.expectedSavings / forecast.expectedIncome
             if (0.20...0.30).contains(rate) {
                 bonus += 0.25
-                reasons.append(L10n.tr("health.trend.optimal_band"))
+                reasons.append(MonthlyCycleCopy.tr("health.trend.optimal_band"))
             } else if rate >= 0.15 {
                 bonus += 0.15
-                reasons.append(L10n.tr("health.trend.healthy_rate"))
+                reasons.append(MonthlyCycleCopy.tr("health.trend.healthy_rate"))
             }
         }
 
         if forecast.confidence >= 0.7 {
             bonus += 0.15
-            reasons.append(L10n.tr("health.trend.high_confidence"))
+            reasons.append(MonthlyCycleCopy.tr("health.trend.high_confidence"))
         }
 
         if !input.discretionaryCategoryIds.isEmpty, !input.completedBaselineMonths.isEmpty {
@@ -473,7 +473,7 @@ enum FinancialHealthScoring {
                 year: input.focusYear,
                 month: input.focusMonth,
                 discretionaryIds: input.discretionaryCategoryIds,
-                calendar: input.calendar,
+                resolver: input.resolver,
                 events: input.events,
                 excludeEvents: true
             )
@@ -483,7 +483,7 @@ enum FinancialHealthScoring {
                     year: $0.year,
                     month: $0.month,
                     discretionaryIds: input.discretionaryCategoryIds,
-                    calendar: input.calendar,
+                    resolver: input.resolver,
                     events: [],
                     excludeEvents: false
                 )
@@ -491,20 +491,20 @@ enum FinancialHealthScoring {
             let priorAverage = priorTotals.reduce(0, +) / Double(priorTotals.count)
             if priorAverage > 0.01, focusDiscretionary <= priorAverage * 1.05 {
                 bonus += 0.1
-                reasons.append(L10n.tr("health.trend.discretionary_near"))
+                reasons.append(MonthlyCycleCopy.tr("health.trend.discretionary_near"))
             }
         }
 
         if input.events.filter(\.excludeFromLifestyle).isEmpty {
             bonus += 0.1
-            reasons.append(L10n.tr("health.trend.no_one_offs"))
+            reasons.append(MonthlyCycleCopy.tr("health.trend.no_one_offs"))
         }
 
         let capped = min(0.5, bonus)
         if capped == 0 {
-            reasons.append(L10n.tr("health.trend.none"))
+            reasons.append(MonthlyCycleCopy.tr("health.trend.none"))
         } else {
-            reasons.append(L10n.tr("health.trend.bonus", capped))
+            reasons.append(MonthlyCycleCopy.tr("health.trend.bonus", capped))
         }
         return capped
     }
@@ -523,16 +523,16 @@ enum FinancialHealthScoring {
         year: Int,
         month: Int,
         categoryId: String,
-        calendar: Calendar,
+        resolver: MonthlyCycleResolver,
         events: [InsightsFinancialEvent],
         excludeEvents: Bool
     ) -> Double {
+        guard let cycle = resolver.cycleStarting(year: year, month: month) else { return 0 }
         let total = transactions
             .filter { tx in
                 guard tx.type == .expense else { return false }
                 let date = Date(timeIntervalSince1970: tx.date)
-                let comps = calendar.dateComponents([.year, .month], from: date)
-                guard comps.year == year, comps.month == month else { return false }
+                guard cycle.contains(date) else { return false }
                 return CategoryStore.shared.canonicalCategoryId(for: tx.categoryId) == categoryId
             }
             .reduce(0.0) { $0 + $1.totalAmount }
@@ -547,7 +547,7 @@ enum FinancialHealthScoring {
         year: Int,
         month: Int,
         discretionaryIds: Set<String>,
-        calendar: Calendar,
+        resolver: MonthlyCycleResolver,
         events: [InsightsFinancialEvent],
         excludeEvents: Bool
     ) -> Double {
@@ -557,7 +557,7 @@ enum FinancialHealthScoring {
                 year: year,
                 month: month,
                 categoryId: categoryId,
-                calendar: calendar,
+                resolver: resolver,
                 events: events,
                 excludeEvents: excludeEvents
             )

@@ -169,7 +169,7 @@ struct InsightTopMerchantsCard: View {
             XpnsePanelHeader(title: L10n.tr("insights.top_spends"), subtitle: nil)
 
             if merchants.isEmpty {
-                Text(L10n.tr("insights.top_spends_empty"))
+                Text(MonthlyCycleCopy.tr("insights.top_spends_empty"))
                     .font(.system(size: 13))
                     .xpnseAdaptiveForeground(muted: true)
             } else {
@@ -208,11 +208,11 @@ struct InsightCategoryHealthCard: View {
         VStack(alignment: .leading, spacing: 12) {
             XpnsePanelHeader(
                 title: L10n.tr("insights.category_health"),
-                subtitle: L10n.tr("insights.vs_usual_subtitle")
+                subtitle: MonthlyCycleCopy.tr("insights.vs_usual_subtitle")
             )
 
             if baselines.isEmpty {
-                Text(L10n.tr("insights.baselines_empty"))
+                Text(MonthlyCycleCopy.tr("insights.baselines_empty"))
                     .font(.system(size: 13))
                     .xpnseAdaptiveForeground(muted: true)
             } else {
@@ -242,7 +242,7 @@ struct InsightCategoryHealthCard: View {
                         .frame(height: 8)
 
                         Text(
-                            L10n.tr(
+                            MonthlyCycleCopy.tr(
                                 "insights.category_utilization",
                                 AmountFormatter.format(item.focusAmount, currencyCode: currencyCode),
                                 AmountFormatter.format(item.rollingAverage, currencyCode: currencyCode),
@@ -259,7 +259,7 @@ struct InsightCategoryHealthCard: View {
                     Text("*")
                         .font(.system(size: 11, weight: .medium))
                         .xpnseAdaptiveForeground(muted: true)
-                    Text(L10n.tr("insights.usual_legend"))
+                    Text(MonthlyCycleCopy.tr("insights.usual_legend"))
                         .font(.system(size: 11))
                         .xpnseAdaptiveForeground(muted: true)
                         .fixedSize(horizontal: false, vertical: true)
@@ -297,7 +297,7 @@ struct InsightForecastCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            XpnsePanelHeader(title: L10n.tr("insights.predicted_month_end"), subtitle: nil)
+            XpnsePanelHeader(title: MonthlyCycleCopy.tr("insights.predicted_month_end"), subtitle: nil)
 
             forecastRow(title: L10n.tr("txn.type.income"), value: forecast.expectedIncome)
             forecastRow(title: L10n.tr("insights.expected_spending"), value: forecast.expectedExpense)
@@ -418,7 +418,7 @@ struct InsightPotentialRecurringCard: View {
         VStack(alignment: .leading, spacing: 12) {
             XpnsePanelHeader(
                 title: L10n.tr("insights.potential_recurring"),
-                subtitle: L10n.tr("insights.potential_recurring_subtitle")
+                subtitle: MonthlyCycleCopy.tr("insights.potential_recurring_subtitle")
             )
 
             ForEach(items) { item in

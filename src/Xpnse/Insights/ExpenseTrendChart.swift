@@ -41,8 +41,8 @@ struct ExpenseTrendChart: View {
     var body: some View {
         VStack(alignment: .leading, spacing: XpnseOutlinedPanelMetrics.headerToContentSpacing) {
             XpnsePanelHeader(
-                title: "Expense trend",
-                subtitle: "Cumulative by day · \(model.year)"
+                title: L10n.tr("insights.expense_trend"),
+                subtitle: MonthlyCycleCopy.tr("insights.expense_trend_subtitle", model.year)
             )
 
             chartScrollViewport
@@ -121,8 +121,9 @@ struct ExpenseTrendChart: View {
                 AxisTick(stroke: StrokeStyle(lineWidth: 1))
                     .foregroundStyle(gridColor)
                 AxisValueLabel {
-                    if let day = value.as(Int.self) {
-                        Text("\(day)")
+                    if let day = value.as(Int.self),
+                       let calendarDay = model.calendarDayLabel(forDayIndex: day) {
+                        Text("\(calendarDay)")
                             .font(.system(size: 10, weight: .medium))
                     }
                 }
@@ -161,7 +162,7 @@ struct ExpenseTrendChart: View {
                         .fill(ExpenseTrendMonthPalette.color(forMonth: month))
                         .frame(width: 14, height: 3)
 
-                    Text(ExpenseTrendMonthPalette.shortLabel(forMonth: month))
+                    Text(legendLabel(forMonth: month))
                         .font(.system(size: 12, weight: .medium))
                         .xpnseAdaptiveForeground(muted: true)
                 }
@@ -177,6 +178,11 @@ struct ExpenseTrendChart: View {
                 }
             }
         }
+    }
+
+    private func legendLabel(forMonth month: Int) -> String {
+        model.points.first { $0.month == month }?.monthLabel
+            ?? ExpenseTrendMonthPalette.shortLabel(forMonth: month)
     }
 }
 

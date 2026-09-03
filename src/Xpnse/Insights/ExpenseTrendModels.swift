@@ -21,6 +21,28 @@ struct ExpenseTrendChartModel: Equatable, Codable, Sendable {
     let year: Int
     let projectedMonth: Int?
     let hasProjection: Bool
+    /// Calendar day-of-month for each cycle-day index (`xAxisCalendarDays[0]` = day index 1).
+    let xAxisCalendarDays: [Int]
+
+    init(
+        points: [ExpenseTrendPoint],
+        year: Int,
+        projectedMonth: Int?,
+        hasProjection: Bool,
+        xAxisCalendarDays: [Int] = Array(1...31)
+    ) {
+        self.points = points
+        self.year = year
+        self.projectedMonth = projectedMonth
+        self.hasProjection = hasProjection
+        self.xAxisCalendarDays = xAxisCalendarDays
+    }
+
+    func calendarDayLabel(forDayIndex day: Int) -> Int? {
+        let index = day - 1
+        guard xAxisCalendarDays.indices.contains(index) else { return nil }
+        return xAxisCalendarDays[index]
+    }
 
     var monthsInChart: [Int] {
         Array(Set(points.map(\.month))).sorted()
@@ -78,30 +100,32 @@ enum ExpenseTrendBuilder {
         year: Int,
         recurringItems: [RecurringTransaction] = [],
         calendar: Calendar = .current,
-        now: Date = Date()
+        now: Date = Date(),
+        configuration: MonthlyCycleConfiguration = .calendarMonth
     ) -> ExpenseTrendChartModel {
-        let todayComponents = calendar.dateComponents([.year, .month, .day], from: now)
-        let currentYear = todayComponents.year ?? year
-        let currentMonth = todayComponents.month ?? 1
-        let currentDay = todayComponents.day ?? 1
+        let resolver = MonthlyCycleResolver(configuration: configuration, calendar: calendar)
+        let currentCycle = resolver.currentCycle(for: now)
+        let currentYear = currentCycle.startYear
+        let currentMonth = currentCycle.startMonth
+        let currentDay = currentCycle.dayIndex(of: now) ?? 1
 
         var dailyTotals: [Int: [Int: Double]] = [:]
 
         for transaction in expenses where transaction.type == .expense {
             let date = Date(timeIntervalSince1970: transaction.date)
-            let components = calendar.dateComponents([.year, .month, .day], from: date)
-            guard components.year == year,
-                  let month = components.month,
-                  let day = components.day
+            let cycle = resolver.cycleContaining(date)
+            guard cycle.startYear == year,
+                  let day = cycle.dayIndex(of: date)
             else { continue }
 
-            dailyTotals[month, default: [:]][day, default: 0] += transaction.totalAmount
+            dailyTotals[cycle.startMonth, default: [:]][day, default: 0] += transaction.totalAmount
         }
 
         var points: [ExpenseTrendPoint] = []
         var projectedMonth: Int?
 
         for month in 1...12 {
+            guard let cycle = resolver.cycleStarting(year: year, month: month) else { continue }
             let isCurrentMonth = year == currentYear && month == currentMonth
             let monthDaily = dailyTotals[month] ?? [:]
 
@@ -112,17 +136,17 @@ enum ExpenseTrendBuilder {
             if isCurrentMonth {
                 actualLastDay = currentDay
             } else {
-                actualLastDay = MonthExpenseExtrapolationEngine.daysInMonth(
-                    month: month,
-                    year: year,
-                    calendar: calendar
-                )
+                actualLastDay = cycle.lengthInDays
             }
 
             guard actualLastDay > 0 else { continue }
 
             var cumulative: Double = 0
-            let label = ExpenseTrendMonthPalette.shortLabel(forMonth: month, calendar: calendar)
+            let label = MonthlyCycleFormatting.chartSeriesLabel(
+                for: cycle,
+                configuration: configuration,
+                locale: calendar.locale ?? .current
+            )
 
             for day in 1...actualLastDay {
                 let daySpend = monthDaily[day] ?? 0
@@ -142,11 +166,11 @@ enum ExpenseTrendBuilder {
             guard isCurrentMonth else { continue }
 
             let extrapolation = MonthExpenseExtrapolationEngine.extrapolateRemainingDays(
-                year: year,
-                month: month,
-                asOfDay: currentDay,
+                cycle: cycle,
+                asOfDate: now,
                 historicalExpenses: expenses,
                 recurringItems: recurringItems,
+                resolver: resolver,
                 calendar: calendar
             )
 
@@ -189,7 +213,32 @@ enum ExpenseTrendBuilder {
             points: points,
             year: year,
             projectedMonth: projectedMonth,
-            hasProjection: projectedMonth != nil
+            hasProjection: projectedMonth != nil,
+            xAxisCalendarDays: calendarDayLabels(
+                for: referenceCycle(year: year, currentYear: currentYear, currentCycle: currentCycle, resolver: resolver)
+            )
         )
+    }
+
+    private static func referenceCycle(
+        year: Int,
+        currentYear: Int,
+        currentCycle: BillingCycle,
+        resolver: MonthlyCycleResolver
+    ) -> BillingCycle {
+        if year == currentYear {
+            return currentCycle
+        }
+        return resolver.cycleStarting(year: year, month: 12) ?? currentCycle
+    }
+
+    /// Calendar day-of-month for cycle-day indexes 1...length. Ticks past the cycle are omitted.
+    static func calendarDayLabels(for cycle: BillingCycle, xMax: Int = 31) -> [Int] {
+        let lastIndex = min(xMax, cycle.lengthInDays)
+        guard lastIndex >= 1 else { return Array(1...xMax) }
+        return (1...lastIndex).compactMap { index in
+            guard let date = cycle.dateForDayIndex(index) else { return nil }
+            return cycle.calendar.component(.day, from: date)
+        }
     }
 }

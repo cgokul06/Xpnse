@@ -61,7 +61,10 @@ struct TransactionSummary {
     ) -> String? {
         switch currentCalendarComparator {
         case .monthly:
-            return startDate.formattedMonthYear()
+            let configuration = MonthlyCyclePreference.current
+            let resolver = MonthlyCycleResolver(configuration: configuration, calendar: .current)
+            let cycle = resolver.cycleContaining(startDate)
+            return MonthlyCycleFormatting.periodTitle(for: cycle, configuration: configuration)
         case .yearly:
             return startDate.formattedYear()
         }

@@ -18,24 +18,27 @@ enum InsightsAnalyticsEngine {
         potentialRecurring: [InsightsPotentialRecurring] = [],
         focusDate: Date = Date(),
         calendar: Calendar = .current,
-        currencySymbol: String = CurrencyManager.shared.selectedCurrency.symbol
+        currencySymbol: String = CurrencyManager.shared.selectedCurrency.symbol,
+        cycleConfiguration: MonthlyCycleConfiguration = MonthlyCyclePreference.current
     ) -> InsightsSnapshot {
-        let focusComps = calendar.dateComponents([.year, .month], from: focusDate)
-        let focusYear = focusComps.year ?? calendar.component(.year, from: Date())
-        let focusMonth = focusComps.month ?? calendar.component(.month, from: Date())
+        let resolver = MonthlyCycleResolver(configuration: cycleConfiguration, calendar: calendar)
+        let focusCycle = resolver.currentCycle(for: focusDate)
+        let focusYear = focusCycle.startYear
+        let focusMonth = focusCycle.startMonth
 
         let monthSummaries = buildMonthSummaries(
             transactions: transactions,
             focusYear: focusYear,
             focusMonth: focusMonth,
+            resolver: resolver,
             calendar: calendar
         )
 
-        let focusTransactions = transactionsInMonth(
+        let focusTransactions = transactionsInCycle(
             transactions,
             year: focusYear,
             month: focusMonth,
-            calendar: calendar
+            resolver: resolver
         )
         let focusExpenses = focusTransactions.filter { $0.type == .expense }
         let focusExpenseTotal = focusExpenses.reduce(0.0) { $0 + $1.totalAmount }
@@ -68,17 +71,19 @@ enum InsightsAnalyticsEngine {
             focusYear: focusYear,
             focusMonth: focusMonth,
             count: lookbackMonths,
-            calendar: calendar
+            resolver: resolver
         )
         let baselineMonths = completeMonths(
             among: candidateBaselineMonths,
             transactions: transactions,
+            resolver: resolver,
             calendar: calendar
         )
         logBaselineMonthSelection(
             candidates: candidateBaselineMonths,
             kept: baselineMonths,
             transactions: transactions,
+            resolver: resolver,
             calendar: calendar
         )
 
@@ -86,6 +91,7 @@ enum InsightsAnalyticsEngine {
             focusExpenses: focusExpenses,
             transactions: transactions,
             baselineMonths: baselineMonths,
+            resolver: resolver,
             calendar: calendar
         )
 
@@ -93,7 +99,8 @@ enum InsightsAnalyticsEngine {
             focusExpenses: focusExpenses,
             transactions: transactions,
             baselineMonths: baselineMonths,
-            focusLabel: monthLabel(year: focusYear, month: focusMonth, calendar: calendar),
+            focusLabel: monthLabel(year: focusYear, month: focusMonth, resolver: resolver, calendar: calendar),
+            resolver: resolver,
             calendar: calendar
         )
 
@@ -103,6 +110,7 @@ enum InsightsAnalyticsEngine {
             monthSummaries: monthSummaries,
             focusYear: focusYear,
             focusMonth: focusMonth,
+            resolver: resolver,
             calendar: calendar
         )
 
@@ -121,9 +129,11 @@ enum InsightsAnalyticsEngine {
             focusYear: focusYear,
             focusMonth: focusMonth,
             focusDate: focusDate,
+            focusCycle: focusCycle,
             transactions: transactions,
             recurringItems: recurringItems,
             completeBaselineMonths: baselineMonths,
+            resolver: resolver,
             calendar: calendar
         )
 
@@ -132,7 +142,7 @@ enum InsightsAnalyticsEngine {
         }
         let savingsRate = focusSummary?.savingsRate ?? 0
 
-        let focusLabel = monthLabel(year: focusYear, month: focusMonth, calendar: calendar)
+        let focusLabel = monthLabel(year: focusYear, month: focusMonth, resolver: resolver, calendar: calendar)
 
         let healthBreakdown = FinancialHealthScoring.score(
             FinancialHealthScoringInput(
@@ -146,7 +156,7 @@ enum InsightsAnalyticsEngine {
                 subscriptionShareOfExpense: subscriptionShare,
                 subscriptions: subscriptions,
                 discretionaryCategoryIds: discretionaryCategoryIds,
-                calendar: calendar
+                resolver: resolver
             )
         )
 
@@ -204,28 +214,40 @@ enum InsightsAnalyticsEngine {
         transactions: [Transaction],
         focusYear: Int,
         focusMonth: Int,
+        resolver: MonthlyCycleResolver,
         calendar: Calendar
     ) -> [InsightsMonthSummary] {
         let priorCandidates = priorMonthKeys(
             focusYear: focusYear,
             focusMonth: focusMonth,
             count: lookbackMonths,
-            calendar: calendar
+            resolver: resolver
         )
         let completePrior = completeMonths(
             among: priorCandidates,
             transactions: transactions,
+            resolver: resolver,
             calendar: calendar
         )
         let keys = completePrior + [(focusYear, focusMonth)]
 
         return keys.map { year, month in
-            let monthTxns = transactionsInMonth(transactions, year: year, month: month, calendar: calendar)
+            let monthTxns = transactionsInCycle(transactions, year: year, month: month, resolver: resolver)
             let income = monthTxns.filter { $0.type == .income }.reduce(0.0) { $0 + $1.totalAmount }
             let expense = monthTxns.filter { $0.type == .expense }.reduce(0.0) { $0 + $1.totalAmount }
             let savings = income - expense
+            let label: String
+            if let cycle = resolver.cycleStarting(year: year, month: month) {
+                label = MonthlyCycleFormatting.chartSeriesLabel(
+                    for: cycle,
+                    configuration: resolver.configuration,
+                    locale: calendar.locale ?? .current
+                )
+            } else {
+                label = ExpenseTrendMonthPalette.shortLabel(forMonth: month, calendar: calendar)
+            }
             return InsightsMonthSummary(
-                month: ExpenseTrendMonthPalette.shortLabel(forMonth: month, calendar: calendar),
+                month: label,
                 year: year,
                 monthNumber: month,
                 income: income,
@@ -312,7 +334,8 @@ enum InsightsAnalyticsEngine {
         focusExpenses: [Transaction],
         transactions: [Transaction],
         baselineMonths: [(Int, Int)],
-        calendar: Calendar
+        resolver: MonthlyCycleResolver,
+        calendar _: Calendar
     ) -> [InsightsCategoryDelta] {
         // Same bar as category health: need ≥2 complete lookback months overall,
         // and the category itself must have spend in ≥2 of those months.
@@ -326,7 +349,7 @@ enum InsightsAnalyticsEngine {
             var map: [String: [(month: String, amount: Double)]] = [:]
             for (year, month) in baselineMonths {
                 let key = "\(year)-\(month)"
-                let expenses = transactionsInMonth(transactions, year: year, month: month, calendar: calendar)
+                let expenses = transactionsInCycle(transactions, year: year, month: month, resolver: resolver)
                     .filter { $0.type == .expense }
                 let amounts = amountsByCategory(expenses)
                 for id in Set(focusByCategory.keys).union(amounts.keys) {
@@ -383,7 +406,8 @@ enum InsightsAnalyticsEngine {
         transactions: [Transaction],
         baselineMonths: [(Int, Int)],
         focusLabel: String,
-        calendar: Calendar
+        resolver: MonthlyCycleResolver,
+        calendar _: Calendar
     ) -> [InsightsCategoryBaseline] {
         // Need ≥2 prior months of category history to compare against a meaningful usual.
         let minimumHistoryMonths = 2
@@ -403,7 +427,7 @@ enum InsightsAnalyticsEngine {
             var map: [String: [(month: String, amount: Double)]] = [:]
             for (year, month) in baselineMonths {
                 let key = "\(year)-\(month)"
-                let expenses = transactionsInMonth(transactions, year: year, month: month, calendar: calendar)
+                let expenses = transactionsInCycle(transactions, year: year, month: month, resolver: resolver)
                     .filter { $0.type == .expense }
                 let amounts = amountsByCategory(expenses)
                 let ids = Set(focusByCategory.keys).union(amounts.keys)
@@ -478,6 +502,7 @@ enum InsightsAnalyticsEngine {
         candidates: [(Int, Int)],
         kept: [(Int, Int)],
         transactions: [Transaction],
+        resolver: MonthlyCycleResolver,
         calendar: Calendar
     ) {
         let keptSet = Set(kept.map { "\($0.0)-\($0.1)" })
@@ -487,6 +512,7 @@ enum InsightsAnalyticsEngine {
                 transactions: transactions,
                 year: year,
                 month: month,
+                resolver: resolver,
                 calendar: calendar
             )
             return (key: key, volume: volume, kept: keptSet.contains(key))
@@ -508,14 +534,15 @@ enum InsightsAnalyticsEngine {
         monthSummaries: [InsightsMonthSummary],
         focusYear: Int,
         focusMonth: Int,
-        calendar: Calendar
+        resolver: MonthlyCycleResolver,
+        calendar _: Calendar
     ) -> [InsightsFinancialEvent] {
         let discretionaryFocus = focusExpenses.filter { !$0.isRecurringGenerated }
         var events: [InsightsFinancialEvent] = []
 
         let historyByCategoryMonth = categoryMonthTotals(
             transactions: transactions.filter { $0.type == .expense && !$0.isRecurringGenerated },
-            calendar: calendar
+            resolver: resolver
         )
 
         // 1) Category-month spikes vs that category's history (primary signal).
@@ -543,7 +570,11 @@ enum InsightsAnalyticsEngine {
             let multipleText: String = {
                 guard avg > 0.01 else { return "unusual for this category" }
                 let multiple = focusTotal / avg
-                return String(format: "%.1f× your typical %@ month", multiple, name.lowercased())
+                return MonthlyCycleCopy.tr(
+                    "insights.event.typical_month",
+                    multiple,
+                    name.lowercased()
+                )
             }()
 
             events.append(
@@ -551,7 +582,7 @@ enum InsightsAnalyticsEngine {
                     kind: kind,
                     title: "\(name) spike",
                     amount: focusTotal,
-                    note: "Rare high spend this month — \(multipleText).",
+                    note: MonthlyCycleCopy.tr("insights.event.rare_spend", multipleText),
                     excludeFromLifestyle: shouldExcludeFromLifestyle(kind: kind)
                 )
             )
@@ -566,9 +597,8 @@ enum InsightsAnalyticsEngine {
             var map: [String: [Double]] = [:]
             for tx in transactions where tx.type == .expense && !tx.isRecurringGenerated {
                 let date = Date(timeIntervalSince1970: tx.date)
-                let comps = calendar.dateComponents([.year, .month], from: date)
-                guard let year = comps.year, let month = comps.month else { continue }
-                if year == focusYear && month == focusMonth { continue }
+                let cycle = resolver.cycleContaining(date)
+                if cycle.startYear == focusYear && cycle.startMonth == focusMonth { continue }
                 let id = CategoryStore.shared.canonicalCategoryId(for: tx.categoryId)
                 map[id, default: []].append(tx.totalAmount)
             }
@@ -679,15 +709,14 @@ enum InsightsAnalyticsEngine {
 
     private static func categoryMonthTotals(
         transactions: [Transaction],
-        calendar: Calendar
+        resolver: MonthlyCycleResolver
     ) -> [(categoryId: String, year: Int, month: Int, amount: Double)] {
         var buckets: [String: Double] = [:]
         for tx in transactions {
             let date = Date(timeIntervalSince1970: tx.date)
-            let comps = calendar.dateComponents([.year, .month], from: date)
-            guard let year = comps.year, let month = comps.month else { continue }
+            let cycle = resolver.cycleContaining(date)
             let categoryId = CategoryStore.shared.canonicalCategoryId(for: tx.categoryId)
-            let key = "\(categoryId)|\(year)|\(month)"
+            let key = "\(categoryId)|\(cycle.startYear)|\(cycle.startMonth)"
             buckets[key, default: 0] += tx.totalAmount
         }
         return buckets.compactMap { key, amount in
@@ -814,30 +843,31 @@ enum InsightsAnalyticsEngine {
         focusYear: Int,
         focusMonth: Int,
         focusDate: Date,
+        focusCycle: BillingCycle,
         transactions: [Transaction],
         recurringItems: [RecurringTransaction],
         completeBaselineMonths: [(Int, Int)],
+        resolver: MonthlyCycleResolver,
         calendar: Calendar
     ) -> InsightsForecast {
-        let day = calendar.component(.day, from: focusDate)
         let expenses = transactions.filter { $0.type == .expense }
         let allowedKeys = Set(completeBaselineMonths.map { monthKey(year: $0.0, month: $0.1) })
         let extrapolation = MonthExpenseExtrapolationEngine.extrapolateRemainingDays(
-            year: focusYear,
-            month: focusMonth,
-            asOfDay: day,
+            cycle: focusCycle,
+            asOfDate: focusDate,
             historicalExpenses: expenses,
             recurringItems: recurringItems,
             lookbackMonths: lookbackMonths,
             allowedLookbackMonthKeys: allowedKeys,
+            resolver: resolver,
             calendar: calendar
         )
 
-        let monthToDateExpense = transactionsInMonth(
+        let monthToDateExpense = transactionsInCycle(
             transactions,
             year: focusYear,
             month: focusMonth,
-            calendar: calendar
+            resolver: resolver
         )
         .filter { $0.type == .expense }
         .reduce(0.0) { $0 + $1.totalAmount }
@@ -846,13 +876,13 @@ enum InsightsAnalyticsEngine {
         let expectedExpense = monthToDateExpense + projectedRemainder
 
         let priorIncomes = completeBaselineMonths.map { year, month in
-            transactionsInMonth(transactions, year: year, month: month, calendar: calendar)
+            transactionsInCycle(transactions, year: year, month: month, resolver: resolver)
                 .filter { $0.type == .income }
                 .reduce(0.0) { $0 + $1.totalAmount }
         }.filter { $0 > 0 }
 
         let avgIncome = priorIncomes.isEmpty
-            ? transactionsInMonth(transactions, year: focusYear, month: focusMonth, calendar: calendar)
+            ? transactionsInCycle(transactions, year: focusYear, month: focusMonth, resolver: resolver)
                 .filter { $0.type == .income }
                 .reduce(0.0) { $0 + $1.totalAmount }
             : priorIncomes.reduce(0, +) / Double(priorIncomes.count)
@@ -865,7 +895,7 @@ enum InsightsAnalyticsEngine {
         let expectedSavings = expectedIncome - expectedExpense
 
         let expenseHistory = completeBaselineMonths.map { year, month in
-            transactionsInMonth(transactions, year: year, month: month, calendar: calendar)
+            transactionsInCycle(transactions, year: year, month: month, resolver: resolver)
                 .filter { $0.type == .expense }
                 .reduce(0.0) { $0 + $1.totalAmount }
         }.filter { $0 > 0 }
@@ -894,6 +924,7 @@ enum InsightsAnalyticsEngine {
     static func completeMonths(
         among candidates: [(Int, Int)],
         transactions: [Transaction],
+        resolver: MonthlyCycleResolver,
         calendar: Calendar
     ) -> [(Int, Int)] {
         guard !candidates.isEmpty else { return [] }
@@ -903,6 +934,7 @@ enum InsightsAnalyticsEngine {
                 transactions: transactions,
                 year: year,
                 month: month,
+                resolver: resolver,
                 calendar: calendar
             )
             return ((year, month), volume)
@@ -932,20 +964,24 @@ enum InsightsAnalyticsEngine {
         transactions: [Transaction],
         year: Int,
         month: Int,
+        resolver: MonthlyCycleResolver,
         calendar: Calendar
     ) -> Double {
-        let monthTxns = transactionsInMonth(transactions, year: year, month: month, calendar: calendar)
+        let monthTxns = transactionsInCycle(transactions, year: year, month: month, resolver: resolver)
         let expenses = monthTxns.filter { $0.type == .expense }
         let expenseTotal = expenses.reduce(0.0) { $0 + $1.totalAmount }
         let expenseCount = Double(expenses.count)
 
-        let daysInMonth = Double(
-            MonthExpenseExtrapolationEngine.daysInMonth(month: month, year: year, calendar: calendar)
-        )
+        let cycle = resolver.cycleStarting(year: year, month: month)
+        let daysInCycle = Double(cycle?.lengthInDays ?? MonthExpenseExtrapolationEngine.daysInMonth(
+            month: month,
+            year: year,
+            calendar: calendar
+        ))
         let activeDays = Set(
-            monthTxns.map { calendar.component(.day, from: Date(timeIntervalSince1970: $0.date)) }
+            monthTxns.map { calendar.startOfDay(for: Date(timeIntervalSince1970: $0.date)) }
         ).count
-        let dayCoverage = daysInMonth > 0 ? Double(activeDays) / daysInMonth : 0
+        let dayCoverage = daysInCycle > 0 ? Double(activeDays) / daysInCycle : 0
 
         // Weight amount most, with activity density so a few large txs in an otherwise empty month
         // still don't look "complete" versus well-logged peers.
@@ -958,33 +994,24 @@ enum InsightsAnalyticsEngine {
 
     // MARK: - Helpers
 
-    private static func transactionsInMonth(
+    private static func transactionsInCycle(
         _ transactions: [Transaction],
         year: Int,
         month: Int,
-        calendar: Calendar
+        resolver: MonthlyCycleResolver
     ) -> [Transaction] {
-        transactions.filter { txn in
-            let date = Date(timeIntervalSince1970: txn.date)
-            let comps = calendar.dateComponents([.year, .month], from: date)
-            return comps.year == year && comps.month == month
-        }
+        guard let cycle = resolver.cycleStarting(year: year, month: month) else { return [] }
+        return transactions.filter { cycle.contains(Date(timeIntervalSince1970: $0.date)) }
     }
 
     private static func priorMonthKeys(
         focusYear: Int,
         focusMonth: Int,
         count: Int,
-        calendar: Calendar
+        resolver: MonthlyCycleResolver
     ) -> [(Int, Int)] {
-        guard let focus = calendar.date(from: DateComponents(year: focusYear, month: focusMonth, day: 1))
-        else { return [] }
-        return (1...count).compactMap { offset in
-            guard let date = calendar.date(byAdding: .month, value: -offset, to: focus) else { return nil }
-            let comps = calendar.dateComponents([.year, .month], from: date)
-            guard let y = comps.year, let m = comps.month else { return nil }
-            return (y, m)
-        }.reversed()
+        guard let focus = resolver.cycleStarting(year: focusYear, month: focusMonth) else { return [] }
+        return resolver.priorCycleKeys(from: focus, count: count)
     }
 
     private static func amountsByCategory(_ expenses: [Transaction]) -> [String: Double] {
@@ -1006,7 +1033,19 @@ enum InsightsAnalyticsEngine {
         return sorted[mid]
     }
 
-    private static func monthLabel(year: Int, month: Int, calendar: Calendar) -> String {
+    private static func monthLabel(
+        year: Int,
+        month: Int,
+        resolver: MonthlyCycleResolver,
+        calendar: Calendar
+    ) -> String {
+        if let cycle = resolver.cycleStarting(year: year, month: month) {
+            return MonthlyCycleFormatting.periodTitle(
+                for: cycle,
+                configuration: resolver.configuration,
+                locale: calendar.locale ?? .current
+            )
+        }
         let short = ExpenseTrendMonthPalette.shortLabel(forMonth: month, calendar: calendar)
         return "\(short) \(year)"
     }

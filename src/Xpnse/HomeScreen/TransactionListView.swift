@@ -135,6 +135,7 @@ struct TransactionListView: View {
     @FocusState private var isSearchFieldFocused: Bool
     @State private var upcomingItems: [UpcomingRecurringItem] = []
     @State private var selectedRecurringForEdit: RecurringTransaction?
+    @ObservedObject private var monthlyCycleStore = MonthlyCycleStore.shared
 
     private static let summaryCardScrollThreshold: CGFloat = SummaryCardMetrics.height + 12
     private static let searchDebounceInterval: Duration = .milliseconds(300)
@@ -343,6 +344,9 @@ struct TransactionListView: View {
             Task { await reloadUpcomingIfNeeded() }
         }
         .onChange(of: showUpcomingRecurring) { _, _ in
+            Task { await reloadUpcomingIfNeeded() }
+        }
+        .onChange(of: monthlyCycleStore.configuration.startDay) { _, _ in
             Task { await reloadUpcomingIfNeeded() }
         }
         .onChange(of: typeFilter) { _, _ in
