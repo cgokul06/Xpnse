@@ -59,12 +59,13 @@ enum UpcomingRecurringProjector {
                 if current > periodEnd { break }
 
                 if current >= rangeStart {
+                    let occurrenceDay = calendar.startOfDay(for: current)
                     let key = materializationKey(
                         seriesId: rule.id.uuidString,
-                        occurrenceEpoch: current.timeIntervalSince1970
+                        occurrenceEpoch: occurrenceDay.timeIntervalSince1970
                     )
                     if !materializedKeys.contains(key) {
-                        results.append(UpcomingRecurringItem(rule: rule, occurrenceDate: current))
+                        results.append(UpcomingRecurringItem(rule: rule, occurrenceDate: occurrenceDay))
                     }
                 }
 

@@ -77,7 +77,7 @@ final class RecurringTransactionManager {
             for i in items.indices {
                 guard items[i].state == .active else { continue }
                 if let remaining = remainingOccurrence(for: items[i], calendar: calendar) {
-                    if items[i].nextOccurrence == nil {
+                    if items[i].nextOccurrence != remaining {
                         items[i].nextOccurrence = remaining
                         changed = true
                     }
@@ -116,12 +116,15 @@ final class RecurringTransactionManager {
                 changed = true
                 continue
             }
-            if items[i].nextOccurrence == nil {
+            if items[i].nextOccurrence != next {
                 items[i].nextOccurrence = next
                 changed = true
             }
+            let nowDay = calendar.startOfDay(for: now)
             var safety = 0
-            while next <= now, isWithinEndDate(next, endDate: items[i].endDate), safety < 128 {
+            while calendar.startOfDay(for: next) <= nowDay,
+                  isWithinEndDate(next, endDate: items[i].endDate, calendar: calendar),
+                  safety < 128 {
                 safety += 1
                 // Never re-materialize on or before the last added day. Editing a rule
                 // can reset `nextOccurrence` earlier in the series; only advance past those days.
@@ -140,14 +143,14 @@ final class RecurringTransactionManager {
                     }
                 }
 
-                // Skip if this occurrence was already written (e.g. overlapping process runs).
+                let occurrenceDay = calendar.startOfDay(for: next)
                 let alreadyExists = await sink.hasMaterializedRecurringOccurrence(
                     seriesId: items[i].id.uuidString,
-                    occurrenceEpoch: next.timeIntervalSince1970
+                    occurrenceEpoch: occurrenceDay.timeIntervalSince1970
                 )
                 if alreadyExists {
-                    items[i].lastTransactionAddedOn = next
-                    guard let newNext = advanceOrMarkInactive(at: i, after: next, calendar: calendar) else {
+                    items[i].lastTransactionAddedOn = occurrenceDay
+                    guard let newNext = advanceOrMarkInactive(at: i, after: occurrenceDay, calendar: calendar) else {
                         changed = true
                         break
                     }
@@ -163,15 +166,15 @@ final class RecurringTransactionManager {
                         type: TransactionType(rawValue: items[i].type) ?? .expense,
                         categoryId: items[i].categoryIdentifier ?? BuiltinCategories.otherCategoryId,
                         amount: Double(truncating: items[i].amount as NSNumber),
-                        date: next.timeIntervalSince1970,
+                        date: occurrenceDay.timeIntervalSince1970,
                         title: items[i].title,
                         merchant: items[i].merchant,
                         recurringSeriesId: items[i].id.uuidString,
-                        recurringOccurrenceDate: next.timeIntervalSince1970
+                        recurringOccurrenceDate: occurrenceDay.timeIntervalSince1970
                     )
                 )
-                items[i].lastTransactionAddedOn = next
-                guard let newNext = advanceOrMarkInactive(at: i, after: next, calendar: calendar) else {
+                items[i].lastTransactionAddedOn = occurrenceDay
+                guard let newNext = advanceOrMarkInactive(at: i, after: occurrenceDay, calendar: calendar) else {
                     changed = true
                     break
                 }
@@ -232,24 +235,25 @@ final class RecurringTransactionManager {
         } else {
             candidate = item.recurrence.firstOccurrence(onOrAfter: item.startDate, calendar: calendar)
         }
-        guard let next = candidate, isWithinEndDate(next, endDate: item.endDate) else {
+        guard let next = candidate, isWithinEndDate(next, endDate: item.endDate, calendar: calendar) else {
             return nil
         }
-        return next
+        return calendar.startOfDay(for: next)
     }
 
     private func advanceOrMarkInactive(at index: Int, after current: Date, calendar: Calendar) -> Date? {
         guard let newNext = items[index].recurrence.nextOccurrence(after: current, calendar: calendar),
-              isWithinEndDate(newNext, endDate: items[index].endDate)
+              isWithinEndDate(newNext, endDate: items[index].endDate, calendar: calendar)
         else {
             markInactive(at: index)
             return nil
         }
-        return newNext
+        return calendar.startOfDay(for: newNext)
     }
 
-    private func isWithinEndDate(_ date: Date, endDate: Date?) -> Bool {
-        endDate.map { date <= $0 } ?? true
+    private func isWithinEndDate(_ date: Date, endDate: Date?, calendar: Calendar) -> Bool {
+        guard let endDate else { return true }
+        return calendar.startOfDay(for: date) <= calendar.startOfDay(for: endDate)
     }
 
     private func markInactive(at index: Int) {

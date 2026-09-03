@@ -19,6 +19,7 @@ protocol TransactionRepository {
     func fetchAll() async throws -> [Transaction]
     func hasRecurringOccurrence(seriesId: String, occurrenceEpoch: TimeInterval) async throws -> Bool
     /// Returns `"seriesId|occurrenceEpoch"` keys for materialized recurring rows in the date range.
+    /// Occurrence epochs are normalized to the start of the occurrence calendar day.
     func materializedRecurringOccurrenceKeys(startEpoch: TimeInterval, endEpoch: TimeInterval) async throws -> Set<String>
     func clearAll() async throws
 }
@@ -111,14 +112,23 @@ final class SwiftDataTransactionRepository: TransactionRepository {
 
     @MainActor
     func hasRecurringOccurrence(seriesId: String, occurrenceEpoch: TimeInterval) async throws -> Bool {
+        let calendar = Calendar.current
+        let dayStart = calendar.startOfDay(for: Date(timeIntervalSince1970: occurrenceEpoch))
+        guard let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) else {
+            return false
+        }
+        let start = dayStart.timeIntervalSince1970
+        let end = dayEnd.timeIntervalSince1970
         let context = context()
         let descriptor = FetchDescriptor<TransactionEntity>(
             predicate: #Predicate { entity in
                 entity.recurringSeriesId == seriesId
-                    && entity.recurringOccurrenceDate == occurrenceEpoch
             }
         )
-        return try context.fetch(descriptor).first != nil
+        return try context.fetch(descriptor).contains { entity in
+            guard let epoch = entity.recurringOccurrenceDate else { return false }
+            return epoch >= start && epoch < end
+        }
     }
 
     @MainActor
@@ -135,6 +145,7 @@ final class SwiftDataTransactionRepository: TransactionRepository {
             }
         )
         let entities = try context.fetch(descriptor)
+        let calendar = Calendar.current
         var keys = Set<String>()
         keys.reserveCapacity(entities.count)
         for entity in entities {
@@ -142,7 +153,8 @@ final class SwiftDataTransactionRepository: TransactionRepository {
                   let occurrenceEpoch = entity.recurringOccurrenceDate else {
                 continue
             }
-            keys.insert("\(seriesId)|\(occurrenceEpoch)")
+            let occurrenceDay = calendar.startOfDay(for: Date(timeIntervalSince1970: occurrenceEpoch))
+            keys.insert("\(seriesId)|\(occurrenceDay.timeIntervalSince1970)")
         }
         return keys
     }

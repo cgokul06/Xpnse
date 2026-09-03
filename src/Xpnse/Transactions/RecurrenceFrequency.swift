@@ -90,29 +90,30 @@ public enum RecurrenceFrequency: Codable, Hashable, Sendable {
     }
 
     /// Returns the first occurrence of the recurrence on or after the given start date.
-    /// The time components (hour, minute, second, nanosecond) of `start` are preserved.
+    /// Occurrences are the start of that calendar day, not the original transaction time.
     /// - Parameters:
     ///   - start: The date from which to find the first occurrence.
     ///   - calendar: The calendar to use. Defaults to `.current`.
     /// - Returns: The first occurrence date on or after `start`, or `nil` if it cannot be computed.
     public func firstOccurrence(onOrAfter start: Date, calendar: Calendar = .current) -> Date? {
+        let occurrence: Date?
         switch self {
         case .daily:
-            return RecurrenceFrequency.computeEveryNDaysOccurrence(
+            occurrence = RecurrenceFrequency.computeEveryNDaysOccurrence(
                 from: start,
                 intervalDays: 1,
                 calendar: calendar,
                 inclusive: true
             )
         case let .weeklyOn(day):
-            return RecurrenceFrequency.computeWeeklyOccurrence(
+            occurrence = RecurrenceFrequency.computeWeeklyOccurrence(
                 from: start,
                 day: day,
                 calendar: calendar,
                 inclusive: true
             )
         case let .monthlyOn(day, overflow):
-            return RecurrenceFrequency.computeMonthlyOccurrence(
+            occurrence = RecurrenceFrequency.computeMonthlyOccurrence(
                 from: start,
                 day: day,
                 overflow: overflow,
@@ -121,28 +122,28 @@ public enum RecurrenceFrequency: Codable, Hashable, Sendable {
                 inclusive: true
             )
         case let .everyTwoWeeksOn(day):
-            return RecurrenceFrequency.computeWeeklyOccurrence(
+            occurrence = RecurrenceFrequency.computeWeeklyOccurrence(
                 from: start,
                 day: day,
                 calendar: calendar,
                 inclusive: true
             )
         case let .everyThreeWeeksOn(day):
-            return RecurrenceFrequency.computeWeeklyOccurrence(
+            occurrence = RecurrenceFrequency.computeWeeklyOccurrence(
                 from: start,
                 day: day,
                 calendar: calendar,
                 inclusive: true
             )
         case let .everyFourWeeksOn(day):
-            return RecurrenceFrequency.computeWeeklyOccurrence(
+            occurrence = RecurrenceFrequency.computeWeeklyOccurrence(
                 from: start,
                 day: day,
                 calendar: calendar,
                 inclusive: true
             )
         case let .onceInEveryTwoMonthsOn(day, overflow):
-            return RecurrenceFrequency.computeMonthlyOccurrence(
+            occurrence = RecurrenceFrequency.computeMonthlyOccurrence(
                 from: start,
                 day: day,
                 overflow: overflow,
@@ -151,7 +152,7 @@ public enum RecurrenceFrequency: Codable, Hashable, Sendable {
                 inclusive: true
             )
         case let .onceInEveryQuarterOn(day, overflow):
-            return RecurrenceFrequency.computeMonthlyOccurrence(
+            occurrence = RecurrenceFrequency.computeMonthlyOccurrence(
                 from: start,
                 day: day,
                 overflow: overflow,
@@ -160,32 +161,34 @@ public enum RecurrenceFrequency: Codable, Hashable, Sendable {
                 inclusive: true
             )
         }
+        return RecurrenceFrequency.startOfOccurrenceDay(occurrence, calendar: calendar)
     }
 
     /// Returns the next occurrence that is strictly after the given date.
-    /// The time components of `date` are preserved.
+    /// Occurrences are the start of that calendar day, not the original transaction time.
     /// - Parameters:
     ///   - date: The date after which to find the next occurrence.
     ///   - calendar: The calendar to use. Defaults to `.current`.
     /// - Returns: The next occurrence date strictly after `date`, or `nil` if it cannot be computed.
     public func nextOccurrence(after date: Date, calendar: Calendar = .current) -> Date? {
+        let occurrence: Date?
         switch self {
         case .daily:
-            return RecurrenceFrequency.computeEveryNDaysOccurrence(
+            occurrence = RecurrenceFrequency.computeEveryNDaysOccurrence(
                 from: date,
                 intervalDays: 1,
                 calendar: calendar,
                 inclusive: false
             )
         case let .weeklyOn(day):
-            return RecurrenceFrequency.computeWeeklyOccurrence(
+            occurrence = RecurrenceFrequency.computeWeeklyOccurrence(
                 from: date,
                 day: day,
                 calendar: calendar,
                 inclusive: false
             )
         case let .monthlyOn(day, overflow):
-            return RecurrenceFrequency.computeMonthlyOccurrence(
+            occurrence = RecurrenceFrequency.computeMonthlyOccurrence(
                 from: date,
                 day: day,
                 overflow: overflow,
@@ -194,13 +197,13 @@ public enum RecurrenceFrequency: Codable, Hashable, Sendable {
                 inclusive: false
             )
         case .everyTwoWeeksOn:
-            return calendar.date(byAdding: .day, value: 14, to: date)
+            occurrence = calendar.date(byAdding: .day, value: 14, to: date)
         case .everyThreeWeeksOn:
-            return calendar.date(byAdding: .day, value: 21, to: date)
+            occurrence = calendar.date(byAdding: .day, value: 21, to: date)
         case .everyFourWeeksOn:
-            return calendar.date(byAdding: .day, value: 28, to: date)
+            occurrence = calendar.date(byAdding: .day, value: 28, to: date)
         case let .onceInEveryTwoMonthsOn(day, overflow):
-            return RecurrenceFrequency.computeMonthlyOccurrence(
+            occurrence = RecurrenceFrequency.computeMonthlyOccurrence(
                 from: date,
                 day: day,
                 overflow: overflow,
@@ -209,7 +212,7 @@ public enum RecurrenceFrequency: Codable, Hashable, Sendable {
                 inclusive: false
             )
         case let .onceInEveryQuarterOn(day, overflow):
-            return RecurrenceFrequency.computeMonthlyOccurrence(
+            occurrence = RecurrenceFrequency.computeMonthlyOccurrence(
                 from: date,
                 day: day,
                 overflow: overflow,
@@ -218,6 +221,15 @@ public enum RecurrenceFrequency: Codable, Hashable, Sendable {
                 inclusive: false
             )
         }
+        return RecurrenceFrequency.startOfOccurrenceDay(occurrence, calendar: calendar)
+    }
+
+    static func startOfOccurrenceDay(_ date: Date, calendar: Calendar) -> Date {
+        calendar.startOfDay(for: date)
+    }
+
+    private static func startOfOccurrenceDay(_ date: Date?, calendar: Calendar) -> Date? {
+        date.map { startOfOccurrenceDay($0, calendar: calendar) }
     }
 }
 

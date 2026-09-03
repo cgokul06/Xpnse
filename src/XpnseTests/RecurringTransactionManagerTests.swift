@@ -16,7 +16,7 @@ final class RecurringTransactionManagerTests: XCTestCase {
     func testProcessPendingMarksSeriesInactiveWhenEndDateIsExhausted() async throws {
         let repository = InMemoryRecurringRepository()
         let manager = RecurringTransactionManager(repository: repository, calendar: calendar)
-        let sink = RecordingTransactionSink()
+        let sink = RecordingTransactionSink(calendar: calendar)
         let start = date(2026, 8, 30)
         let end = date(2026, 9, 2)
         let now = date(2026, 9, 3)
@@ -87,6 +87,76 @@ final class RecurringTransactionManagerTests: XCTestCase {
         XCTAssertNil(loaded[0].nextOccurrence)
     }
 
+    func testProcessPendingUsesStartOfDayInsteadOfAddedTime() async throws {
+        let repository = InMemoryRecurringRepository()
+        let manager = RecurringTransactionManager(repository: repository, calendar: calendar)
+        let sink = RecordingTransactionSink(calendar: calendar)
+        let today = date(2026, 9, 3)
+        let addedTime = calendar.date(bySettingHour: 15, minute: 30, second: 0, of: today)!
+        let morning = calendar.date(bySettingHour: 10, minute: 0, second: 0, of: today)!
+
+        await manager.create(
+            series(startDate: addedTime, endDate: nil, nextOccurrence: addedTime)
+        )
+        await manager.processPending(upTo: morning, sink: sink, calendar: calendar)
+
+        XCTAssertEqual(sink.added.count, 1)
+        let materialized = Date(timeIntervalSince1970: sink.added[0].date)
+        XCTAssertEqual(calendar.startOfDay(for: materialized), today)
+        XCTAssertEqual(calendar.component(.hour, from: materialized), 0)
+
+        let stored = try await repository.fetchAll()
+        XCTAssertEqual(stored[0].nextOccurrence, calendar.date(byAdding: .day, value: 1, to: today))
+    }
+
+    func testProcessPendingDoesNotDuplicateAfternoonOccurrence() async throws {
+        let repository = InMemoryRecurringRepository()
+        let manager = RecurringTransactionManager(repository: repository, calendar: calendar)
+        let today = date(2026, 9, 3)
+        let addedTime = calendar.date(bySettingHour: 15, minute: 30, second: 0, of: today)!
+        let item = series(startDate: addedTime, endDate: nil, nextOccurrence: today)
+        let sink = RecordingTransactionSink(calendar: calendar)
+        sink.added = [
+            Transaction(
+                id: UUID().uuidString,
+                type: .expense,
+                categoryId: BuiltinCategories.otherCategoryId,
+                amount: 100,
+                date: addedTime.timeIntervalSince1970,
+                title: "Rent",
+                recurringSeriesId: item.id.uuidString,
+                recurringOccurrenceDate: addedTime.timeIntervalSince1970
+            )
+        ]
+
+        await manager.create(item)
+        await manager.processPending(upTo: today, sink: sink, calendar: calendar)
+
+        XCTAssertEqual(sink.added.count, 1)
+    }
+
+    func testConvertLinkedStartDayIsNotRematerialized() async throws {
+        let repository = InMemoryRecurringRepository()
+        let manager = RecurringTransactionManager(repository: repository, calendar: calendar)
+        let sink = RecordingTransactionSink(calendar: calendar)
+        let today = date(2026, 9, 3)
+        let addedTime = calendar.date(bySettingHour: 15, minute: 30, second: 0, of: today)!
+
+        await manager.create(
+            series(
+                startDate: addedTime,
+                endDate: nil,
+                nextOccurrence: addedTime,
+                lastTransactionAddedOn: addedTime
+            )
+        )
+        await manager.processPending(upTo: today, sink: sink, calendar: calendar)
+
+        XCTAssertTrue(sink.added.isEmpty)
+        let stored = try await repository.fetchAll()
+        XCTAssertEqual(stored[0].nextOccurrence, calendar.date(byAdding: .day, value: 1, to: today))
+    }
+
     private func date(_ year: Int, _ month: Int, _ day: Int) -> Date {
         calendar.date(from: DateComponents(year: year, month: month, day: day))!
     }
@@ -144,15 +214,23 @@ private final class InMemoryRecurringRepository: RecurringRepository, @unchecked
 }
 
 private final class RecordingTransactionSink: TransactionSink {
+    private let calendar: Calendar
     var added: [Transaction] = []
+
+    init(calendar: Calendar) {
+        self.calendar = calendar
+    }
 
     func addTransaction(_ transaction: Transaction) async {
         added.append(transaction)
     }
 
     func hasMaterializedRecurringOccurrence(seriesId: String, occurrenceEpoch: TimeInterval) async -> Bool {
-        added.contains {
-            $0.recurringSeriesId == seriesId && $0.recurringOccurrenceDate == occurrenceEpoch
+        let day = calendar.startOfDay(for: Date(timeIntervalSince1970: occurrenceEpoch))
+        return added.contains {
+            guard $0.recurringSeriesId == seriesId,
+                  let stored = $0.recurringOccurrenceDate else { return false }
+            return calendar.startOfDay(for: Date(timeIntervalSince1970: stored)) == day
         }
     }
 }
