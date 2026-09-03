@@ -24,8 +24,17 @@ private enum MonthPagerAnimation {
 private enum HomeBottomBarMetrics {
     static let collapseDistance: CGFloat = XpnseBottomBarMetrics.buttonHeight + 48
     static let contentInset: CGFloat = XpnseBottomBarMetrics.buttonHeight + 16
-    static let visibleListScrollInset: CGFloat = 62
-    static let programmaticScrollDeltaThreshold: CGFloat = 80
+    /// Ignore tiny geometry jitter so hide only follows a real downward move.
+    static let hideThreshold: CGFloat = 8
+    /// Any real upward move should reveal the bar, including slow drags.
+    static let revealThreshold: CGFloat = 1
+    /// Treat this offset as the top of the list and keep the action bar visible.
+    static let topRevealOffset: CGFloat = 2
+    static let listBottomPaddingExtra: CGFloat = 10
+}
+
+private enum HomeBottomBarAnimation {
+    static let visibility = Animation.easeInOut(duration: 0.28)
 }
 
 struct Home: View {
@@ -43,52 +52,63 @@ struct Home: View {
     @State private var showUpcomingRecurring = TransactionListPreferences.showUpcomingRecurring
     @State private var listTypeFilter = TransactionListPreferences.typeFilter
     @State private var listSortOrder = TransactionListPreferences.sortOrder
-    @State private var bottomBarHiddenAmount: CGFloat = 0
+    @State private var isBottomActionBarHidden = false
     @State private var isTransactionSearchActive = false
     @State private var featureFlags = FeatureFlags.shared
     @State private var isSummaryCardOffscreen = false
     @State private var scrollToTopTick: UInt = 0
 
-    private var displayedBottomBarHiddenAmount: CGFloat {
-        isTransactionSearchActive
-            ? HomeBottomBarMetrics.collapseDistance
-            : bottomBarHiddenAmount
-    }
-
-    private var bottomBarHideProgress: CGFloat {
-        guard HomeBottomBarMetrics.collapseDistance > 0 else { return 0 }
-        return min(1, max(0, displayedBottomBarHiddenAmount / HomeBottomBarMetrics.collapseDistance))
-    }
-
-    private var contentBottomInset: CGFloat {
-        max(0, HomeBottomBarMetrics.contentInset - displayedBottomBarHiddenAmount)
+    private var isBottomBarVisuallyHidden: Bool {
+        isTransactionSearchActive || isBottomActionBarHidden
     }
 
     private var listScrollBottomInset: CGFloat {
-        // Keep list bottom padding stable while the action bar hides. Shrinking this
-        // in lockstep with the bar can make short months non-scrollable mid-offset.
-        HomeBottomBarMetrics.visibleListScrollInset
+        HomeBottomBarMetrics.contentInset + HomeBottomBarMetrics.listBottomPaddingExtra
+    }
+
+    private var bottomBarHideOffset: CGFloat {
+        HomeBottomBarMetrics.collapseDistance + DeviceSafeArea.bottom
+    }
+
+    private var floatingButtonsBottomPadding: CGFloat {
+        let safeBottom = DeviceSafeArea.bottom
+        if isBottomBarVisuallyHidden {
+            return max(16, safeBottom + 8)
+        }
+        return HomeBottomBarMetrics.contentInset + safeBottom + 8
     }
 
     var body: some View {
-        ZStack {
-            PrimaryGradient()
+        ZStack(alignment: .bottom) {
+            ZStack {
+                PrimaryGradient()
 
-            if !homeViewModel.transactionSummaryDict.isEmpty {
-                contentView
-                    .navigationBarTitleDisplayMode(.inline)
-                    .onChange(of: self.homeViewModel.currentKey) { _, _ in
-                        bottomBarHiddenAmount = 0
-                        isTransactionSearchActive = false
-                        isSummaryCardOffscreen = false
-                        Task {
-                            await homeViewModel.prefetchIfNeeded(currentKey: homeViewModel.currentKey)
+                if !homeViewModel.transactionSummaryDict.isEmpty {
+                    contentView
+                        .navigationBarTitleDisplayMode(.inline)
+                        .onChange(of: self.homeViewModel.currentKey) { _, _ in
+                            isBottomActionBarHidden = false
+                            isTransactionSearchActive = false
+                            isSummaryCardOffscreen = false
+                            Task {
+                                await homeViewModel.prefetchIfNeeded(currentKey: homeViewModel.currentKey)
+                            }
                         }
-                    }
+                }
+
+                if homeViewModel.isLoading {
+                    ProgressView()
+                }
             }
 
-            if homeViewModel.isLoading {
-                ProgressView()
+            if !homeViewModel.transactionSummaryDict.isEmpty {
+                bottomActionBar
+            }
+        }
+        .ignoresSafeArea(.container, edges: .bottom)
+        .overlay(alignment: .bottomTrailing) {
+            if !homeViewModel.transactionSummaryDict.isEmpty {
+                floatingTrailingButtons
             }
         }
         .onAppear {
@@ -110,17 +130,10 @@ struct Home: View {
                     monthContentPagerStrip(pageWidth: pageWidth)
                 }
                 .simultaneousGesture(monthDragGesture(pageWidth: pageWidth, swipeThreshold: swipeThreshold))
-                .padding(.bottom, contentBottomInset)
             }
             .topSpacingIfNoSafeArea()
         }
-        .ignoresSafeArea(.container, edges: displayedBottomBarHiddenAmount > 0 ? .bottom : [])
-        .overlay(alignment: .bottom) {
-            bottomActionBar
-        }
-        .overlay(alignment: .bottomTrailing) {
-            floatingTrailingButtons
-        }
+        .ignoresSafeArea(.container, edges: .bottom)
         .onChange(of: homeCoordinator.path.count) { oldCount, newCount in
             guard newCount < oldCount else { return }
             resetBottomActionBar()
@@ -148,9 +161,8 @@ struct Home: View {
             }
         }
         .padding(.trailing, 16)
-        // Track the add bar: move down as it collapses, keep an on-screen floor gap.
-        .padding(.bottom, max(16, contentBottomInset + 8))
-        .animation(.easeInOut(duration: 0.2), value: contentBottomInset)
+        .padding(.bottom, floatingButtonsBottomPadding)
+        .animation(HomeBottomBarAnimation.visibility, value: isBottomBarVisuallyHidden)
         .animation(
             .spring(response: 0.34, dampingFraction: 0.78),
             value: isSummaryCardOffscreen
@@ -158,7 +170,7 @@ struct Home: View {
     }
 
     private func resetBottomActionBar() {
-        bottomBarHiddenAmount = 0
+        isBottomActionBarHidden = false
     }
 
     private var scrollToTopFloatingButton: some View {
@@ -199,6 +211,10 @@ struct Home: View {
 
     private var bottomActionBar: some View {
         VStack(spacing: 0) {
+            Color.clear
+                .frame(height: 12)
+                .allowsHitTesting(false)
+
             HStack(spacing: 12) {
                 Button {
                     AppAnalytics.logButtonClick(AppAnalytics.Button.addTransaction, source: AppAnalytics.Screen.home)
@@ -237,11 +253,40 @@ struct Home: View {
                 }
             }
             .padding(.horizontal, 16)
+            .padding(.top, 8)
+            .padding(.bottom, 8)
+
+            // Occupy the home-indicator strip so the fill is flush with the screen bottom.
+            Color.clear
+                .frame(height: DeviceSafeArea.bottom > 0 ? DeviceSafeArea.bottom : 8)
+                .accessibilityHidden(true)
         }
-        .bottomSpacingIfNoSafeArea(8)
-        .offset(y: displayedBottomBarHiddenAmount)
-        .opacity(1 - bottomBarHideProgress)
-        .allowsHitTesting(bottomBarHideProgress < 1)
+        .frame(maxWidth: .infinity)
+        .background {
+            VStack(spacing: 0) {
+                bottomBarTopFade
+                AdaptiveBrandSurface.background(for: colorScheme)
+            }
+        }
+        .offset(y: isBottomBarVisuallyHidden ? bottomBarHideOffset : 0)
+        .allowsHitTesting(!isBottomBarVisuallyHidden)
+        .accessibilityHidden(isBottomBarVisuallyHidden)
+        .animation(HomeBottomBarAnimation.visibility, value: isBottomBarVisuallyHidden)
+    }
+
+    private var bottomBarTopFade: some View {
+        let background = AdaptiveBrandSurface.background(for: colorScheme)
+        return LinearGradient(
+            colors: [
+                background.opacity(0.2),
+                background
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+        .frame(height: 12)
+        .frame(maxWidth: .infinity)
+        .allowsHitTesting(false)
     }
 
     private func handleTransactionListScroll(_ update: TransactionListScrollUpdate) {
@@ -261,36 +306,21 @@ struct Home: View {
             isSummaryCardOffscreen = summaryOffscreen
         }
 
-        if update.offsetY <= 0 {
-            bottomBarHiddenAmount = 0
-            return
-        }
+        let isAtTop = update.offsetY <= HomeBottomBarMetrics.topRevealOffset
 
-        if update.previousOffsetY > update.maxOffset || update.offsetY > update.maxOffset {
-            return
+        if isAtTop {
+            setBottomActionBarHidden(false)
+        } else if update.delta > HomeBottomBarMetrics.hideThreshold {
+            setBottomActionBarHidden(true)
+        } else if update.delta < -HomeBottomBarMetrics.revealThreshold {
+            setBottomActionBarHidden(false)
         }
+    }
 
-        let delta = update.delta
-        let overflow = update.contentHeight - update.visibleHeight
-        // Short months: hiding grows the viewport and eats overflow. If there isn't room to
-        // fully collapse the bar, keep it fully visible — never leave it half-hidden.
-        let minOverflowToCollapse =
-            HomeBottomBarMetrics.collapseDistance + HomeBottomBarMetrics.contentInset
-        if overflow < minOverflowToCollapse {
-            bottomBarHiddenAmount = 0
-            return
-        }
-
-        if abs(delta) > HomeBottomBarMetrics.programmaticScrollDeltaThreshold {
-            bottomBarHiddenAmount = min(
-                update.offsetY,
-                HomeBottomBarMetrics.collapseDistance
-            )
-        } else {
-            bottomBarHiddenAmount = min(
-                max(0, bottomBarHiddenAmount + delta),
-                HomeBottomBarMetrics.collapseDistance
-            )
+    private func setBottomActionBarHidden(_ hidden: Bool) {
+        guard isBottomActionBarHidden != hidden else { return }
+        withAnimation(HomeBottomBarAnimation.visibility) {
+            isBottomActionBarHidden = hidden
         }
     }
 
@@ -334,13 +364,8 @@ struct Home: View {
         .offset(x: -pageWidth + monthDragOffset)
         .frame(width: pageWidth, alignment: .topLeading)
         .clipped()
-        .frame(maxHeight: .infinity)
-        .contentShape(Rectangle())
-        .overlay(alignment: .bottom) {
-            DividerGradient()
-                .frame(height: 12)
-                .allowsHitTesting(false)
-        }
+            .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
     }
 
     private func monthContentPanel(for key: Int, pageWidth: CGFloat) -> some View {
@@ -518,7 +543,7 @@ struct Home: View {
                 ? $isTransactionSearchActive
                 : .constant(false),
             scrollBottomInset: listScrollBottomInset,
-            extendsToBottomSafeArea: displayedBottomBarHiddenAmount > 0
+            extendsToBottomSafeArea: true
         )
         .padding(.horizontal, 16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

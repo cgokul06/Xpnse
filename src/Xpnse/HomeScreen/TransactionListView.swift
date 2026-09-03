@@ -45,7 +45,7 @@ private struct TransactionListScrollMetrics: Equatable {
 
     static func from(_ geometry: ScrollGeometry) -> TransactionListScrollMetrics {
         TransactionListScrollMetrics(
-            offsetY: max(0, geometry.contentOffset.y).rounded(.down),
+            offsetY: max(0, geometry.contentOffset.y),
             visibleHeight: geometry.visibleRect.height.rounded(.down),
             contentHeight: geometry.contentSize.height.rounded(.down)
         )
@@ -500,6 +500,22 @@ struct TransactionListView: View {
         }
     }
 
+    private func handleScrollPhaseChange(_ phase: ScrollPhase) {
+        guard phase == .idle else { return }
+        applyPendingScrollMetricsIfNeeded()
+        guard scrollMetrics.visibleHeight > 0 else { return }
+
+        onScrollOffsetChange?(
+            TransactionListScrollUpdate(
+                offsetY: scrollMetrics.offsetY,
+                previousOffsetY: scrollMetrics.offsetY,
+                delta: 0,
+                visibleHeight: scrollMetrics.visibleHeight,
+                contentHeight: scrollMetrics.contentHeight
+            )
+        )
+    }
+
     private func applyPendingScrollMetricsIfNeeded() {
         guard let newMetrics = pendingScrollMetrics else { return }
         pendingScrollMetrics = nil
@@ -791,6 +807,9 @@ struct TransactionListView: View {
                 TransactionListScrollMetrics.from(geometry)
             } action: { oldMetrics, newMetrics in
                 handleScrollGeometryChange(from: oldMetrics, to: newMetrics)
+            }
+            .onScrollPhaseChange { _, newPhase in
+                handleScrollPhaseChange(newPhase)
             }
             .onChange(of: scenePhase) { oldPhase, newPhase in
                 resetScrollIfNeeded(from: oldPhase, to: newPhase, proxy: proxy)
