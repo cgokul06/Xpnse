@@ -24,6 +24,10 @@ struct RecurringTransactionsView: View {
         recurringItems.filter { $0.state == .paused }
     }
 
+    private var inactiveItems: [RecurringTransaction] {
+        recurringItems.filter { $0.state == .inactive }
+    }
+
     var body: some View {
         ZStack {
             if isLoading {
@@ -78,6 +82,16 @@ struct RecurringTransactionsView: View {
                     sectionHeader(L10n.tr("common.paused"))
                 }
             }
+
+            if !inactiveItems.isEmpty {
+                Section {
+                    ForEach(inactiveItems, id: \.id) { item in
+                        recurringRow(item)
+                    }
+                } header: {
+                    sectionHeader(L10n.tr("common.inactive"))
+                }
+            }
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
@@ -92,40 +106,48 @@ struct RecurringTransactionsView: View {
 
     @ViewBuilder
     private func recurringRow(_ item: RecurringTransaction) -> some View {
-        RecurringTransactionRowView(item: item)
+        let row = RecurringTransactionRowView(item: item)
             .listRowBackground(Color.clear)
             .listRowSeparator(.hidden)
             .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
-            .contentShape(Rectangle())
-            .onTapGesture {
-                AppAnalytics.logButtonClick(AppAnalytics.Button.editRecurring, source: AppAnalytics.Screen.recurring)
-                selectedForEdit = item
-            }
-            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                if item.state == .active {
-                    Button {
-                        AppAnalytics.logButtonClick(AppAnalytics.Button.skipRecurring, source: AppAnalytics.Screen.recurring)
-                        Task {
-                            await transactionManager.skipRecurringTransaction(id: item.id)
-                            await reload()
-                        }
-                    } label: {
-                        Label("txn.skip", systemImage: "forward.fill")
-                    }
-                    .tint(.orange)
 
-                    Button {
-                        AppAnalytics.logButtonClick(AppAnalytics.Button.pauseRecurring, source: AppAnalytics.Screen.recurring)
-                        Task {
-                            await transactionManager.cancelRecurringTransaction(id: item.id)
-                            await reload()
-                        }
-                    } label: {
-                        Label("common.pause", systemImage: "pause.fill")
-                    }
-                    .tint(.gray)
+        if item.state == .inactive {
+            row
+                .disabled(true)
+                .allowsHitTesting(false)
+        } else {
+            row
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    AppAnalytics.logButtonClick(AppAnalytics.Button.editRecurring, source: AppAnalytics.Screen.recurring)
+                    selectedForEdit = item
                 }
-            }
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    if item.state == .active {
+                        Button {
+                            AppAnalytics.logButtonClick(AppAnalytics.Button.skipRecurring, source: AppAnalytics.Screen.recurring)
+                            Task {
+                                await transactionManager.skipRecurringTransaction(id: item.id)
+                                await reload()
+                            }
+                        } label: {
+                            Label("txn.skip", systemImage: "forward.fill")
+                        }
+                        .tint(.orange)
+
+                        Button {
+                            AppAnalytics.logButtonClick(AppAnalytics.Button.pauseRecurring, source: AppAnalytics.Screen.recurring)
+                            Task {
+                                await transactionManager.cancelRecurringTransaction(id: item.id)
+                                await reload()
+                            }
+                        } label: {
+                            Label("common.pause", systemImage: "pause.fill")
+                        }
+                        .tint(.gray)
+                    }
+                }
+        }
     }
 
     private var emptyState: some View {

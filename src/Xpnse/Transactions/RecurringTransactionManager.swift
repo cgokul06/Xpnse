@@ -68,16 +68,26 @@ final class RecurringTransactionManager {
     }
 
     /// Loads recurring transactions asynchronously from the repository.
-    /// On load, ensures `nextOccurrence` is set if missing.
+    /// Active series with no remaining occurrence are persisted as `.inactive`.
+    /// Missing `nextOccurrence` is restored only when the series is still active.
     func load() async {
         do {
-            let loaded = try await repository.fetchAll()
-            items = loaded.map { item in
-                var copy = item
-                if copy.nextOccurrence == nil {
-                    copy.nextOccurrence = copy.recurrence.firstOccurrence(onOrAfter: copy.startDate, calendar: calendar)
+            items = try await repository.fetchAll()
+            var changed = false
+            for i in items.indices {
+                guard items[i].state == .active else { continue }
+                if let remaining = remainingOccurrence(for: items[i], calendar: calendar) {
+                    if items[i].nextOccurrence == nil {
+                        items[i].nextOccurrence = remaining
+                        changed = true
+                    }
+                } else {
+                    markInactive(at: i)
+                    changed = true
                 }
-                return copy
+            }
+            if changed {
+                await persistAll()
             }
         } catch {
             items = []
@@ -101,12 +111,17 @@ final class RecurringTransactionManager {
             guard items[i].state == .active else {
                 continue
             }
-            guard var next = items[i].nextOccurrence else {
+            guard var next = remainingOccurrence(for: items[i], calendar: calendar) else {
+                markInactive(at: i)
+                changed = true
                 continue
             }
-            let endDate = items[i].endDate
+            if items[i].nextOccurrence == nil {
+                items[i].nextOccurrence = next
+                changed = true
+            }
             var safety = 0
-            while next <= now, endDate.map({ next <= $0 }) ?? true, safety < 128 {
+            while next <= now, isWithinEndDate(next, endDate: items[i].endDate), safety < 128 {
                 safety += 1
                 // Never re-materialize on or before the last added day. Editing a rule
                 // can reset `nextOccurrence` earlier in the series; only advance past those days.
@@ -114,13 +129,7 @@ final class RecurringTransactionManager {
                     let nextDay = calendar.startOfDay(for: next)
                     let lastDay = calendar.startOfDay(for: lastAdded)
                     if nextDay <= lastDay {
-                        guard let newNext = items[i].recurrence.nextOccurrence(after: next, calendar: calendar) else {
-                            items[i].nextOccurrence = nil
-                            changed = true
-                            break
-                        }
-                        if let end = endDate, newNext > end {
-                            items[i].nextOccurrence = nil
+                        guard let newNext = advanceOrMarkInactive(at: i, after: next, calendar: calendar) else {
                             changed = true
                             break
                         }
@@ -138,13 +147,7 @@ final class RecurringTransactionManager {
                 )
                 if alreadyExists {
                     items[i].lastTransactionAddedOn = next
-                    guard let newNext = items[i].recurrence.nextOccurrence(after: next, calendar: calendar) else {
-                        items[i].nextOccurrence = nil
-                        changed = true
-                        break
-                    }
-                    if let end = endDate, newNext > end {
-                        items[i].nextOccurrence = nil
+                    guard let newNext = advanceOrMarkInactive(at: i, after: next, calendar: calendar) else {
                         changed = true
                         break
                     }
@@ -168,13 +171,7 @@ final class RecurringTransactionManager {
                     )
                 )
                 items[i].lastTransactionAddedOn = next
-                guard let newNext = items[i].recurrence.nextOccurrence(after: next, calendar: calendar) else {
-                    items[i].nextOccurrence = nil
-                    changed = true
-                    break
-                }
-                if let end = endDate, newNext > end {
-                    items[i].nextOccurrence = nil
+                guard let newNext = advanceOrMarkInactive(at: i, after: next, calendar: calendar) else {
                     changed = true
                     break
                 }
@@ -182,12 +179,15 @@ final class RecurringTransactionManager {
                 next = newNext
                 changed = true
             }
+
+            if items[i].state == .active, remainingOccurrence(for: items[i], calendar: calendar) == nil {
+                markInactive(at: i)
+                changed = true
+            }
         }
 
         if changed {
-            for item in items {
-                try? await repository.upsert(item)
-            }
+            await persistAll()
         }
     }
 
@@ -206,7 +206,9 @@ final class RecurringTransactionManager {
         guard let index = items.firstIndex(where: { $0.id == id }) else { return }
         guard items[index].state == .active else { return }
         guard let next = items[index].nextOccurrence else { return }
-        items[index].nextOccurrence = items[index].recurrence.nextOccurrence(after: next, calendar: calendar)
+        if let newNext = advanceOrMarkInactive(at: index, after: next, calendar: calendar) {
+            items[index].nextOccurrence = newNext
+        }
         try? await repository.upsert(items[index])
     }
 
@@ -219,5 +221,46 @@ final class RecurringTransactionManager {
         items[index].notificationReminderOffsetFromEndOfDay = nil
         items[index].notificationScheduledForOccurrenceDate = nil
         try? await repository.upsert(items[index])
+    }
+
+    private func remainingOccurrence(for item: RecurringTransaction, calendar: Calendar) -> Date? {
+        let candidate: Date?
+        if let next = item.nextOccurrence {
+            candidate = next
+        } else if let lastAdded = item.lastTransactionAddedOn {
+            candidate = item.recurrence.nextOccurrence(after: lastAdded, calendar: calendar)
+        } else {
+            candidate = item.recurrence.firstOccurrence(onOrAfter: item.startDate, calendar: calendar)
+        }
+        guard let next = candidate, isWithinEndDate(next, endDate: item.endDate) else {
+            return nil
+        }
+        return next
+    }
+
+    private func advanceOrMarkInactive(at index: Int, after current: Date, calendar: Calendar) -> Date? {
+        guard let newNext = items[index].recurrence.nextOccurrence(after: current, calendar: calendar),
+              isWithinEndDate(newNext, endDate: items[index].endDate)
+        else {
+            markInactive(at: index)
+            return nil
+        }
+        return newNext
+    }
+
+    private func isWithinEndDate(_ date: Date, endDate: Date?) -> Bool {
+        endDate.map { date <= $0 } ?? true
+    }
+
+    private func markInactive(at index: Int) {
+        items[index].state = .inactive
+        items[index].nextOccurrence = nil
+        items[index].notificationScheduledForOccurrenceDate = nil
+    }
+
+    private func persistAll() async {
+        for item in items {
+            try? await repository.upsert(item)
+        }
     }
 }

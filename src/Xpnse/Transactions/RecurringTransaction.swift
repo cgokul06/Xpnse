@@ -10,6 +10,7 @@ import Foundation
 public enum RecurringTransactionState: String, Codable, Hashable, Sendable {
     case active
     case paused
+    case inactive
     case deleted
 }
 

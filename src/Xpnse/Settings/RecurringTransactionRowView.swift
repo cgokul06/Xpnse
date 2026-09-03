@@ -8,7 +8,12 @@ import SwiftUI
 struct RecurringTransactionRowView: View {
     let item: RecurringTransaction
 
+    @Environment(\.colorScheme) private var colorScheme
     @State private var categoryStore = CategoryStore.shared
+
+    private var isInactive: Bool {
+        item.state == .inactive
+    }
 
     private var transactionType: TransactionType {
         TransactionType(rawValue: item.type) ?? .expense
@@ -37,12 +42,16 @@ struct RecurringTransactionRowView: View {
             Image(systemName: transactionType.displayIcon)
                 .resizable()
                 .frame(width: 16, height: 16)
-                .foregroundStyle(transactionType.brandColor)
+                .foregroundStyle(
+                    isInactive
+                        ? AdaptiveBrandSurface.mutedForeground(for: colorScheme)
+                        : transactionType.brandColor
+                )
 
             VStack(alignment: .leading, spacing: 8) {
                 Text(item.title)
                     .font(.system(size: 16, weight: .medium))
-                    .xpnseAdaptiveForeground()
+                    .xpnseAdaptiveForeground(muted: isInactive)
                     .lineLimit(1)
 
                 HStack(spacing: 8) {
@@ -51,6 +60,8 @@ struct RecurringTransactionRowView: View {
                         colorHex: category.colorHex,
                         size: 18
                     )
+                    .opacity(isInactive ? 0.55 : 1)
+
                     Text(category.name)
                         .font(.system(size: 12, weight: .light))
                         .xpnseAdaptiveForeground(muted: true)
@@ -62,17 +73,17 @@ struct RecurringTransactionRowView: View {
                         .font(.system(size: 12, weight: .light))
                         .xpnseAdaptiveForeground(muted: true)
 
-                    if item.state == .paused {
-                        Text("Paused")
+                    if let statusBadgeTitle {
+                        Text(statusBadgeTitle)
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
-                            .background(Color.gray.opacity(0.85))
+                            .background(Color.gray.opacity(isInactive ? 0.55 : 0.85))
                             .clipShape(Capsule())
                     }
 
-                    if item.notificationReminderEnabled {
+                    if item.notificationReminderEnabled, !isInactive {
                         Image(systemName: "bell.fill")
                             .font(.system(size: 10))
                             .xpnseAdaptiveForeground(muted: true)
@@ -85,9 +96,9 @@ struct RecurringTransactionRowView: View {
             VStack(alignment: .trailing, spacing: 4) {
                 Text(amountText)
                     .font(.system(size: 18, weight: .semibold))
-                    .xpnseAdaptiveForeground()
+                    .xpnseAdaptiveForeground(muted: isInactive)
 
-                Text("Next \(nextOccurrenceText)")
+                Text(scheduleSubtitle)
                     .font(.system(size: 11, weight: .regular))
                     .xpnseAdaptiveForeground(muted: true)
             }
@@ -95,7 +106,44 @@ struct RecurringTransactionRowView: View {
         .padding(.vertical, 10)
         .padding(.horizontal, 12)
         .frame(maxWidth: .infinity)
-        .xpnseOutlinedPanel()
-        .opacity(item.state == .paused ? 0.72 : 1)
+        .xpnseOutlinedPanel(
+            borderColor: isInactive
+                ? AdaptiveBrandSurface.fieldBorder(for: colorScheme).opacity(0.7)
+                : nil
+        )
+        .opacity(rowOpacity)
+        .disabled(isInactive)
+        .allowsHitTesting(!isInactive)
+    }
+
+    private var statusBadgeTitle: String? {
+        switch item.state {
+        case .paused:
+            return L10n.tr("common.paused")
+        case .inactive:
+            return L10n.tr("common.inactive")
+        case .active, .deleted:
+            return nil
+        }
+    }
+
+    private var scheduleSubtitle: String {
+        if item.state == .inactive {
+            let endedOn = item.endDate ?? item.lastTransactionAddedOn
+            let dateText = endedOn?.formatted(date: .abbreviated, time: .omitted) ?? "—"
+            return L10n.tr("txn.ended", dateText)
+        }
+        return "Next \(nextOccurrenceText)"
+    }
+
+    private var rowOpacity: Double {
+        switch item.state {
+        case .inactive:
+            return 0.55
+        case .paused:
+            return 0.72
+        case .active, .deleted:
+            return 1
+        }
     }
 }

@@ -64,7 +64,7 @@ final class FirebaseTransactionManager {
     private func linkUntaggedTransactionsToRecurringSeries() async {
         do {
             let rules = await recurringTransactionManager.fetchAll()
-                .filter { $0.state == .active || $0.state == .paused }
+                .filter { $0.state != .deleted }
             guard !rules.isEmpty else { return }
 
             let all = try await transactionRepository.fetchAll()

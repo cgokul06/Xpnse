@@ -14,7 +14,7 @@ enum RecurringTransactionMatcher {
         rule: RecurringTransaction,
         calendar: Calendar = .current
     ) -> Bool {
-        guard rule.state == .active || rule.state == .paused else { return false }
+        guard rule.state != .deleted else { return false }
         guard rule.type == transaction.type.rawValue else { return false }
         guard isWithinRuleDateWindow(transaction, rule: rule, calendar: calendar) else {
             return false
