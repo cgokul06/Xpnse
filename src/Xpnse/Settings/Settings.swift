@@ -40,7 +40,6 @@ struct Settings: View {
     var body: some View {
         List {
             generalSection
-            monthlyCycleSection
             privacySecuritySection
             transactionsSection
             if featureFlags.exportImportEnabled {
@@ -225,6 +224,17 @@ struct Settings: View {
             }
 
             NavigationLink {
+                MonthlyCycleSettingsView()
+            } label: {
+                settingsLabel(
+                    titleKey: "settings.monthly_cycle",
+                    systemImage: "calendar",
+                    value: "\(monthlyCycleStore.configuration.startDay)",
+                    subtitleKey: "settings.monthly_cycle.description"
+                )
+            }
+
+            NavigationLink {
                 ManageCategoriesView()
                     .onAppear {
                         AppAnalytics.logButtonClick(AppAnalytics.Button.manageCategories, source: AppAnalytics.Screen.settings)
@@ -234,24 +244,6 @@ struct Settings: View {
             }
         } header: {
             Text("settings.general")
-        }
-    }
-
-    private var monthlyCycleSection: some View {
-        Section {
-            NavigationLink {
-                MonthlyCycleSettingsView()
-            } label: {
-                settingsLabel(
-                    titleKey: "settings.monthly_cycle.start_day",
-                    systemImage: "calendar",
-                    value: "\(monthlyCycleStore.configuration.startDay)"
-                )
-            }
-        } header: {
-            Text("settings.monthly_cycle")
-        } footer: {
-            Text("settings.monthly_cycle.description")
         }
     }
 
@@ -271,15 +263,12 @@ struct Settings: View {
             }
             .disabled(isTogglingAppLock || !appLock.canEvaluateDeviceOwnerAuthentication)
             .id(appLock.isEnabled)
-            .listRowBackground(
-                AdaptiveBrandSurface.rowBackground(for: colorScheme)
-                    .overlay {
-                        if highlightAppLock {
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .stroke(Color.accentColor, lineWidth: 2)
-                        }
-                    }
-            )
+            .overlay {
+                if highlightAppLock {
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(Color.accentColor, lineWidth: 2)
+                }
+            }
             .accessibilityHint(Text("settings.app_lock_subtitle"))
 
             Toggle(isOn: Binding(
