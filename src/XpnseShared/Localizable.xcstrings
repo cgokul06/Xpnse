@@ -7794,25 +7794,25 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Monatliche Berichte, Budgets und Zusammenfassungen verwenden diesen Abrechnungszyklus."
+            "value" : "Home, Insights und Widgets beginnen jeden monatlichen Zeitraum an diesem Tag."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Monthly reports, budgets and summaries will use this billing cycle."
+            "value" : "Home, Insights, and widgets start each monthly period on this day."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Los informes, presupuestos y resúmenes mensuales usarán este ciclo de facturación."
+            "value" : "Inicio, Insights y los widgets empiezan cada periodo mensual en este día."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Les rapports, budgets et synthèses mensuels utiliseront ce cycle de facturation."
+            "value" : "Accueil, Insights et les widgets commencent chaque période mensuelle à cette date."
           }
         }
       }
