@@ -14,7 +14,21 @@ struct EditCategoryView: View {
     @Environment(\.dismiss) private var dismiss
 
     let mode: Mode
+    let initialTransactionType: TransactionType?
     let onSaved: () -> Void
+    let onCategoryCreated: ((CategoryDefinition) -> Void)?
+
+    init(
+        mode: Mode,
+        initialTransactionType: TransactionType? = nil,
+        onSaved: @escaping () -> Void,
+        onCategoryCreated: ((CategoryDefinition) -> Void)? = nil
+    ) {
+        self.mode = mode
+        self.initialTransactionType = initialTransactionType
+        self.onSaved = onSaved
+        self.onCategoryCreated = onCategoryCreated
+    }
 
     @State private var name: String = ""
     @State private var transactionType: TransactionType = .expense
@@ -134,6 +148,9 @@ struct EditCategoryView: View {
                     let restriction = CategoryStore.shared.typeChangeRestriction(for: category.id)
                     canChangeType = !restriction.blocksTypeChange
                     typeChangeMessage = restriction.editMessage
+                } else if let initialTransactionType {
+                    transactionType = initialTransactionType
+                    colorHex = CategoryColorPalette.defaultHex(for: initialTransactionType)
                 }
             }
             .onChange(of: transactionType) { _, newType in
@@ -188,13 +205,14 @@ struct EditCategoryView: View {
         do {
             switch mode {
             case .add:
-                try await CategoryStore.shared.add(
+                let created = try await CategoryStore.shared.add(
                     name: trimmed,
                     symbolName: icon,
                     colorHex: colorHex,
                     transactionType: transactionType
                 )
                 AppAnalytics.logEvent(AppAnalytics.Event.categoryAdd)
+                onCategoryCreated?(created)
             case .edit(let existing):
                 var updated = existing
                 updated.name = trimmed

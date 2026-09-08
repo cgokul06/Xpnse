@@ -26,6 +26,7 @@ final class UserEngagementCoordinator {
     @ObservationIgnored private var continuousForegroundStartedAt: Date?
     @ObservationIgnored private var observedOpportunityID: UUID?
     @ObservationIgnored private let clock: Clock
+    @ObservationIgnored var isEducationSheetPresented: () -> Bool = { false }
 
     init(clock: Clock = SystemClock()) {
         self.clock = clock
@@ -153,6 +154,7 @@ final class UserEngagementCoordinator {
         guard hasSettledPastLaunch else { return false }
         guard isForegroundActive else { return false }
         guard busyReasons.isEmpty else { return false }
+        guard !isEducationSheetPresented() else { return false }
         guard let started = continuousForegroundStartedAt else {
             continuousForegroundStartedAt = clock.now()
             return false
@@ -167,6 +169,7 @@ final class UserEngagementCoordinator {
             && isForegroundActive
             && busyReasons.isEmpty
             && presentedEngagement == nil
+            && !isEducationSheetPresented()
     }
 
     private func analyticsPresented() {

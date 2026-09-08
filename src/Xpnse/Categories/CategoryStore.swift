@@ -312,12 +312,13 @@ final class CategoryStore {
         resolve(id: id).colorHex
     }
 
+    @discardableResult
     func add(
         name: String,
         symbolName: String,
         colorHex: String,
         transactionType: TransactionType
-    ) async throws {
+    ) async throws -> CategoryDefinition {
         let maxOrder = categories
             .filter { $0.transactionType == transactionType && !$0.isDeleted }
             .map(\.sortOrder)
@@ -336,6 +337,8 @@ final class CategoryStore {
         )
         try await repository.upsert(definition)
         await load()
+        await EducationTracking.track(.categoryCreated)
+        return definition
     }
 
     func update(_ definition: CategoryDefinition) async throws {

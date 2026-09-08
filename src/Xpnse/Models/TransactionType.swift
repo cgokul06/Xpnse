@@ -10,7 +10,7 @@ import FoundationModels
 
 // MARK: - Transaction Type
 @Generable
-enum TransactionType: String, CaseIterable, Codable {
+enum TransactionType: String, CaseIterable, Codable, Hashable {
     case expense = "expense"
     case savings = "savings"
     case income = "income"

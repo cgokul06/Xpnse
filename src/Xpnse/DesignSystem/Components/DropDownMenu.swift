@@ -17,6 +17,8 @@ struct DropDownMenu: View {
     /// Extra scroll clearance reserved under an open menu for the bottom action bar.
     static let bottomBarClearance: CGFloat = 112
     var maxItemDisplayed: Int = 3
+    var showsAddCategoryShortcut: Bool = false
+    var onAddCategory: (() -> Void)?
 
     @Binding var selectedCategoryId: String
     @Binding var showDropdown: Bool
@@ -28,8 +30,17 @@ struct DropDownMenu: View {
             ?? CategoryStore.shared.resolve(id: selectedCategoryId)
     }
 
+    private var showsAddCategoryRow: Bool {
+        showsAddCategoryShortcut && onAddCategory != nil
+    }
+
+    private var visibleOptionCount: Int {
+        min(options.count, maxItemDisplayed)
+    }
+
     private var expandedListHeight: CGFloat {
-        buttonHeight * CGFloat(min(options.count, maxItemDisplayed))
+        let rowCount = visibleOptionCount + (showsAddCategoryRow ? 1 : 0)
+        return buttonHeight * CGFloat(rowCount)
     }
 
     /// Closed header ≈ 64pt. Expanded adds the options list.
@@ -103,23 +114,34 @@ struct DropDownMenu: View {
     }
 
     private var optionsList: some View {
-        ScrollView {
-            LazyVStack(spacing: 0) {
-                ForEach(Array(options.enumerated()), id: \.element.id) { index, option in
-                    optionRow(option: option, index: index)
+        VStack(spacing: 0) {
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(Array(options.enumerated()), id: \.element.id) { index, option in
+                        optionRow(
+                            option: option,
+                            index: index,
+                            isLast: index == options.count - 1
+                        )
+                    }
                 }
+                .scrollTargetLayout()
             }
-            .scrollTargetLayout()
+            .scrollPosition(id: $scrollPosition)
+            .scrollDisabled(options.count <= maxItemDisplayed)
+            .frame(height: CGFloat(visibleOptionCount) * buttonHeight)
+
+            if showsAddCategoryRow {
+                addCategoryRow
+            }
         }
-        .scrollPosition(id: $scrollPosition)
-        .scrollDisabled(options.count <= 3)
         .frame(height: expandedListHeight)
         .onAppear {
             scrollPosition = selectedCategoryId
         }
     }
 
-    private func optionRow(option: CategoryDefinition, index: Int) -> some View {
+    private func optionRow(option: CategoryDefinition, index: Int, isLast: Bool) -> some View {
         VStack(spacing: 0) {
             Button(action: {
                 withAnimation(.easeInOut) {
@@ -150,13 +172,44 @@ struct DropDownMenu: View {
             .padding(.horizontal, 12)
             .frame(width: menuWdith, height: buttonHeight, alignment: .leading)
 
-            if index != options.count - 1 {
+            if !isLast {
                 Rectangle()
                     .fill(AdaptiveBrandSurface.fieldBorder(for: colorScheme))
                     .frame(maxWidth: .infinity)
                     .frame(height: 1)
                     .padding(.horizontal, 12)
             }
+        }
+    }
+
+    private var addCategoryRow: some View {
+        VStack(spacing: 0) {
+            if !options.isEmpty {
+                Rectangle()
+                    .fill(AdaptiveBrandSurface.fieldBorder(for: colorScheme))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 1)
+                    .padding(.horizontal, 12)
+            }
+
+            Button(action: {
+                withAnimation(.easeInOut) {
+                    showDropdown = false
+                    onAddCategory?()
+                }
+            }, label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundStyle(AdaptiveBrandSurface.primaryForeground(for: colorScheme))
+                    Text("category.new")
+                        .font(.system(size: 18, weight: .semibold))
+                        .xpnseAdaptiveForeground()
+                    Spacer()
+                }
+            })
+            .padding(.horizontal, 12)
+            .frame(width: menuWdith, height: buttonHeight, alignment: .leading)
         }
     }
 

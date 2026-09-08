@@ -32,6 +32,10 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             UserEngagementCoordinator.shared.attach(engine: .shared)
             UserEngagementCoordinator.shared.noteAppBecameActive()
             UserEngagementCoordinator.shared.reconcile()
+            if !EducationTracking.isRunningInTests {
+                EducationPresentationCoordinator.shared.noteAppBecameActive()
+                await EducationTracking.track(.appBecameActive)
+            }
         }
 
         Task {
@@ -46,6 +50,9 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             AppLockController.shared.noteDidEnterBackground()
             UserSatisfactionEngine.shared.track(.appEnteredBackground)
             UserEngagementCoordinator.shared.noteAppEnteredBackground()
+            if !EducationTracking.isRunningInTests {
+                EducationPresentationCoordinator.shared.noteAppEnteredBackground()
+            }
         }
     }
 }

@@ -132,6 +132,10 @@ final class FirebaseTransactionManager {
             await MainActor.run {
                 UserSatisfactionEngine.shared.track(.transactionAdded)
             }
+            await EducationTracking.track(.transactionAdded)
+            if transaction.type == .income {
+                await EducationTracking.track(.incomeConfigured)
+            }
         } catch {
             print("Failed to add transaction: \(error.localizedDescription)")
             await MainActor.run {
@@ -215,6 +219,10 @@ final class FirebaseTransactionManager {
     func createRecurringTransaction(_ recurring: RecurringTransaction) async {
         await recurringTransactionManager.create(recurring)
         await RecurringReminderScheduler.shared.handleRecurringSaved(recurring)
+        await EducationTracking.track(.recurringTransactionCreated)
+        if recurring.type == TransactionType.income.rawValue {
+            await EducationTracking.track(.incomeConfigured)
+        }
     }
 
     /// Tag an existing one-off as belonging to a recurring series (Insights convert flow).

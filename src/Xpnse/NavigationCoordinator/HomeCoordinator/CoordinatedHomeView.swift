@@ -11,11 +11,8 @@ import UIKit
 
 struct CoordinatedHomeView: View {
     private enum EngagementDismissMode {
-        /// User cancelled / interactive dismiss — count as review dismiss.
         case reportDismiss
-        /// Transitioning to the full-screen feedback form.
         case silent
-        /// User chose Leave a Review — record App Store outcome after dismiss.
         case appStoreReview
     }
 
@@ -30,9 +27,10 @@ struct CoordinatedHomeView: View {
     @StateObject var billScannerService: BillScannerService = BillScannerService()
     @ObservedObject private var sharedTextImport = SharedTextImportController.shared
     @State private var engagement = UserEngagementCoordinator.shared
+    @State private var education = EducationPresentationCoordinator.shared
+    @State private var educationNavigator: HomeEducationNavigator?
     @State private var appLock = AppLockController.shared
     @State private var showAppLockPromo = false
-    /// Prevents re-showing after dismiss / sheet-driven onAppear races until next real foreground.
     @State private var didOfferPromoThisForeground = false
     @State private var pendingAppLockSettingsDeepLink = false
     @State private var wasInBackground = false
@@ -40,13 +38,23 @@ struct CoordinatedHomeView: View {
     @State private var pendingEngagementFollowUp: EngagementFollowUp?
     @State private var showSendFeedback = false
 
+    private var educationEnabled: Bool {
+        !EducationTracking.isRunningInTests
+    }
+
     var body: some View {
         NavigationStack(path: $homeCoordinator.path) {
             Home()
+                .ignoresSafeArea(.container, edges: .bottom)
                 .navigationDestination(for: HomeRoute.self) { route in
                     switch route {
                     case .transactions:
                         AddTransactionView(billScannerService: billScannerService)
+                    case .addTransaction(let prefill):
+                        AddTransactionView(
+                            billScannerService: billScannerService,
+                            prefill: prefill
+                        )
                     case .editTransaction(let transaction):
                         AddTransactionView(
                             billScannerService: billScannerService,
@@ -69,17 +77,7 @@ struct CoordinatedHomeView: View {
                     }
                 }
         }
-        .onAppear {
-            engagement.attach(engine: .shared)
-            engagement.markSettledPastLaunch()
-            engagement.noteAppBecameActive()
-            syncBusyWork(for: homeCoordinator.path)
-            engagement.reconcile()
-            evaluateAppLockPromo()
-            if SharedTextInboxStore.hasContent || SharedImageInboxStore.hasContent {
-                sharedTextImport.markPendingFromDeepLink()
-            }
-        }
+        .onAppear(perform: handleOnAppear)
         .task(id: sharedTextImport.pendingRequestID) {
             await sharedTextImport.processIfNeeded(
                 billScannerService: billScannerService,
@@ -107,7 +105,6 @@ struct CoordinatedHomeView: View {
         .onChange(of: homeCoordinator.path) { _, newPath in
             syncBusyWork(for: newPath)
             engagement.reconcile()
-            // Never re-prompt while navigated away from home (e.g. Settings after Enable).
         }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
@@ -131,7 +128,11 @@ struct CoordinatedHomeView: View {
                 evaluateAppLockPromo()
             }
         }
-        // Edge-attached custom sheet: iOS 26 system `.medium` sheets are inset (Liquid Glass).
+        .modifier(EducationPresentationModifier(
+            education: education,
+            educationEnabled: educationEnabled,
+            presentedEducationBinding: presentedEducationBinding
+        ))
         .fullScreenCover(item: presentedEngagementBinding, onDismiss: {
             runPendingEngagementFollowUp()
         }) { presentation in
@@ -161,11 +162,12 @@ struct CoordinatedHomeView: View {
             }
         }
         .fullScreenCover(isPresented: $showAppLockPromo, onDismiss: {
-            // Ensure we never re-open from dismiss/onAppear races after a choice.
+            if educationEnabled {
+                education.setCompetingOverlayPresented(false)
+            }
             didOfferPromoThisForeground = true
             guard pendingAppLockSettingsDeepLink else { return }
             pendingAppLockSettingsDeepLink = false
-            // Let the sheet finish dismissing before pushing Settings.
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
                 AppDeepLinkRouter.shared.openSettingsAppLock(
                     appCoordinator: appCoordinator,
@@ -186,6 +188,42 @@ struct CoordinatedHomeView: View {
                 )
             }
         }
+    }
+
+    private func handleOnAppear() {
+        if educationEnabled {
+            if educationNavigator == nil {
+                let navigator = HomeEducationNavigator(coordinator: homeCoordinator)
+                educationNavigator = navigator
+                education.attach(navigator: navigator)
+            }
+            education.isEngagementSheetPresented = { engagement.presentedEngagement != nil }
+            education.markSettledPastLaunch()
+            education.noteAppBecameActive()
+            education.tryPresent()
+            engagement.isEducationSheetPresented = { education.presentedOpportunity != nil }
+        } else {
+            engagement.isEducationSheetPresented = { false }
+        }
+        engagement.attach(engine: .shared)
+        engagement.markSettledPastLaunch()
+        engagement.noteAppBecameActive()
+        syncBusyWork(for: homeCoordinator.path)
+        engagement.reconcile()
+        evaluateAppLockPromo()
+        if SharedTextInboxStore.hasContent || SharedImageInboxStore.hasContent {
+            sharedTextImport.markPendingFromDeepLink()
+        }
+    }
+
+    private var presentedEducationBinding: Binding<EducationOpportunity?> {
+        Binding(
+            get: { education.presentedOpportunity },
+            set: { newValue in
+                guard newValue == nil, education.presentedOpportunity != nil else { return }
+                education.handleInteractiveDismiss()
+            }
+        )
     }
 
     private var presentedEngagementBinding: Binding<EngagementPresentation?> {
@@ -223,12 +261,17 @@ struct CoordinatedHomeView: View {
         guard !showAppLockPromo else { return }
         guard !showSendFeedback else { return }
         guard engagement.presentedEngagement == nil else { return }
+        if educationEnabled {
+            guard education.presentedOpportunity == nil else { return }
+        }
         guard !appLock.isLocked else { return }
-        // Only offer on the home root — not after Enable navigates into Settings.
         guard homeCoordinator.path.isEmpty else { return }
         guard !didOfferPromoThisForeground else { return }
         guard appLock.canOfferSoftPrompt else { return }
         didOfferPromoThisForeground = true
+        if educationEnabled {
+            education.setCompetingOverlayPresented(true)
+        }
         showAppLockPromo = true
     }
 
@@ -239,16 +282,30 @@ struct CoordinatedHomeView: View {
         engagement.endBusyWork(.manageRecurring)
         engagement.endBusyWork(.settingsCriticalFlow)
 
-        guard let top = path.last else { return }
+        guard let top = path.last else {
+            if educationEnabled {
+                education.setNavigationBusy(false)
+            }
+            return
+        }
         switch top {
-        case .transactions, .editTransaction:
+        case .transactions, .addTransaction, .editTransaction:
             engagement.beginBusyWork(.addOrEditTransaction)
+            if educationEnabled {
+                education.setNavigationBusy(true)
+            }
+            return
         case .billScanner:
             engagement.beginBusyWork(.billScanner)
-        case .settings:
+            if educationEnabled {
+                education.setNavigationBusy(true)
+            }
+            return
+        case .settings, .insights:
             break
-        case .insights:
-            break
+        }
+        if educationEnabled {
+            education.setNavigationBusy(false)
         }
     }
 
@@ -270,5 +327,49 @@ struct CoordinatedHomeView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(Text("share.analyzing"))
+    }
+}
+
+private struct EducationPresentationModifier: ViewModifier {
+    let education: EducationPresentationCoordinator
+    let educationEnabled: Bool
+    let presentedEducationBinding: Binding<EducationOpportunity?>
+
+    func body(content: Content) -> some View {
+        if educationEnabled {
+            content
+                .task {
+                    let stream = EducationEngine.shared.opportunityUpdates()
+                    for await opportunity in stream {
+                        education.consumePublished(opportunity)
+                    }
+                }
+                .fullScreenCover(item: presentedEducationBinding) { opportunity in
+                    XpnseEdgeAttachedSheet(sizing: .hug()) {
+                        EducationBottomSheet(
+                            model: opportunity.sheetModel,
+                            onPrimary: { education.handlePrimary() },
+                            onSecondary: { education.handleSecondary() }
+                        )
+                    }
+                }
+        } else {
+            content
+        }
+    }
+}
+
+@MainActor
+private final class HomeEducationNavigator: EducationNavigating {
+    private let coordinator: NavigationCoordinator<HomeRoute>
+
+    init(coordinator: NavigationCoordinator<HomeRoute>) {
+        self.coordinator = coordinator
+    }
+
+    func openAddTransaction(_ prefill: AddTransactionPrefill) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [coordinator] in
+            coordinator.push(.addTransaction(prefill: prefill))
+        }
     }
 }

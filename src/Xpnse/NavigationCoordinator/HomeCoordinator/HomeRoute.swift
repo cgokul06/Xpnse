@@ -10,6 +10,7 @@ import Foundation
 enum HomeRoute: Route {
 //    case main
     case transactions
+    case addTransaction(prefill: AddTransactionPrefill)
     case editTransaction(transaction: Transaction)
     case settings
 //    case profile

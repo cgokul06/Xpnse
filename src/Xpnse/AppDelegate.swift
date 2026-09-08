@@ -19,6 +19,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             UserSatisfactionEngine.shared.track(.appLaunched)
             UserEngagementCoordinator.shared.attach(engine: .shared)
             await CategoryStore.shared.load()
+            if !EducationTracking.isRunningInTests {
+                await EducationTracking.track(.appLaunched)
+                EducationPresentationCoordinator.shared.attach()
+            }
             await RemoteConfigService.shared.fetchAndActivateIfNeeded(force: true)
             await reconcileSatisfactionLifetimeCounts()
         }

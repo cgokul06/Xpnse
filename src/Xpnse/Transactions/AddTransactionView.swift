@@ -46,6 +46,7 @@ struct AddTransactionView: View {
     @State private var isMerchantChangeFromInference: Bool = false
     @State private var didManuallyEditMerchant = false
     @State private var showDropdownForCategory: Bool = false
+    @State private var showAddCategory: Bool = false
     @State private var isRecurring: Bool = false
     @State private var recurrenceFrequency: RecurrenceFrequency = .daily
     @State private var hasRecurringEndDate: Bool = false
@@ -62,6 +63,7 @@ struct AddTransactionView: View {
     private let merchantClassifier = MerchantClassificationService()
     private var transaction: Transaction?
     private let isEditing: Bool
+    private let prefill: AddTransactionPrefill?
 
     private var categories: [CategoryDefinition] {
         categoryStore.categories(for: transactionType)
@@ -111,11 +113,13 @@ struct AddTransactionView: View {
 
     init(
         billScannerService: BillScannerService,
-        transaction: Transaction? = nil
+        transaction: Transaction? = nil,
+        prefill: AddTransactionPrefill? = nil
     ) {
         self.billScannerService = billScannerService
         self.transaction = transaction
         self.isEditing = transaction != nil
+        self.prefill = prefill
         self.focussedField = self.isEditing ? nil : .description
     }
 
@@ -344,6 +348,22 @@ struct AddTransactionView: View {
             }
             .onAppear(perform: handleOnAppear)
             .onDisappear(perform: handleOnDisappear)
+            .sheet(isPresented: $showAddCategory) {
+                EditCategoryView(
+                    mode: .add,
+                    initialTransactionType: transactionType,
+                    onSaved: {
+                        Task { await categoryStore.load() }
+                    },
+                    onCategoryCreated: { category in
+                        guard !isEditing else { return }
+                        guard category.transactionType == transactionType else { return }
+                        selectedCategoryId = category.id
+                        didManuallySelectCategory = true
+                        showDropdownForCategory = false
+                    }
+                )
+            }
             .task {
                 await categoryStore.load()
             }
@@ -480,6 +500,16 @@ struct AddTransactionView: View {
                 options: categories,
                 menuWdith: 250,
                 maxItemDisplayed: 4,
+                showsAddCategoryShortcut: true,
+                onAddCategory: {
+                    AppAnalytics.logButtonClick(
+                        AppAnalytics.Button.addCategory,
+                        source: isEditing
+                            ? AppAnalytics.Screen.editTransaction
+                            : AppAnalytics.Screen.addTransaction
+                    )
+                    showAddCategory = true
+                },
                 selectedCategoryId: categorySelectionBinding,
                 showDropdown: self.$showDropdownForCategory
             )
@@ -940,6 +970,8 @@ struct AddTransactionView: View {
         )
         mapEditableDatas()
         applyExtractedTransactionIfNeeded()
+        applyPrefillIfNeeded()
+        applyCategoryFocusIfNeeded()
         lastNormalizedDescription = SuggestionEngine.normalize(description)
         lastNormalizedMerchant = SuggestionEngine.normalize(merchant)
         isPushingBillScanner = false
@@ -963,6 +995,23 @@ struct AddTransactionView: View {
     private func applyExtractedTransactionIfNeeded() {
         guard !isEditing, let data = billScannerService.extractedTransaction else { return }
         applyExtractedTransaction(data)
+    }
+
+    private func applyPrefillIfNeeded() {
+        guard !isEditing,
+              billScannerService.extractedTransaction == nil,
+              let prefill else { return }
+        transactionType = prefill.transactionType
+        isRecurring = prefill.isRecurring
+    }
+
+    private func applyCategoryFocusIfNeeded() {
+        guard !isEditing,
+              billScannerService.extractedTransaction == nil,
+              let prefill,
+              prefill.focusCategoryPicker else { return }
+        showDropdownForCategory = true
+        focussedField = .category
     }
 
     private func applyExtractedTransaction(_ data: ScannedTransaction) {
