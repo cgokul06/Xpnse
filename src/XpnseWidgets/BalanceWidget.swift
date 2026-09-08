@@ -75,7 +75,6 @@ struct BalanceWidgetProvider: TimelineProvider {
 struct BalanceWidgetView: View {
     let entry: BalanceWidgetEntry
     @Environment(\.widgetFamily) private var family
-    @Environment(\.colorScheme) private var colorScheme
 
     private var isSmall: Bool {
         family == .systemSmall
@@ -146,14 +145,13 @@ struct BalanceWidgetView: View {
     }
 
     private func privacyButtonLabel(systemImage: String) -> some View {
-        Image(systemName: systemImage)
-            .font(.system(size: isSmall ? 12 : 13, weight: .semibold))
-            .foregroundStyle(WidgetStyle.mutedText(for: colorScheme))
-            .padding(6)
-            .background(
-                Circle()
-                    .fill(WidgetStyle.divider(for: colorScheme).opacity(0.35))
-            )
+        WidgetGlyphBadge(
+            systemName: systemImage,
+            fill: WidgetStyle.divider.opacity(0.35),
+            fontSize: isSmall ? 12 : 13,
+            size: isSmall ? 12 : 13,
+            padding: 6
+        )
     }
 
     private var privacyAccessibilityLabel: String {
@@ -197,7 +195,7 @@ struct BalanceWidgetView: View {
                     )
 
                     RoundedRectangle(cornerRadius: 1)
-                        .fill(WidgetStyle.divider(for: colorScheme))
+                        .fill(WidgetStyle.divider)
                         .frame(width: 2, height: 30)
                         .padding(.horizontal, 12)
 
@@ -236,15 +234,15 @@ struct BalanceWidgetView: View {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 Text(formattedBalance(entry.snapshot.totalBalance))
                     .font(.system(size: isSmall ? 22 : 28, weight: .bold))
-                    .foregroundStyle(WidgetStyle.primaryText(for: colorScheme))
+                    .foregroundStyle(WidgetStyle.primaryText)
 
                 Text("/")
                     .font(.system(size: isSmall ? 14 : 16, weight: .medium))
-                    .foregroundStyle(WidgetStyle.mutedText(for: colorScheme))
+                    .foregroundStyle(WidgetStyle.mutedText)
 
                 Text(displayAmount(entry.snapshot.totalIncome, compact: true))
                     .font(.system(size: isSmall ? 14 : 16, weight: .semibold))
-                    .foregroundStyle(WidgetStyle.mutedText(for: colorScheme))
+                    .foregroundStyle(WidgetStyle.mutedText)
                     .accessibilityExactAmount(entry.snapshot.totalIncome, currencyCode: currencyCode)
             }
             .lineLimit(1)
@@ -252,7 +250,7 @@ struct BalanceWidgetView: View {
         } else {
             Text(formattedBalance(entry.snapshot.totalBalance))
                 .font(.system(size: isSmall ? 22 : 28, weight: .bold))
-                .foregroundStyle(WidgetStyle.primaryText(for: colorScheme))
+                .foregroundStyle(WidgetStyle.primaryText)
                 .lineLimit(1)
                 .minimumScaleFactor(0.8)
         }
@@ -274,16 +272,16 @@ struct BalanceWidgetView: View {
         return Group {
             if isSmall {
                 HStack(spacing: 8) {
-                    Image(systemName: icon)
-                        .font(.system(size: iconFontSize, weight: .bold))
-                        .foregroundStyle(.white)
-                        .frame(width: iconSize, height: iconSize)
-                        .padding(2)
-                        .background(Circle().fill(color))
+                    WidgetGlyphBadge(
+                        systemName: icon,
+                        fill: color,
+                        fontSize: iconFontSize,
+                        size: iconSize
+                    )
 
                     Text(amountText)
                         .font(.system(size: amountFontSize, weight: .bold))
-                        .foregroundStyle(WidgetStyle.primaryText(for: colorScheme))
+                        .foregroundStyle(WidgetStyle.primaryText)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                         .accessibilityExactAmount(amount, currencyCode: currencyCode)
@@ -291,21 +289,21 @@ struct BalanceWidgetView: View {
             } else {
                 VStack(spacing: 2) {
                     HStack(spacing: 4) {
-                        Image(systemName: icon)
-                            .font(.system(size: iconFontSize, weight: .bold))
-                            .foregroundStyle(.white)
-                            .frame(width: iconSize, height: iconSize)
-                            .padding(2)
-                            .background(Circle().fill(color))
+                        WidgetGlyphBadge(
+                            systemName: icon,
+                            fill: color,
+                            fontSize: iconFontSize,
+                            size: iconSize
+                        )
 
                         Text(title)
                             .font(.system(size: titleFontSize, weight: .medium))
-                            .foregroundStyle(WidgetStyle.mutedText(for: colorScheme))
+                            .foregroundStyle(WidgetStyle.mutedText)
                     }
 
                     Text(amountText)
                         .font(.system(size: amountFontSize, weight: .bold))
-                        .foregroundStyle(WidgetStyle.primaryText(for: colorScheme))
+                        .foregroundStyle(WidgetStyle.primaryText)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                         .accessibilityExactAmount(amount, currencyCode: currencyCode)

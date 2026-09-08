@@ -18,44 +18,15 @@ enum WidgetStyle {
         RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
     }
 
-    /// Uses App Group preference synced from the main app. WidgetKit's own
-    /// `colorScheme` / `systemBackground` often follow wallpaper luminance and
-    /// can stay dark while the phone is in Light Mode.
-    static var prefersDark: Bool {
-        WidgetAppearanceStore.prefersDark
-    }
+    static var primaryText: Color { .primary }
+    static var mutedText: Color { .secondary }
+    static var elevatedFill: Color { Color.primary.opacity(0.08) }
+    static var border: Color { Color.primary.opacity(0.22) }
+    static var divider: Color { Color.primary.opacity(0.22) }
 
-    static func canvas(for colorScheme: ColorScheme) -> Color {
-        prefersDark
-            ? Color(red: 0, green: 0, blue: 0)
-            : Color(red: 1, green: 1, blue: 1)
-    }
+    /// Light + Dark variants so Home Screen Dark can swap without re-archiving RGB.
+    static let canvas = Color("WidgetCanvas")
 
-    static func primaryText(for colorScheme: ColorScheme) -> Color {
-        prefersDark ? .white : .black
-    }
-
-    static func mutedText(for colorScheme: ColorScheme) -> Color {
-        prefersDark
-            ? Color.white.opacity(0.72)
-            : Color.black.opacity(0.55)
-    }
-
-    static func elevatedFill(for colorScheme: ColorScheme) -> Color {
-        prefersDark
-            ? Color.white.opacity(0.08)
-            : Color.black.opacity(0.04).opacity(0.55)
-    }
-
-    static func border(for colorScheme: ColorScheme) -> Color {
-        prefersDark ? Color.white.opacity(0.3) : Color.black.opacity(0.12)
-    }
-
-    static func divider(for colorScheme: ColorScheme) -> Color {
-        prefersDark ? Color.white.opacity(0.22) : Color.black.opacity(0.12)
-    }
-
-    /// Full-bleed adaptive canvas matching the in-app surfaces (no inset border).
     static func outlinedBackground<Content: View>(
         @ViewBuilder content: @escaping () -> Content
     ) -> some View {
@@ -63,11 +34,25 @@ enum WidgetStyle {
     }
 }
 
+enum WidgetChromeMode {
+    static func isTemplate(
+        renderingMode: WidgetRenderingMode,
+        showsContainerBackground: Bool
+    ) -> Bool {
+        renderingMode != .fullColor || !showsContainerBackground
+    }
+}
+
 private struct AdaptiveWidgetChrome<Content: View>: View {
     @ViewBuilder let content: () -> Content
+    @Environment(\.widgetRenderingMode) private var renderingMode
+    @Environment(\.showsWidgetContainerBackground) private var showsContainerBackground
 
-    private var prefersDark: Bool {
-        WidgetAppearanceStore.prefersDark
+    private var isTemplate: Bool {
+        WidgetChromeMode.isTemplate(
+            renderingMode: renderingMode,
+            showsContainerBackground: showsContainerBackground
+        )
     }
 
     var body: some View {
@@ -75,11 +60,54 @@ private struct AdaptiveWidgetChrome<Content: View>: View {
             .padding(16)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .containerBackground(for: .widget) {
-                prefersDark
-                    ? Color(red: 0, green: 0, blue: 0)
-                    : Color(red: 1, green: 1, blue: 1)
+                if isTemplate {
+                    Color.clear
+                } else {
+                    WidgetStyle.canvas
+                }
             }
-            .environment(\.colorScheme, prefersDark ? .dark : .light)
+    }
+}
+
+/// SF Symbol that stays visible in Clear / Tinted: those modes flatten views to
+/// alpha templates, so a white glyph on an opaque badge disappears.
+struct WidgetGlyphBadge: View {
+    let systemName: String
+    var fill: Color? = nil
+    var fontSize: CGFloat
+    var size: CGFloat
+    var padding: CGFloat = 2
+
+    @Environment(\.widgetRenderingMode) private var renderingMode
+    @Environment(\.showsWidgetContainerBackground) private var showsContainerBackground
+
+    private var isTemplate: Bool {
+        WidgetChromeMode.isTemplate(
+            renderingMode: renderingMode,
+            showsContainerBackground: showsContainerBackground
+        )
+    }
+
+    var body: some View {
+        if isTemplate {
+            Image(systemName: systemName)
+                .font(.system(size: fontSize, weight: .bold))
+                .foregroundStyle(Color.primary)
+                .widgetAccentable()
+                .frame(width: size, height: size)
+        } else if let fill {
+            Image(systemName: systemName)
+                .font(.system(size: fontSize, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: size, height: size)
+                .padding(padding)
+                .background(Circle().fill(fill))
+        } else {
+            Image(systemName: systemName)
+                .font(.system(size: fontSize, weight: .bold))
+                .foregroundStyle(WidgetStyle.mutedText)
+                .frame(width: size, height: size)
+        }
     }
 }
 
@@ -112,8 +140,6 @@ enum WidgetAbbreviation {
 }
 
 struct WidgetSectionHeader: View {
-    @Environment(\.colorScheme) private var colorScheme
-
     let title: String
     let subtitle: String?
 
@@ -121,12 +147,14 @@ struct WidgetSectionHeader: View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
                 .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(WidgetStyle.primaryText(for: colorScheme))
+                .foregroundStyle(WidgetStyle.primaryText)
+                .widgetAccentable()
 
             if let subtitle, !subtitle.isEmpty {
                 Text(subtitle)
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(WidgetStyle.mutedText(for: colorScheme))
+                    .foregroundStyle(WidgetStyle.mutedText)
+                    .widgetAccentable()
             }
         }
     }

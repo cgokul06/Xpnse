@@ -26,35 +26,57 @@ struct AddTransactionWidgetProvider: TimelineProvider {
 }
 
 struct AddTransactionWidgetView: View {
-    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.widgetRenderingMode) private var renderingMode
+    @Environment(\.showsWidgetContainerBackground) private var showsContainerBackground
+
+    private var isTemplate: Bool {
+        WidgetChromeMode.isTemplate(
+            renderingMode: renderingMode,
+            showsContainerBackground: showsContainerBackground
+        )
+    }
 
     var body: some View {
         VStack(spacing: 12) {
-            Image(systemName: "plus")
-                .font(.system(size: 22, weight: .bold))
-                .foregroundStyle(WidgetStyle.primaryText(for: colorScheme))
-                .frame(width: 52, height: 52)
-                .background {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(WidgetStyle.elevatedFill(for: colorScheme))
-                }
-                .overlay {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(
-                            WidgetStyle.border(for: colorScheme),
-                            lineWidth: WidgetStyle.borderWidth
-                        )
-                }
+            plusGlyph
 
             Text(L10n.tr("widget.add_transaction"))
                 .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(WidgetStyle.primaryText(for: colorScheme))
+                .foregroundStyle(WidgetStyle.primaryText)
+                .widgetAccentable()
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
                 .minimumScaleFactor(0.8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .widgetURL(URL(string: "\(AppGroupConstants.urlScheme)://add-transaction"))
+    }
+
+    @ViewBuilder
+    private var plusGlyph: some View {
+        if isTemplate {
+            Image(systemName: "plus")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundStyle(Color.primary)
+                .widgetAccentable()
+                .frame(width: 52, height: 52)
+        } else {
+            Image(systemName: "plus")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundStyle(WidgetStyle.primaryText)
+                .frame(width: 52, height: 52)
+                .background {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(WidgetStyle.elevatedFill)
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(
+                            WidgetStyle.border,
+                            lineWidth: WidgetStyle.borderWidth
+                        )
+                }
+        }
     }
 }
 

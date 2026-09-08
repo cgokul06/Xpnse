@@ -25,10 +25,6 @@ final class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
 
     func sceneDidBecomeActive(_ scene: UIScene) {
-        let style = (scene as? UIWindowScene)?.traitCollection.userInterfaceStyle
-            ?? SceneDelegate.window?.traitCollection.userInterfaceStyle
-            ?? .unspecified
-        WidgetAppearanceStore.sync(from: style)
         WidgetCenter.shared.reloadAllTimelines()
         Task { @MainActor in
             AppLockController.shared.evaluateLockStateOnActivation()
