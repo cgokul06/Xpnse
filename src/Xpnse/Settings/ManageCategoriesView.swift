@@ -92,30 +92,32 @@ struct ManageCategoriesView: View {
 
     @ViewBuilder
     private func categoryRow(_ category: CategoryDefinition) -> some View {
-        HStack(spacing: 12) {
-            CategoryIconBadge(
-                symbolName: category.symbolName,
-                colorHex: category.colorHex,
-                size: 32
-            )
-            Text(categoryStore.localizedName(for: category))
-                .foregroundColor(.primary)
-            Spacer(minLength: 0)
-            if category.isBuiltIn || BuiltinCategories.builtInCategoryIds.contains(category.id) {
-                Text("category.builtin_badge")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(Rectangle())
-        .onTapGesture {
+        Button {
             AppAnalytics.logButtonClick(
                 AppAnalytics.Button.editCategory,
                 source: AppAnalytics.Screen.manageCategories
             )
             editingCategory = category
+        } label: {
+            HStack(spacing: 12) {
+                CategoryIconBadge(
+                    symbolName: category.symbolName,
+                    colorHex: category.colorHex,
+                    size: 32
+                )
+                Text(categoryStore.localizedName(for: category))
+                    .foregroundColor(.primary)
+                Spacer(minLength: 0)
+                if category.isBuiltIn || BuiltinCategories.builtInCategoryIds.contains(category.id) {
+                    Text("category.builtin_badge")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             if !category.isDeletionProtected {
                 Button(role: .destructive) {

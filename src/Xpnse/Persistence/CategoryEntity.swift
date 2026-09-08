@@ -14,7 +14,7 @@ final class CategoryEntity {
     var colorHex: String?
     var transactionTypeRaw: String
     var isBuiltIn: Bool
-    var isDeleted: Bool
+    var isSoftDeleted: Bool = false
     var isDeletionProtected: Bool
     var sortOrder: Int
     var updatedAt: Date
@@ -26,7 +26,7 @@ final class CategoryEntity {
         self.colorHex = CategoryColorPalette.normalizedHex(definition.colorHex)
         self.transactionTypeRaw = definition.transactionType.rawValue
         self.isBuiltIn = definition.isBuiltIn
-        self.isDeleted = definition.isDeleted
+        self.isSoftDeleted = definition.isDeleted
         self.isDeletionProtected = definition.isDeletionProtected
         self.sortOrder = definition.sortOrder
         self.updatedAt = definition.updatedAt
@@ -38,7 +38,7 @@ final class CategoryEntity {
         self.colorHex = CategoryColorPalette.normalizedHex(definition.colorHex)
         self.transactionTypeRaw = definition.transactionType.rawValue
         self.isBuiltIn = definition.isBuiltIn
-        self.isDeleted = definition.isDeleted
+        self.isSoftDeleted = definition.isDeleted
         self.isDeletionProtected = definition.isDeletionProtected
         self.sortOrder = definition.sortOrder
         self.updatedAt = definition.updatedAt
@@ -63,7 +63,7 @@ final class CategoryEntity {
             colorHex: resolvedHex,
             transactionType: TransactionType(rawValue: transactionTypeRaw) ?? .expense,
             isBuiltIn: isBuiltIn,
-            isDeleted: isDeleted,
+            isDeleted: isSoftDeleted,
             isDeletionProtected: isDeletionProtected,
             sortOrder: sortOrder,
             updatedAt: updatedAt
