@@ -59,6 +59,9 @@ private struct AdaptiveWidgetChrome<Content: View>: View {
         content()
             .padding(16)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background {
+                debugWatermark
+            }
             .containerBackground(for: .widget) {
                 if isTemplate {
                     Color.clear
@@ -66,6 +69,20 @@ private struct AdaptiveWidgetChrome<Content: View>: View {
                     WidgetStyle.canvas
                 }
             }
+    }
+
+    @ViewBuilder
+    private var debugWatermark: some View {
+        #if DEBUG
+        Text("Debug")
+            .font(.system(size: 56, weight: .heavy))
+            .foregroundStyle(Color.primary.opacity(isTemplate ? 0.10 : 0.07))
+            .rotationEffect(.degrees(-28))
+            .minimumScaleFactor(0.4)
+            .lineLimit(1)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+        #endif
     }
 }
 
