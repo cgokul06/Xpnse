@@ -12,6 +12,7 @@ struct EditCategoryView: View {
     }
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
 
     let mode: Mode
     let initialTransactionType: TransactionType?
@@ -40,6 +41,7 @@ struct EditCategoryView: View {
     @State private var nameError: String?
     @State private var emojiError: String?
     @State private var formError: String?
+    @State private var initialSnapshot: CategoryFormSnapshot?
 
     private var editingCategory: CategoryDefinition? {
         if case .edit(let category) = mode { return category }
@@ -52,6 +54,29 @@ struct EditCategoryView: View {
 
     private var isValid: Bool {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private var hasBlockingError: Bool {
+        nameError != nil || emojiError != nil || formError != nil
+    }
+
+    private var currentSnapshot: CategoryFormSnapshot {
+        CategoryFormSnapshot(
+            name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+            transactionType: transactionType,
+            emojiInput: emojiInput.trimmingCharacters(in: .whitespacesAndNewlines),
+            colorHex: CategoryColorPalette.normalizedHex(colorHex)
+        )
+    }
+
+    private var hasUnsavedChanges: Bool {
+        guard editingCategory != nil else { return true }
+        guard let initialSnapshot else { return false }
+        return currentSnapshot != initialSnapshot
+    }
+
+    private var canSave: Bool {
+        isValid && !hasBlockingError && hasUnsavedChanges && !isSaving
     }
 
     var body: some View {
@@ -132,8 +157,8 @@ struct EditCategoryView: View {
                     Button("common.save") {
                         Task { await save() }
                     }
-                    .disabled(!isValid || isSaving)
-                    .xpnseAdaptiveForeground()
+                    .disabled(!canSave)
+                    .foregroundStyle(saveButtonForeground)
                 }
             }
             .task {
@@ -152,6 +177,7 @@ struct EditCategoryView: View {
                     transactionType = initialTransactionType
                     colorHex = CategoryColorPalette.defaultHex(for: initialTransactionType)
                 }
+                initialSnapshot = currentSnapshot
             }
             .onChange(of: transactionType) { _, newType in
                 if editingCategory == nil,
@@ -170,6 +196,12 @@ struct EditCategoryView: View {
             .dismissKeyboardOnOutsideTap(isEnabled: true) {}
             .scrollDismissesKeyboard(.immediately)
         }
+    }
+
+    private var saveButtonForeground: Color {
+        canSave
+            ? AdaptiveBrandSurface.primaryForeground(for: colorScheme)
+            : AdaptiveBrandSurface.mutedForeground(for: colorScheme).opacity(0.45)
     }
 
     private func updateEmojiError(for value: String) {
@@ -230,4 +262,11 @@ struct EditCategoryView: View {
             formError = error.localizedDescription
         }
     }
+}
+
+private struct CategoryFormSnapshot: Equatable {
+    var name: String
+    var transactionType: TransactionType
+    var emojiInput: String
+    var colorHex: String
 }
