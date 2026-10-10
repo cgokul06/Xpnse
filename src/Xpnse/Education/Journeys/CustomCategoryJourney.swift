@@ -8,17 +8,13 @@ import Foundation
 /// Education journey that introduces custom categories after basic engagement.
 struct CustomCategoryJourney: EducationOpportunityCampaign {
     static let campaignID = "custom_category"
-    static let minimumTransactionCount = 5
+    static let minimumTransactionCount = 3
 
     let identity = EducationCampaignIdentity(
         id: campaignID,
         name: "Custom Category",
         priority: 10
     )
-
-    var prerequisites: [JourneyPrerequisite] {
-        [.completed(IncomeSetupJourney.campaignID)]
-    }
 
     var completionValidator: any JourneyCompletionValidator {
         CustomCategoryCompletionValidator()
@@ -42,7 +38,7 @@ struct CustomCategoryJourney: EducationOpportunityCampaign {
             campaignID: Self.campaignID,
             priority: identity.priority,
             sheetModel: Self.sheetModel,
-            primaryAction: .openAddTransaction(.customCategoryDiscovery),
+            primaryAction: .openManageCategories,
             metadata: ["journey": Self.campaignID]
         )
     }

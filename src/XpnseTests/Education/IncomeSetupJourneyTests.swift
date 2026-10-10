@@ -100,17 +100,24 @@ final class IncomeSetupJourneyTests: XCTestCase {
         XCTAssertNil(journey.makeOpportunity(context: eligibleContext(), state: state, allStates: states))
     }
 
-    func testDismissedCampaignRemainsEligible() {
+    func testDismissOutcomeIsDeclined() {
         var state = freshState()
         state = CampaignStateTransition.markPresented(state, at: fixedDate)
-        state = journey.applyOutcome(.dismissed, to: state, at: fixedDate, validationContext: CompletionValidationContext())
+        state = journey.applyOutcome(
+            IncomeSetupJourney.outcomeForDismiss(),
+            to: state,
+            at: fixedDate,
+            validationContext: CompletionValidationContext()
+        )
         let states = allStates(including: state)
 
-        XCTAssertEqual(state.status, .presented)
-        XCTAssertEqual(state.dismissedCount, 1)
-
-        let decision = journey.evaluate(context: eligibleContext(), state: state, allStates: states)
-        XCTAssertEqual(decision, .eligible)
+        XCTAssertEqual(IncomeSetupJourney.outcomeForDismiss(), .declined)
+        XCTAssertEqual(state.status, .declined)
+        XCTAssertEqual(state.declinedDate, fixedDate)
+        XCTAssertEqual(
+            journey.evaluate(context: eligibleContext(), state: state, allStates: states),
+            .notEligible(.alreadyDeclined)
+        )
     }
 
     func testTransitionToCompletedAfterSuccessfulIncomeSave() {

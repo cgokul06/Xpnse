@@ -54,7 +54,7 @@ struct IncomeSetupJourney: EducationOpportunityCampaign {
     }
 
     static func outcomeForDismiss() -> CampaignOutcome {
-        .dismissed
+        .declined
     }
 
     static func outcomeForSuccessfulIncomeSave() -> CampaignOutcome {

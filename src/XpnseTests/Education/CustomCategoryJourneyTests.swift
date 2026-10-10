@@ -14,9 +14,9 @@ final class CustomCategoryJourneyTests: XCTestCase {
         CampaignState.fresh(campaignID: CustomCategoryJourney.campaignID)
     }
 
-    private func completedIncomeSetupState() -> CampaignState {
+    private func incomeSetupState(_ status: CampaignStatus = .notStarted) -> CampaignState {
         var state = CampaignState.fresh(campaignID: IncomeSetupJourney.campaignID)
-        state.status = .completed
+        state.status = status
         return state
     }
 
@@ -24,7 +24,7 @@ final class CustomCategoryJourneyTests: XCTestCase {
         including state: CampaignState,
         incomeSetup: CampaignState? = nil
     ) -> [CampaignState] {
-        [state, incomeSetup ?? completedIncomeSetupState()]
+        [state, incomeSetup ?? incomeSetupState()]
     }
 
     private func eligibleContext(
@@ -75,35 +75,31 @@ final class CustomCategoryJourneyTests: XCTestCase {
         XCTAssertNil(journey.makeOpportunity(context: context, state: state, allStates: states))
     }
 
-    func testNotEligibleWhenIncomeSetupPrerequisiteMissing() {
+    func testEligibleWhenIncomeSetupWasNeverCompleted() {
         let context = eligibleContext()
         let state = freshState()
         let decision = journey.evaluate(context: context, state: state, allStates: [state])
 
-        XCTAssertEqual(decision, .notEligible(.missingPrerequisite(journeyID: IncomeSetupJourney.campaignID)))
-        XCTAssertNil(journey.makeOpportunity(context: context, state: state, allStates: [state]))
+        XCTAssertEqual(decision, .eligible)
+        XCTAssertNotNil(journey.makeOpportunity(context: context, state: state, allStates: [state]))
     }
 
-    func testNotEligibleWhenIncomeSetupPrerequisiteNotCompleted() {
+    func testEligibleWhenIncomeSetupWasDeclined() {
         let context = eligibleContext()
         let state = freshState()
-        var incomeState = CampaignState.fresh(campaignID: IncomeSetupJourney.campaignID)
-        incomeState.status = .presented
-        let states = allStates(including: state, incomeSetup: incomeState)
+        let states = allStates(including: state, incomeSetup: incomeSetupState(.declined))
 
-        let decision = journey.evaluate(context: context, state: state, allStates: states)
+        XCTAssertEqual(journey.evaluate(context: context, state: state, allStates: states), .eligible)
+        XCTAssertNotNil(journey.makeOpportunity(context: context, state: state, allStates: states))
+    }
 
-        XCTAssertEqual(
-            decision,
-            .notEligible(
-                .prerequisiteNotCompleted(
-                    journeyID: IncomeSetupJourney.campaignID,
-                    requiredStatus: .completed,
-                    actualStatus: .presented
-                )
-            )
-        )
-        XCTAssertNil(journey.makeOpportunity(context: context, state: state, allStates: states))
+    func testEligibleWhenIncomeSetupWasPresented() {
+        let context = eligibleContext()
+        let state = freshState()
+        let states = allStates(including: state, incomeSetup: incomeSetupState(.presented))
+
+        XCTAssertEqual(journey.evaluate(context: context, state: state, allStates: states), .eligible)
+        XCTAssertNotNil(journey.makeOpportunity(context: context, state: state, allStates: states))
     }
 
     func testNotEligibleWhenCampaignCompleted() {
@@ -195,15 +191,7 @@ final class CustomCategoryJourneyTests: XCTestCase {
         )
         XCTAssertEqual(opportunity.sheetModel.primaryButton.title, "Create Category")
         XCTAssertEqual(opportunity.sheetModel.secondaryButton?.title, "Maybe Later")
-
-        guard case .openAddTransaction(let configuration) = opportunity.primaryAction else {
-            return XCTFail("Expected openAddTransaction action")
-        }
-        XCTAssertEqual(configuration, .customCategoryDiscovery)
-        XCTAssertEqual(configuration.transactionType, .expense)
-        XCTAssertFalse(configuration.isRecurringEnabled)
-        XCTAssertTrue(configuration.focusCategoryPicker)
-        XCTAssertTrue(configuration.enableAddCategoryShortcut)
+        XCTAssertEqual(opportunity.primaryAction, .openManageCategories)
     }
 
     func testCompletionRejectedWithoutValidContext() {
@@ -246,10 +234,7 @@ final class CustomCategoryJourneyTests: XCTestCase {
         XCTAssertEqual(first, second)
     }
 
-    func testDeclaresIncomeSetupPrerequisite() {
-        XCTAssertEqual(
-            journey.prerequisites,
-            [JourneyPrerequisite.completed(IncomeSetupJourney.campaignID)]
-        )
+    func testDoesNotRequireIncomeSetupCompletion() {
+        XCTAssertTrue(journey.prerequisites.isEmpty)
     }
 }
