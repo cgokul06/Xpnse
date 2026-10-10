@@ -827,15 +827,6 @@ struct TransactionListView: View {
                 guard newValue != oldValue else { return }
                 scrollToTop(using: proxy)
             }
-            .onChange(of: upcomingItems.count) { oldCount, newCount in
-                // When upcoming appears at the top of the list, keep real transactions in view.
-                guard newCount > oldCount, showsUpcomingInList, firstMaterializedAnchor != nil else { return }
-                let shouldTuck = scrollAnchor == .top
-                    || scrollAnchor == .firstMaterialized
-                    || scrollMetrics.offsetY < Self.summaryCardScrollThreshold
-                guard shouldTuck else { return }
-                pendingProgrammaticScroll = .firstMaterialized
-            }
             .onAppear {
                 onListAppear?()
                 syncTransactionSnapshot()
