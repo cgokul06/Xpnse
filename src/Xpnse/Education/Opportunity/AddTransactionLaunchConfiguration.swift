@@ -29,10 +29,8 @@ struct AddTransactionLaunchConfiguration: Equatable, Sendable {
         isRecurringEnabled: true
     )
 
-    static let customCategoryDiscovery = AddTransactionLaunchConfiguration(
+    static let expenseSetupDefault = AddTransactionLaunchConfiguration(
         transactionType: .expense,
-        isRecurringEnabled: false,
-        focusCategoryPicker: true,
-        enableAddCategoryShortcut: true
+        isRecurringEnabled: false
     )
 }

@@ -9,6 +9,7 @@ import Foundation
 struct CompletionValidationContext: Equatable, Sendable {
     var hasConfiguredIncome: Bool
     var hasRecurringIncome: Bool
+    var expenseCount: Int
     var customCategoryCount: Int
     var recurringExpenseCount: Int
     var isReminderEnabled: Bool
@@ -20,6 +21,7 @@ struct CompletionValidationContext: Equatable, Sendable {
     init(
         hasConfiguredIncome: Bool = false,
         hasRecurringIncome: Bool = false,
+        expenseCount: Int = 0,
         customCategoryCount: Int = 0,
         recurringExpenseCount: Int = 0,
         isReminderEnabled: Bool = false,
@@ -30,6 +32,7 @@ struct CompletionValidationContext: Equatable, Sendable {
     ) {
         self.hasConfiguredIncome = hasConfiguredIncome
         self.hasRecurringIncome = hasRecurringIncome
+        self.expenseCount = expenseCount
         self.customCategoryCount = customCategoryCount
         self.recurringExpenseCount = recurringExpenseCount
         self.isReminderEnabled = isReminderEnabled
@@ -43,7 +46,9 @@ struct CompletionValidationContext: Equatable, Sendable {
         CompletionValidationContext(
             hasConfiguredIncome: campaignContext.hasConfiguredIncome,
             hasRecurringIncome: campaignContext.hasRecurringIncome,
+            expenseCount: campaignContext.expenseCount,
             customCategoryCount: campaignContext.customCategoryCount,
+            isReminderEnabled: campaignContext.hasEnabledRecurringReminder,
             notificationAuthorizationStatus: campaignContext.notificationAuthorizationStatus,
             isWidgetInstalled: campaignContext.isWidgetInstalled,
             receiptScanCount: campaignContext.receiptScanCount

@@ -62,6 +62,10 @@ On first launch (when no currency has been saved), SnapLedger presents a **Choos
 
 Returning users skip this step and land directly on the home dashboard.
 
+### In-app education (phase 1)
+
+After currency setup, Home can show one education sheet at a time: **Income Setup**, then **Expense Setup** (after income is completed or skipped, if there is still no expense), **recurring reminder permission** (first recurring saved with notify off, only while notification permission is undetermined), and **Custom Category** (after at least three transactions). See [Education onboarding](EDUCATION_ONBOARDING.md) for eligibility, policy, and what is deferred to a later phase.
+
 ### Sign-in (optional infrastructure)
 
 The codebase includes Google, email/password, and guest sign-in flows. The current app route does **not** require authentication to use the app; all core features work with local storage.

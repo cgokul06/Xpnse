@@ -214,12 +214,20 @@ final class CustomCategoryJourneyTests: XCTestCase {
         let registry = EducationCampaignRegistry(campaigns: [
             recurringPlaceholder,
             CustomCategoryJourney(),
+            ExpenseSetupJourney(),
+            RecurringReminderJourney(),
             IncomeSetupJourney()
         ])
 
         XCTAssertEqual(
             registry.campaigns.map(\.identity.id),
-            [IncomeSetupJourney.campaignID, CustomCategoryJourney.campaignID, "recurring_txn"]
+            [
+                IncomeSetupJourney.campaignID,
+                RecurringReminderJourney.campaignID,
+                ExpenseSetupJourney.campaignID,
+                CustomCategoryJourney.campaignID,
+                "recurring_txn"
+            ]
         )
     }
 

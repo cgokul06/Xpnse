@@ -39,6 +39,40 @@ final class JourneyDependencyEvaluatorTests: XCTestCase {
         )
     }
 
+    func testCompletedOrDeclinedSatisfiedByCompletedOrDeclined() {
+        let prerequisites = [JourneyPrerequisite.completedOrDeclined(prerequisiteJourneyID)]
+
+        XCTAssertNil(
+            JourneyDependencyEvaluator.firstUnsatisfied(
+                prerequisites: prerequisites,
+                states: CampaignStatesSnapshot.from([completedState(for: prerequisiteJourneyID)])
+            )
+        )
+
+        var declined = CampaignState.fresh(campaignID: prerequisiteJourneyID)
+        declined.status = .declined
+        XCTAssertNil(
+            JourneyDependencyEvaluator.firstUnsatisfied(
+                prerequisites: prerequisites,
+                states: CampaignStatesSnapshot.from([declined])
+            )
+        )
+    }
+
+    func testCompletedOrDeclinedNotSatisfiedByPresented() {
+        let prerequisites = [JourneyPrerequisite.completedOrDeclined(prerequisiteJourneyID)]
+        let snapshot = CampaignStatesSnapshot.from([presentedState(for: prerequisiteJourneyID)])
+
+        XCTAssertEqual(
+            JourneyDependencyEvaluator.firstUnsatisfied(prerequisites: prerequisites, states: snapshot),
+            .prerequisiteNotCompleted(
+                journeyID: prerequisiteJourneyID,
+                requiredStatus: .completedOrDeclined,
+                actualStatus: .presented
+            )
+        )
+    }
+
     func testMissingPrerequisiteWhenStateAbsent() {
         let prerequisites = [JourneyPrerequisite.completed(prerequisiteJourneyID)]
         let snapshot = CampaignStatesSnapshot.from([])

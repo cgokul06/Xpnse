@@ -9,4 +9,5 @@ import Foundation
 enum EducationJourneyAction: Equatable, Sendable {
     case openAddTransaction(AddTransactionLaunchConfiguration)
     case openManageCategories
+    case requestNotificationPermission
 }

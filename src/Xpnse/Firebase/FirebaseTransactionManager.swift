@@ -136,6 +136,9 @@ final class FirebaseTransactionManager {
             if transaction.type == .income {
                 await EducationTracking.track(.incomeConfigured)
             }
+            if transaction.type == .expense {
+                await EducationTracking.track(.expenseAdded)
+            }
         } catch {
             print("Failed to add transaction: \(error.localizedDescription)")
             await MainActor.run {

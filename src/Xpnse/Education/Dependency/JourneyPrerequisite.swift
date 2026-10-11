@@ -18,4 +18,8 @@ struct JourneyPrerequisite: Equatable, Sendable {
     static func completed(_ journeyID: String) -> JourneyPrerequisite {
         JourneyPrerequisite(journeyID: journeyID, requiredStatus: .completed)
     }
+
+    static func completedOrDeclined(_ journeyID: String) -> JourneyPrerequisite {
+        JourneyPrerequisite(journeyID: journeyID, requiredStatus: .completedOrDeclined)
+    }
 }

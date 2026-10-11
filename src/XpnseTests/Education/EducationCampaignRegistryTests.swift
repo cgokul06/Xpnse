@@ -17,6 +17,15 @@ final class EducationCampaignRegistryTests: XCTestCase {
         XCTAssertEqual(registry.campaigns.map(\.identity.id), ["high", "mid", "low"])
     }
 
+    func testEqualPriorityPreservesRegistrationOrder() {
+        let zeta = MockEducationCampaign(id: "zeta", priority: 5)
+        let alpha = MockEducationCampaign(id: "alpha", priority: 5)
+
+        let registry = EducationCampaignRegistry(campaigns: [zeta, alpha])
+
+        XCTAssertEqual(registry.campaigns.map(\.identity.id), ["zeta", "alpha"])
+    }
+
     func testCampaignLookupById() {
         let first = MockEducationCampaign(id: "first", priority: 1)
         let second = MockEducationCampaign(id: "second", priority: 2)

@@ -10,7 +10,9 @@ enum EducationEvent: Equatable, Sendable {
     case appLaunched
     case appBecameActive
     case transactionAdded
+    case expenseAdded
     case incomeConfigured
+    case returnedToHome
     case categoryCreated
     case recurringTransactionCreated
     case reminderEnabled

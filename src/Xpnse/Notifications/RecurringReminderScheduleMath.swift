@@ -33,6 +33,28 @@ enum RecurringReminderScheduleMath {
         return end.timeIntervalSince(reminderDateTime)
     }
 
+    /// Default reminder wall time: 9:00 PM on the calendar day before the transaction, clamped to the latest valid time.
+    static func defaultReminderDateTime(for transactionDay: Date, calendar: Calendar = .current) -> Date {
+        guard let latest = endOfDayBeforeTransactionDay(containing: transactionDay, calendar: calendar) else {
+            return transactionDay
+        }
+        let txStart = calendar.startOfDay(for: transactionDay)
+        guard let prevStart = calendar.date(byAdding: .day, value: -1, to: txStart) else { return latest }
+        let candidate = calendar.date(bySettingHour: 21, minute: 0, second: 0, of: prevStart) ?? prevStart
+        return min(candidate, latest)
+    }
+
+    static func defaultOffsetFromEndOfTransactionDay(
+        transactionDay: Date,
+        calendar: Calendar = .current
+    ) -> TimeInterval {
+        offsetFromEndOfTransactionDay(
+            transactionDay: transactionDay,
+            reminderDateTime: defaultReminderDateTime(for: transactionDay, calendar: calendar),
+            calendar: calendar
+        )
+    }
+
     /// Reminder must fall strictly **before** the transaction calendar day (latest: end of the previous day).
     static func isValidReminder(
         transactionDay: Date,

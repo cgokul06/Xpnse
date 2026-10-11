@@ -10,9 +10,15 @@ struct EducationCampaignRegistry: Sendable {
     let campaigns: [any EducationCampaign]
 
     init(campaigns: [any EducationCampaign]) {
-        self.campaigns = campaigns.sorted {
-            $0.identity.priority < $1.identity.priority
-        }
+        self.campaigns = campaigns.enumerated().sorted { lhs, rhs in
+            if lhs.element.identity.priority != rhs.element.identity.priority {
+                return lhs.element.identity.priority < rhs.element.identity.priority
+            }
+            if lhs.offset != rhs.offset {
+                return lhs.offset < rhs.offset
+            }
+            return lhs.element.identity.id < rhs.element.identity.id
+        }.map(\.element)
     }
 
     func campaign(id: String) -> (any EducationCampaign)? {

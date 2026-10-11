@@ -13,6 +13,7 @@ enum CampaignDecisionReason: Equatable, Sendable {
     case recurringIncomeExists
     case transactionsExist
     case tooFewTransactions
+    case expenseExists
     case customCategoryExists
     case missingPrerequisite(journeyID: String)
     case prerequisiteNotCompleted(
@@ -20,7 +21,10 @@ enum CampaignDecisionReason: Equatable, Sendable {
         requiredStatus: RequiredJourneyStatus,
         actualStatus: CampaignStatus
     )
+    case noRecurringTransaction
+    case reminderAlreadyEnabled
     case notificationAlreadyGranted
+    case notificationPermissionDenied
     case educationCooldownActive
     case custom(String)
 }

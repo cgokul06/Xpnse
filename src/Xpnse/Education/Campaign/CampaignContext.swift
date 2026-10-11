@@ -26,6 +26,7 @@ struct CampaignContext: Equatable, Sendable {
     var hasConfiguredIncome: Bool
     var expenseCount: Int
     var recurringTransactionCount: Int
+    var hasEnabledRecurringReminder: Bool
     var customCategoryCount: Int
     var receiptScanCount: Int
     var notificationAuthorizationStatus: EducationNotificationAuthorizationStatus
@@ -45,6 +46,7 @@ struct CampaignContext: Equatable, Sendable {
         hasConfiguredIncome: Bool = false,
         expenseCount: Int = 0,
         recurringTransactionCount: Int = 0,
+        hasEnabledRecurringReminder: Bool = false,
         customCategoryCount: Int = 0,
         receiptScanCount: Int = 0,
         notificationAuthorizationStatus: EducationNotificationAuthorizationStatus = .unknown,
@@ -63,6 +65,7 @@ struct CampaignContext: Equatable, Sendable {
         self.hasConfiguredIncome = hasConfiguredIncome
         self.expenseCount = expenseCount
         self.recurringTransactionCount = recurringTransactionCount
+        self.hasEnabledRecurringReminder = hasEnabledRecurringReminder
         self.customCategoryCount = customCategoryCount
         self.receiptScanCount = receiptScanCount
         self.notificationAuthorizationStatus = notificationAuthorizationStatus

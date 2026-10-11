@@ -9,6 +9,8 @@ import XCTest
 final class JourneyCompletionValidationTests: XCTestCase {
     private let fixedDate = Date(timeIntervalSince1970: 1_700_000_000)
     private let incomeValidator = IncomeSetupCompletionValidator()
+    private let expenseValidator = ExpenseSetupCompletionValidator()
+    private let reminderValidator = RecurringReminderCompletionValidator()
     private let categoryValidator = CustomCategoryCompletionValidator()
     private let trustingValidator = TrustingJourneyCompletionValidator()
 
@@ -30,6 +32,66 @@ final class JourneyCompletionValidationTests: XCTestCase {
         XCTAssertEqual(
             incomeValidator.validate(context: context),
             .invalid(reason: .incomeNotConfigured)
+        )
+    }
+
+    func testExpenseValidatorSucceedsWhenExpenseExists() {
+        let context = CompletionValidationContext(expenseCount: 1)
+
+        XCTAssertEqual(expenseValidator.validate(context: context), .valid)
+    }
+
+    func testExpenseValidatorFailsWhenNoExpense() {
+        let context = CompletionValidationContext()
+
+        XCTAssertEqual(
+            expenseValidator.validate(context: context),
+            .invalid(reason: .noExpense)
+        )
+    }
+
+    func testExpenseJourneyCompletionAcceptedWithValidContext() {
+        let journey = ExpenseSetupJourney()
+        var state = CampaignState.fresh(campaignID: ExpenseSetupJourney.campaignID)
+        state = CampaignStateTransition.markPresented(state, at: fixedDate)
+
+        let completed = journey.applyOutcome(
+            .completed,
+            to: state,
+            at: fixedDate,
+            validationContext: CompletionValidationContext(expenseCount: 1)
+        )
+
+        XCTAssertEqual(completed.status, .completed)
+    }
+
+    func testExpenseJourneyCompletionRejectedWithInvalidContext() {
+        let journey = ExpenseSetupJourney()
+        var state = CampaignState.fresh(campaignID: ExpenseSetupJourney.campaignID)
+        state = CampaignStateTransition.markPresented(state, at: fixedDate)
+
+        let completed = journey.applyOutcome(
+            .completed,
+            to: state,
+            at: fixedDate,
+            validationContext: CompletionValidationContext()
+        )
+
+        XCTAssertEqual(completed, state)
+        XCTAssertEqual(completed.status, .presented)
+    }
+
+    func testReminderValidatorSucceedsWhenReminderEnabled() {
+        XCTAssertEqual(
+            reminderValidator.validate(context: CompletionValidationContext(isReminderEnabled: true)),
+            .valid
+        )
+    }
+
+    func testReminderValidatorFailsWhenReminderNotEnabled() {
+        XCTAssertEqual(
+            reminderValidator.validate(context: CompletionValidationContext()),
+            .invalid(reason: .reminderNotEnabled)
         )
     }
 
@@ -177,6 +239,7 @@ final class JourneyCompletionValidationTests: XCTestCase {
 
         XCTAssertTrue(validationContext.hasRecurringIncome)
         XCTAssertFalse(validationContext.hasConfiguredIncome)
+        XCTAssertEqual(validationContext.expenseCount, 0)
         XCTAssertEqual(validationContext.customCategoryCount, 2)
         XCTAssertEqual(validationContext.receiptScanCount, 5)
         XCTAssertEqual(validationContext.notificationAuthorizationStatus, .denied)

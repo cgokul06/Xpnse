@@ -83,6 +83,28 @@ final class RecurringReminderScheduler: NSObject {
         }
     }
 
+    /// Turns on the default reminder for the oldest active recurring item that has notify off.
+    /// - Returns: `true` when a rule was updated and scheduling was attempted.
+    func enableDefaultReminderOnFirstUnnotifiedRecurring() async -> Bool {
+        do {
+            let all = try await repository.fetchAll()
+            guard var item = all.first(where: {
+                $0.state == .active && !$0.notificationReminderEnabled
+            }) else {
+                return false
+            }
+            item.notificationReminderEnabled = true
+            item.notificationReminderOffsetFromEndOfDay = RecurringReminderScheduleMath.defaultOffsetFromEndOfTransactionDay(
+                transactionDay: item.startDate
+            )
+            try await repository.upsert(item)
+            await handleRecurringSaved(item)
+            return true
+        } catch {
+            return false
+        }
+    }
+
     func handleRecurringSaved(_ recurring: RecurringTransaction) async {
         if !recurring.notificationReminderEnabled || recurring.state != .active {
             await cancelReminder(for: recurring.id)

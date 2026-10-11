@@ -80,6 +80,47 @@ struct MockEducationOpportunityCampaign: EducationOpportunityCampaign {
     }
 }
 
+/// Class mock so eligibility can change after the engine has been constructed.
+final class MutableMockEducationOpportunityCampaign: EducationOpportunityCampaign, @unchecked Sendable {
+    let identity: EducationCampaignIdentity
+    var decision: CampaignDecision
+    let campaignPrerequisites: [JourneyPrerequisite]
+
+    init(
+        id: String,
+        name: String = "Mutable Mock Opportunity Campaign",
+        priority: Int = 100,
+        decision: CampaignDecision = .eligible,
+        prerequisites: [JourneyPrerequisite] = []
+    ) {
+        self.identity = EducationCampaignIdentity(id: id, name: name, priority: priority)
+        self.decision = decision
+        self.campaignPrerequisites = prerequisites
+    }
+
+    var prerequisites: [JourneyPrerequisite] {
+        campaignPrerequisites
+    }
+
+    func evaluateFeatureEligibility(context: CampaignContext, state: CampaignState) -> CampaignDecision {
+        decision
+    }
+
+    func buildOpportunity(context: CampaignContext, state: CampaignState) -> EducationOpportunity {
+        EducationOpportunity(
+            campaignID: identity.id,
+            priority: identity.priority,
+            sheetModel: EducationSheetModel(
+                id: "\(identity.id)_sheet",
+                title: identity.name,
+                description: "Test opportunity",
+                primaryButton: EducationSheetButtonModel(id: "primary", title: "Go")
+            ),
+            primaryAction: .openAddTransaction(.incomeSetupDefault)
+        )
+    }
+}
+
 /// In-memory store for unit tests only.
 final class InMemoryEducationCampaignStateStore: EducationCampaignStateStore, @unchecked Sendable {
     private var states: [String: CampaignState] = [:]
@@ -95,6 +136,28 @@ final class InMemoryEducationCampaignStateStore: EducationCampaignStateStore, @u
         lock.lock()
         defer { lock.unlock() }
         states[state.campaignID] = state
+    }
+}
+
+/// In-memory global policy store for unit tests only.
+final class InMemoryEducationPolicyStateStore: EducationPolicyStateStore, @unchecked Sendable {
+    private var state: EducationPolicyState?
+    private let lock = NSLock()
+
+    init(state: EducationPolicyState? = nil) {
+        self.state = state
+    }
+
+    func load() -> EducationPolicyState? {
+        lock.lock()
+        defer { lock.unlock() }
+        return state
+    }
+
+    func save(_ state: EducationPolicyState) {
+        lock.lock()
+        defer { lock.unlock() }
+        self.state = state
     }
 }
 

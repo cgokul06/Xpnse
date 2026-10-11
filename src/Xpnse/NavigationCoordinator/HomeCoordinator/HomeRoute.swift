@@ -13,6 +13,7 @@ enum HomeRoute: Route {
     case addTransaction(prefill: AddTransactionPrefill)
     case editTransaction(transaction: Transaction)
     case settings
+    case manageCategories
 //    case profile
     case billScanner
     case insights

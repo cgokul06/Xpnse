@@ -56,7 +56,12 @@ struct CustomCategoryJourney: EducationOpportunityCampaign {
     }
 
     static var defaultRegistry: EducationCampaignRegistry {
-        EducationCampaignRegistry(campaigns: [IncomeSetupJourney(), CustomCategoryJourney()])
+        EducationCampaignRegistry(campaigns: [
+            IncomeSetupJourney(),
+            RecurringReminderJourney(),
+            ExpenseSetupJourney(),
+            CustomCategoryJourney()
+        ])
     }
 
     private static let sheetModel = EducationSheetModel(

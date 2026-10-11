@@ -10,8 +10,10 @@ struct ManageCategoriesView: View {
     @State private var categoryStore = CategoryStore.shared
     @State private var editingCategory: CategoryDefinition?
     @State private var showAddCategory = false
+    @State private var didAutoOpenAdd = false
     @State private var deleteError: String?
     @State private var showDeleteError = false
+    var openAddOnAppear: Bool = false
 
     private var expenseCategories: [CategoryDefinition] {
         categoryStore.categories(for: .expense)
@@ -69,6 +71,10 @@ struct ManageCategoriesView: View {
         }
         .onAppear {
             UserEngagementCoordinator.shared.beginBusyWork(.manageCategories)
+            if openAddOnAppear, !didAutoOpenAdd {
+                didAutoOpenAdd = true
+                showAddCategory = true
+            }
         }
         .onDisappear {
             UserEngagementCoordinator.shared.endBusyWork(.manageCategories)

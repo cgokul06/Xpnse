@@ -9,14 +9,17 @@ import Foundation
 @MainActor
 protocol EducationNavigating: AnyObject {
     func openAddTransaction(_ prefill: AddTransactionPrefill)
+    func openManageCategories()
 }
 
 /// Engine surface used by presentation. Tests can supply a fake without `EducationEngine` deinit issues.
 protocol EducationPresentingEngine: AnyObject {
     var currentOpportunity: EducationOpportunity? { get }
+    var isPresentationPending: Bool { get }
+    var runtimeState: EducationRuntimeState { get }
     func applyOutcome(_ outcome: CampaignOutcome, campaignID: String)
-    func clearCurrentOpportunity()
-    func evaluateJourneys()
+    func acceptPrimaryAction(campaignID: String)
+    func track(_ event: EducationEvent)
 }
 
 extension EducationEngine: EducationPresentingEngine {}

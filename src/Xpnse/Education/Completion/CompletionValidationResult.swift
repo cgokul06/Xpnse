@@ -19,6 +19,8 @@ enum CompletionValidationResult: Equatable, Sendable {
 /// Reason a completion validation failed. Primarily for debugging and unit tests.
 enum CompletionValidationFailureReason: Equatable, Sendable {
     case incomeNotConfigured
+    case noExpense
     case noCustomCategory
+    case reminderNotEnabled
     case custom(String)
 }

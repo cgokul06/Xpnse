@@ -17,6 +17,7 @@ final class AppEducationEvaluationContextProviderTests: XCTestCase {
         )
 
         XCTAssertEqual(context.transactionCount, 0)
+        XCTAssertEqual(context.expenseCount, 0)
         XCTAssertFalse(context.hasConfiguredIncome)
         XCTAssertFalse(context.hasRecurringIncome)
         XCTAssertEqual(context.customCategoryCount, 0)
@@ -31,6 +32,7 @@ final class AppEducationEvaluationContextProviderTests: XCTestCase {
 
         XCTAssertEqual(context.transactionCount, 1)
         XCTAssertEqual(context.incomeCount, 0)
+        XCTAssertEqual(context.expenseCount, 1)
         XCTAssertFalse(context.hasConfiguredIncome)
         XCTAssertFalse(context.hasRecurringIncome)
     }
@@ -44,6 +46,7 @@ final class AppEducationEvaluationContextProviderTests: XCTestCase {
 
         XCTAssertTrue(context.hasConfiguredIncome)
         XCTAssertEqual(context.incomeCount, 1)
+        XCTAssertEqual(context.expenseCount, 0)
         XCTAssertEqual(context.transactionCount, 1)
         XCTAssertFalse(context.hasRecurringIncome)
     }
@@ -57,6 +60,23 @@ final class AppEducationEvaluationContextProviderTests: XCTestCase {
 
         XCTAssertTrue(context.hasRecurringIncome)
         XCTAssertTrue(context.hasConfiguredIncome)
+        XCTAssertEqual(context.recurringTransactionCount, 1)
+        XCTAssertFalse(context.hasEnabledRecurringReminder)
+    }
+
+    func testRecurringReminderFlagAndNotificationStatus() {
+        var withReminder = recurring(type: .expense, state: .active)
+        withReminder.notificationReminderEnabled = true
+        let context = AppEducationEvaluationContextProvider.makeCampaignContext(
+            transactions: [],
+            recurring: [withReminder],
+            categories: [],
+            notificationAuthorizationStatus: .notDetermined
+        )
+
+        XCTAssertEqual(context.recurringTransactionCount, 1)
+        XCTAssertTrue(context.hasEnabledRecurringReminder)
+        XCTAssertEqual(context.notificationAuthorizationStatus, .notDetermined)
     }
 
     func testPausedRecurringIncomeIsIgnored() {

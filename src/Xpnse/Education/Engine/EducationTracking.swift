@@ -14,8 +14,8 @@ enum EducationTracking {
     @MainActor
     static func track(_ event: EducationEvent) async {
         await AppEducationEvaluationContextProvider.shared.refresh()
-        EducationEngine.shared.track(event)
         EducationPresentationCoordinator.shared.completeJourneysIfNeeded(for: event)
+        EducationEngine.shared.track(event)
         EducationPresentationCoordinator.shared.tryPresent()
     }
 }

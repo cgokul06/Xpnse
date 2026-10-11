@@ -414,17 +414,7 @@ struct AddTransactionView: View {
     }
 
     private static func defaultReminderDateTime(for transactionDay: Date) -> Date {
-        let cal = Calendar.current
-        guard let latest = RecurringReminderScheduleMath.endOfDayBeforeTransactionDay(
-            containing: transactionDay,
-            calendar: cal
-        ) else {
-            return transactionDay
-        }
-        let txStart = cal.startOfDay(for: transactionDay)
-        guard let prevStart = cal.date(byAdding: .day, value: -1, to: txStart) else { return latest }
-        let candidate = cal.date(bySettingHour: 21, minute: 0, second: 0, of: prevStart) ?? prevStart
-        return min(candidate, latest)
+        RecurringReminderScheduleMath.defaultReminderDateTime(for: transactionDay)
     }
 
     private func clampReminderDateTimeToTransactionDay(_ transactionDay: Date) {

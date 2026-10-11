@@ -62,6 +62,8 @@ struct CoordinatedHomeView: View {
                         )
                     case .settings:
                         Settings()
+                    case .manageCategories:
+                        ManageCategoriesView(openAddOnAppear: true)
                     case .billScanner:
                         if FeatureFlags.shared.receiptScanEnabled {
                             BillScannerView(billScannerService: billScannerService)
@@ -198,6 +200,7 @@ struct CoordinatedHomeView: View {
                 education.attach(navigator: navigator)
             }
             education.isEngagementSheetPresented = { engagement.presentedEngagement != nil }
+            education.setOnHomeScreen(homeCoordinator.path.isEmpty)
             education.markSettledPastLaunch()
             education.noteAppBecameActive()
             education.tryPresent()
@@ -282,30 +285,23 @@ struct CoordinatedHomeView: View {
         engagement.endBusyWork(.manageRecurring)
         engagement.endBusyWork(.settingsCriticalFlow)
 
+        if educationEnabled {
+            education.setOnHomeScreen(path.isEmpty)
+            education.setNavigationBusy(!path.isEmpty)
+        }
+
         guard let top = path.last else {
-            if educationEnabled {
-                education.setNavigationBusy(false)
-            }
             return
         }
         switch top {
         case .transactions, .addTransaction, .editTransaction:
             engagement.beginBusyWork(.addOrEditTransaction)
-            if educationEnabled {
-                education.setNavigationBusy(true)
-            }
-            return
         case .billScanner:
             engagement.beginBusyWork(.billScanner)
-            if educationEnabled {
-                education.setNavigationBusy(true)
-            }
-            return
+        case .manageCategories:
+            engagement.beginBusyWork(.manageCategories)
         case .settings, .insights:
             break
-        }
-        if educationEnabled {
-            education.setNavigationBusy(false)
         }
     }
 
@@ -370,6 +366,15 @@ private final class HomeEducationNavigator: EducationNavigating {
     func openAddTransaction(_ prefill: AddTransactionPrefill) {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [coordinator] in
             coordinator.push(.addTransaction(prefill: prefill))
+        }
+    }
+
+    func openManageCategories() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [coordinator] in
+            withAnimation {
+                coordinator.path.append(.settings)
+                coordinator.path.append(.manageCategories)
+            }
         }
     }
 }
