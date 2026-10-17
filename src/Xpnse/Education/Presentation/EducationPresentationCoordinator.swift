@@ -15,6 +15,11 @@ final class EducationPresentationCoordinator {
     /// Currently visible education sheet.
     private(set) var presentedOpportunity: EducationOpportunity?
 
+    /// True while an education sheet is visible or waiting to present (including the Home delay).
+    var isBlockingCompetingOverlays: Bool {
+        presentedOpportunity != nil || engine?.isPresentationPending == true
+    }
+
     @ObservationIgnored private var engine: EducationPresentingEngine?
     @ObservationIgnored var notificationPermissionHandler: EducationNotificationPermissionHandling
     @ObservationIgnored private weak var navigator: EducationNavigating?
@@ -29,13 +34,27 @@ final class EducationPresentationCoordinator {
     @ObservationIgnored var isEngagementSheetPresented: () -> Bool = { false }
     /// When true, the next sheet dismiss should not record `.dismissed`.
     @ObservationIgnored var skipDismissOutcome = false
+    /// Add Transaction continues the pending recurring save. `true` means Remind me should be on.
+    @ObservationIgnored var hostFinishRecurringSave: ((Bool) async -> Void)?
+    @ObservationIgnored var notificationStatusLoader: () async -> EducationNotificationAuthorizationStatus = {
+        await EducationNotificationAuthorizationStatus.loadCurrent()
+    }
+    @ObservationIgnored private var homePresentationDelayTask: Task<Void, Never>?
+    @ObservationIgnored private var isHomePresentationDelayElapsed = false
+    @ObservationIgnored private let homePresentationDelay: TimeInterval
 
     init(
         engine: EducationPresentingEngine? = nil,
-        notificationPermissionHandler: EducationNotificationPermissionHandling? = nil
+        notificationPermissionHandler: EducationNotificationPermissionHandling? = nil,
+        homePresentationDelay: TimeInterval? = nil
     ) {
         self.engine = engine
         self.notificationPermissionHandler = notificationPermissionHandler ?? LiveEducationNotificationPermissionHandler()
+        if let homePresentationDelay {
+            self.homePresentationDelay = homePresentationDelay
+        } else {
+            self.homePresentationDelay = EducationTracking.isRunningInTests ? 0 : 1.5
+        }
     }
 
     func attach(
@@ -74,7 +93,8 @@ final class EducationPresentationCoordinator {
             if wasBusy,
                let engine,
                engine.runtimeState.isWaitingForOutcome,
-               let campaignID = engine.runtimeState.activeJourneyID {
+               let campaignID = engine.runtimeState.activeJourneyID,
+               campaignID != RecurringReminderJourney.campaignID {
                 engine.applyOutcome(.actionFailed, campaignID: campaignID)
             }
             tryPresent()
@@ -86,8 +106,10 @@ final class EducationPresentationCoordinator {
         isOnHomeScreen = onHome
         if becameHome {
             engine?.track(.returnedToHome)
-        }
-        if onHome {
+            scheduleHomePresentationDelay()
+        } else if !onHome {
+            cancelHomePresentationDelay()
+        } else {
             tryPresent()
         }
     }
@@ -105,13 +127,43 @@ final class EducationPresentationCoordinator {
     }
 
     func tryPresent() {
-        guard canPresent else { return }
         guard presentedOpportunity == nil else { return }
         guard engine?.isPresentationPending == true else { return }
         let candidate = pendingOpportunity ?? engine?.currentOpportunity
         guard let opportunity = candidate else { return }
+        guard canPresent(opportunity) else { return }
         guard !suppressedCampaignIDs.contains(opportunity.campaignID) else { return }
+        skipDismissOutcome = false
         presentedOpportunity = opportunity
+    }
+
+    /// Shows the reminder sheet on Add Transaction **before** the recurring item is saved.
+    func beginReminderPromptOnAddTransaction() async -> Bool {
+        guard canBeginHostedPrompt(RecurringReminderJourney.campaignID) else { return false }
+        let status = await notificationStatusLoader()
+        guard canBeginHostedPrompt(RecurringReminderJourney.campaignID), let engine else { return false }
+        guard let opportunity = engine.beginHostedPresentation(
+            campaignID: RecurringReminderJourney.campaignID,
+            adjustingContext: { context in
+                context.reminderEligibleRecurringCount += 1
+                context.notificationAuthorizationStatus = status
+            }
+        ) else {
+            return false
+        }
+        skipDismissOutcome = false
+        pendingOpportunity = opportunity
+        presentedOpportunity = opportunity
+        return true
+    }
+
+    private func canBeginHostedPrompt(_ campaignID: String) -> Bool {
+        presentedOpportunity == nil
+            && hasSettledPastLaunch
+            && isForegroundActive
+            && !isCompetingOverlayPresented
+            && !isEngagementSheetPresented()
+            && !suppressedCampaignIDs.contains(campaignID)
     }
 
     // MARK: - User actions
@@ -132,6 +184,7 @@ final class EducationPresentationCoordinator {
         applyOutcome(Self.declinedOutcome(for: opportunity.campaignID), campaignID: opportunity.campaignID)
         presentedOpportunity = nil
         pendingOpportunity = nil
+        finishHostRecurringSave(enableReminder: false, campaignID: opportunity.campaignID)
         tryPresent()
     }
 
@@ -146,6 +199,7 @@ final class EducationPresentationCoordinator {
         applyOutcome(Self.dismissedOutcome(for: opportunity.campaignID), campaignID: opportunity.campaignID)
         presentedOpportunity = nil
         pendingOpportunity = nil
+        finishHostRecurringSave(enableReminder: false, campaignID: opportunity.campaignID)
         tryPresent()
     }
 
@@ -198,20 +252,72 @@ final class EducationPresentationCoordinator {
             Task { @MainActor [weak self] in
                 guard let self else { return }
                 let outcome = await self.notificationPermissionHandler.requestAuthorizationAndEnableReminder()
-                self.applyOutcome(outcome, campaignID: campaignID)
+                if outcome == .completed, self.hostFinishRecurringSave != nil {
+                    // Completion is validated against saved data, so the reminder must be persisted first.
+                    await self.finishHostRecurringSaveAsync(enableReminder: true, campaignID: campaignID)
+                    self.applyOutcome(outcome, campaignID: campaignID)
+                    if self.engine?.runtimeState.activeJourneyID == campaignID {
+                        self.applyOutcome(.actionFailed, campaignID: campaignID)
+                    }
+                } else {
+                    self.applyOutcome(outcome == .completed ? .actionFailed : outcome, campaignID: campaignID)
+                    await self.finishHostRecurringSaveAsync(enableReminder: false, campaignID: campaignID)
+                }
                 self.tryPresent()
             }
         }
     }
 
-    private var canPresent: Bool {
+    private func finishHostRecurringSave(enableReminder: Bool, campaignID: String) {
+        guard campaignID == RecurringReminderJourney.campaignID else { return }
+        Task { @MainActor [weak self] in
+            await self?.finishHostRecurringSaveAsync(enableReminder: enableReminder, campaignID: campaignID)
+        }
+    }
+
+    private func finishHostRecurringSaveAsync(enableReminder: Bool, campaignID: String) async {
+        guard campaignID == RecurringReminderJourney.campaignID else { return }
+        suppressedCampaignIDs.insert(campaignID)
+        let host = hostFinishRecurringSave
+        hostFinishRecurringSave = nil
+        await host?(enableReminder)
+    }
+
+    private func canPresent(_ opportunity: EducationOpportunity) -> Bool {
         guard hasSettledPastLaunch else { return false }
         guard isForegroundActive else { return false }
-        guard isOnHomeScreen else { return false }
-        guard !isNavigationBusy else { return false }
         guard !isCompetingOverlayPresented else { return false }
         guard !isEngagementSheetPresented() else { return false }
+        if opportunity.campaignID == RecurringReminderJourney.campaignID {
+            return true
+        }
+        guard isOnHomeScreen else { return false }
+        guard !isNavigationBusy else { return false }
+        guard isHomePresentationDelayElapsed else { return false }
         return true
+    }
+
+    private func scheduleHomePresentationDelay() {
+        cancelHomePresentationDelay()
+        if homePresentationDelay <= 0 {
+            isHomePresentationDelayElapsed = true
+            tryPresent()
+            return
+        }
+        let delay = homePresentationDelay
+        homePresentationDelayTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            guard !Task.isCancelled, let self else { return }
+            self.isHomePresentationDelayElapsed = true
+            self.homePresentationDelayTask = nil
+            self.tryPresent()
+        }
+    }
+
+    private func cancelHomePresentationDelay() {
+        homePresentationDelayTask?.cancel()
+        homePresentationDelayTask = nil
+        isHomePresentationDelayElapsed = false
     }
 
     private static func declinedOutcome(for campaignID: String) -> CampaignOutcome {

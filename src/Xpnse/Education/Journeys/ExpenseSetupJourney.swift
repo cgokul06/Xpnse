@@ -19,6 +19,8 @@ struct ExpenseSetupJourney: EducationOpportunityCampaign {
         [.completedOrDeclined(IncomeSetupJourney.campaignID)]
     }
 
+    var followUpAfterSkipOf: String? { IncomeSetupJourney.campaignID }
+
     var completionValidator: any JourneyCompletionValidator {
         ExpenseSetupCompletionValidator()
     }
@@ -59,17 +61,19 @@ struct ExpenseSetupJourney: EducationOpportunityCampaign {
         EducationCampaignRegistry(campaigns: [IncomeSetupJourney(), ExpenseSetupJourney()])
     }
 
-    private static let sheetModel = EducationSheetModel(
-        id: "expense_setup_sheet",
-        title: "Track your first expense",
-        description: "Adding a spend helps SnapLedger understand where your money goes and personalize your dashboard.",
-        primaryButton: EducationSheetButtonModel(
-            id: "add_expense",
-            title: "Add Expense"
-        ),
-        secondaryButton: EducationSheetButtonModel(
-            id: "maybe_later",
-            title: "Maybe Later"
+    private static var sheetModel: EducationSheetModel {
+        EducationSheetModel(
+            id: "expense_setup_sheet",
+            title: L10n.tr("education.expense.title"),
+            description: L10n.tr("education.expense.description"),
+            primaryButton: EducationSheetButtonModel(
+                id: "add_expense",
+                title: L10n.tr("education.expense.primary")
+            ),
+            secondaryButton: EducationSheetButtonModel(
+                id: "maybe_later",
+                title: L10n.tr("education.common.maybe_later")
+            )
         )
-    )
+    }
 }

@@ -207,13 +207,13 @@ final class IncomeSetupJourneyTests: XCTestCase {
         XCTAssertEqual(opportunity.campaignID, IncomeSetupJourney.campaignID)
         XCTAssertEqual(opportunity.priority, 0)
         XCTAssertEqual(opportunity.metadata?["journey"], IncomeSetupJourney.campaignID)
-        XCTAssertEqual(opportunity.sheetModel.title, "Welcome to SnapLedger 👋")
+        XCTAssertEqual(opportunity.sheetModel.title, L10n.tr("education.income.title"))
         XCTAssertEqual(
             opportunity.sheetModel.description,
-            "Let's get your finances started. Adding your regular income gives SnapLedger a better understanding of your finances and helps personalize your dashboard."
+            L10n.tr("education.income.description")
         )
-        XCTAssertEqual(opportunity.sheetModel.primaryButton.title, "Add My Income")
-        XCTAssertEqual(opportunity.sheetModel.secondaryButton?.title, "Maybe Later")
+        XCTAssertEqual(opportunity.sheetModel.primaryButton.title, L10n.tr("education.income.primary"))
+        XCTAssertEqual(opportunity.sheetModel.secondaryButton?.title, L10n.tr("education.common.maybe_later"))
 
         guard case .openAddTransaction(let configuration) = opportunity.primaryAction else {
             return XCTFail("Expected openAddTransaction action")

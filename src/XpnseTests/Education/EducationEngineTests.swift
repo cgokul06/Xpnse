@@ -139,8 +139,8 @@ final class EducationEngineTests: XCTestCase {
         engine.track(.appLaunched)
 
         XCTAssertEqual(store.load(campaignID: "high_priority")?.presentationCount, 1)
-        XCTAssertEqual(store.load(campaignID: "low_priority")?.status, .notStarted)
-        XCTAssertEqual(store.load(campaignID: "low_priority")?.presentationCount, 0)
+        XCTAssertEqual(store.load(campaignID: "low_priority")?.status ?? .notStarted, .notStarted)
+        XCTAssertEqual(store.load(campaignID: "low_priority")?.presentationCount ?? 0, 0)
     }
 
     func testStickyLockDoesNotReplacePublishedJourney() {
@@ -450,15 +450,14 @@ final class EducationEngineTests: XCTestCase {
         engine.track(.returnedToHome)
         XCTAssertNil(engine.currentOpportunity)
 
-        engine.track(.appBecameActive)
+        engine.track(.transactionAdded)
         XCTAssertNil(engine.currentOpportunity)
 
-        clock.advance(by: EducationPolicyConfiguration.defaultDeclineMinimumElapsedTime)
         engine.track(.appBecameActive)
         XCTAssertEqual(engine.currentOpportunity?.campaignID, ExpenseSetupJourney.campaignID)
     }
 
-    func testExpenseWaitsForNextLaunchAfterIncomeDismissedAsDeclined() {
+    func testExpenseShowsOnNextLaunchAfterIncomeDismissedAsDeclined() {
         let clock = ControllableClock(now: fixedDate)
         let (engine, _, _, _) = makeEngine(
             campaigns: [IncomeSetupJourney(), ExpenseSetupJourney()],
@@ -471,7 +470,6 @@ final class EducationEngineTests: XCTestCase {
         engine.track(.returnedToHome)
         XCTAssertNil(engine.currentOpportunity)
 
-        clock.advance(by: EducationPolicyConfiguration.defaultDeclineMinimumElapsedTime)
         engine.track(.appLaunched)
         XCTAssertEqual(engine.currentOpportunity?.campaignID, ExpenseSetupJourney.campaignID)
     }
@@ -496,18 +494,86 @@ final class EducationEngineTests: XCTestCase {
         XCTAssertNil(engine.currentOpportunity)
     }
 
-    func testReminderPublishesWhenFirstRecurringCreatedWithoutNotify() {
+    func testReminderNeverAutoPublishes() {
         let (engine, _, _, _) = makeEngine(
             campaigns: [RecurringReminderJourney()],
             campaignContext: CampaignContext(
                 recurringTransactionCount: 1,
+                reminderEligibleRecurringCount: 1,
                 notificationAuthorizationStatus: .notDetermined,
                 evaluationDate: fixedDate
             )
         )
 
         engine.track(.recurringTransactionCreated)
-        XCTAssertEqual(engine.currentOpportunity?.campaignID, RecurringReminderJourney.campaignID)
+        XCTAssertNil(engine.currentOpportunity)
+        XCTAssertEqual(engine.runtimeState, .idle)
+    }
+
+    func testHostedReminderStartsForPendingRecurringItem() {
+        let (engine, store, _, _) = makeEngine(
+            campaigns: [RecurringReminderJourney()],
+            campaignContext: CampaignContext(evaluationDate: fixedDate)
+        )
+
+        let opportunity = engine.beginHostedPresentation(campaignID: RecurringReminderJourney.campaignID) { context in
+            context.reminderEligibleRecurringCount += 1
+            context.notificationAuthorizationStatus = .notDetermined
+        }
+
+        XCTAssertEqual(opportunity?.campaignID, RecurringReminderJourney.campaignID)
+        XCTAssertEqual(engine.runtimeState, .presenting(journeyID: RecurringReminderJourney.campaignID))
+        XCTAssertEqual(store.load(campaignID: RecurringReminderJourney.campaignID)?.presentationCount, 1)
+        XCTAssertTrue(engine.policyState.sessionActive)
+    }
+
+    func testHostedReminderDoesNotStartAfterDecline() {
+        let (engine, _, _, _) = makeEngine(
+            campaigns: [RecurringReminderJourney()],
+            campaignContext: CampaignContext(evaluationDate: fixedDate)
+        )
+        let adjust: (inout CampaignContext) -> Void = { context in
+            context.reminderEligibleRecurringCount += 1
+            context.notificationAuthorizationStatus = .notDetermined
+        }
+
+        XCTAssertNotNil(engine.beginHostedPresentation(campaignID: RecurringReminderJourney.campaignID, adjustingContext: adjust))
+        engine.applyOutcome(.declined, campaignID: RecurringReminderJourney.campaignID)
+        XCTAssertEqual(engine.runtimeState, .idle)
+
+        XCTAssertNil(engine.beginHostedPresentation(campaignID: RecurringReminderJourney.campaignID, adjustingContext: adjust))
+    }
+
+    func testHostedReminderDoesNotPreemptActiveJourney() {
+        let (engine, _, _, _) = makeEngine(
+            campaigns: [IncomeSetupJourney(), RecurringReminderJourney()],
+            campaignContext: incomeEligibleContext()
+        )
+        engine.track(.appLaunched)
+        XCTAssertEqual(engine.currentOpportunity?.campaignID, IncomeSetupJourney.campaignID)
+
+        let opportunity = engine.beginHostedPresentation(campaignID: RecurringReminderJourney.campaignID) { context in
+            context.reminderEligibleRecurringCount += 1
+            context.notificationAuthorizationStatus = .notDetermined
+        }
+
+        XCTAssertNil(opportunity)
+        XCTAssertEqual(engine.currentOpportunity?.campaignID, IncomeSetupJourney.campaignID)
+    }
+
+    func testReminderDoesNotPublishForIncomeRecurring() {
+        let (engine, _, _, _) = makeEngine(
+            campaigns: [RecurringReminderJourney()],
+            campaignContext: CampaignContext(
+                recurringTransactionCount: 1,
+                reminderEligibleRecurringCount: 0,
+                notificationAuthorizationStatus: .notDetermined,
+                evaluationDate: fixedDate
+            )
+        )
+
+        engine.track(.recurringTransactionCreated)
+        XCTAssertNil(engine.currentOpportunity)
     }
 
     func testReminderDoesNotPublishWhenNotificationAlreadyGranted() {
@@ -515,6 +581,7 @@ final class EducationEngineTests: XCTestCase {
             campaigns: [RecurringReminderJourney()],
             campaignContext: CampaignContext(
                 recurringTransactionCount: 1,
+                reminderEligibleRecurringCount: 1,
                 notificationAuthorizationStatus: .authorized,
                 evaluationDate: fixedDate
             )
@@ -529,6 +596,7 @@ final class EducationEngineTests: XCTestCase {
             campaigns: [RecurringReminderJourney()],
             campaignContext: CampaignContext(
                 recurringTransactionCount: 1,
+                reminderEligibleRecurringCount: 1,
                 notificationAuthorizationStatus: .denied,
                 evaluationDate: fixedDate
             )

@@ -184,13 +184,13 @@ final class CustomCategoryJourneyTests: XCTestCase {
         XCTAssertEqual(opportunity.campaignID, CustomCategoryJourney.campaignID)
         XCTAssertEqual(opportunity.priority, 10)
         XCTAssertEqual(opportunity.metadata?["journey"], CustomCategoryJourney.campaignID)
-        XCTAssertEqual(opportunity.sheetModel.title, "Organize your spending your way")
+        XCTAssertEqual(opportunity.sheetModel.title, L10n.tr("education.category.title"))
         XCTAssertEqual(
             opportunity.sheetModel.description,
-            "Create your own categories to match how you manage your finances. Whether it's Kids, Travel, Pets or Investments, SnapLedger adapts to you."
+            L10n.tr("education.category.description")
         )
-        XCTAssertEqual(opportunity.sheetModel.primaryButton.title, "Create Category")
-        XCTAssertEqual(opportunity.sheetModel.secondaryButton?.title, "Maybe Later")
+        XCTAssertEqual(opportunity.sheetModel.primaryButton.title, L10n.tr("education.category.primary"))
+        XCTAssertEqual(opportunity.sheetModel.secondaryButton?.title, L10n.tr("education.common.maybe_later"))
         XCTAssertEqual(opportunity.primaryAction, .openManageCategories)
     }
 

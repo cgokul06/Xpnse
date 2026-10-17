@@ -162,6 +162,59 @@ final class EducationPolicyEngineTests: XCTestCase {
         )
     }
 
+    func testFollowUpAfterSkipIgnoresDeclineCooldownOnForegroundOrLaunch() {
+        let policy = endedSession(outcome: .declined)
+        let oneMinuteLater = now.addingTimeInterval(60)
+
+        for event in [EducationEvent.appBecameActive, .appLaunched] {
+            XCTAssertEqual(
+                engine.evaluate(
+                    policy: policy,
+                    runtime: .idle,
+                    event: event,
+                    context: context,
+                    now: oneMinuteLater,
+                    followUpAfterSkipOf: "income_setup"
+                ),
+                .allowed
+            )
+        }
+    }
+
+    func testFollowUpAfterSkipStillNeedsForegroundOrLaunch() {
+        let policy = endedSession(outcome: .declined)
+
+        for event in [EducationEvent.returnedToHome, .transactionAdded, .journeyOutcomeApplied(campaignID: "income_setup")] {
+            XCTAssertEqual(
+                engine.evaluate(
+                    policy: policy,
+                    runtime: .idle,
+                    event: event,
+                    context: context,
+                    now: now,
+                    followUpAfterSkipOf: "income_setup"
+                ),
+                .blocked(.waitingForEvaluationTrigger)
+            )
+        }
+    }
+
+    func testFollowUpOfDifferentJourneyKeepsDeclineCooldown() {
+        let policy = endedSession(outcome: .declined)
+
+        XCTAssertEqual(
+            engine.evaluate(
+                policy: policy,
+                runtime: .idle,
+                event: .appBecameActive,
+                context: context,
+                now: now.addingTimeInterval(60),
+                followUpAfterSkipOf: "some_other_journey"
+            ),
+            .blocked(.declineCooldown)
+        )
+    }
+
     func testDeclinedAllowsAfterTenMinutesAndTrigger() {
         let policy = endedSession(outcome: .declined)
         let tenMinutesLater = now.addingTimeInterval(EducationPolicyConfiguration.defaultDeclineMinimumElapsedTime)

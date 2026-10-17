@@ -89,7 +89,9 @@ final class RecurringReminderScheduler: NSObject {
         do {
             let all = try await repository.fetchAll()
             guard var item = all.first(where: {
-                $0.state == .active && !$0.notificationReminderEnabled
+                $0.state == .active
+                    && !$0.notificationReminderEnabled
+                    && TransactionType(rawValue: $0.type)?.isEducationReminderEligible == true
             }) else {
                 return false
             }

@@ -16,6 +16,8 @@ final class AppLockController {
     static let shared = AppLockController()
 
     static let unlockGraceInterval: TimeInterval = 3600
+    /// Soft-sell App Lock only after the user has a small real ledger, not during first-run education.
+    static let promoMinimumLifetimeTransactions = 5
 
     private(set) var isEnabled: Bool
     private(set) var isLocked: Bool
@@ -44,7 +46,7 @@ final class AppLockController {
     var meetsPromoContentEligibility: Bool {
         guard !isEnabled else { return false }
         guard !promoShown else { return false }
-        guard UserSatisfactionEngine.shared.lifetimeTransactionsCount >= 1 else { return false }
+        guard UserSatisfactionEngine.shared.lifetimeTransactionsCount >= Self.promoMinimumLifetimeTransactions else { return false }
         return canEvaluateDeviceOwnerAuthentication
     }
 

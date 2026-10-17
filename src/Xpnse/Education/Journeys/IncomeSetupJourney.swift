@@ -65,17 +65,19 @@ struct IncomeSetupJourney: EducationOpportunityCampaign {
         EducationCampaignRegistry(campaigns: [IncomeSetupJourney()])
     }
 
-    private static let sheetModel = EducationSheetModel(
-        id: "income_setup_sheet",
-        title: "Welcome to SnapLedger 👋",
-        description: "Let's get your finances started. Adding your regular income gives SnapLedger a better understanding of your finances and helps personalize your dashboard.",
-        primaryButton: EducationSheetButtonModel(
-            id: "add_income",
-            title: "Add My Income"
-        ),
-        secondaryButton: EducationSheetButtonModel(
-            id: "maybe_later",
-            title: "Maybe Later"
+    private static var sheetModel: EducationSheetModel {
+        EducationSheetModel(
+            id: "income_setup_sheet",
+            title: L10n.tr("education.income.title"),
+            description: L10n.tr("education.income.description"),
+            primaryButton: EducationSheetButtonModel(
+                id: "add_income",
+                title: L10n.tr("education.income.primary")
+            ),
+            secondaryButton: EducationSheetButtonModel(
+                id: "maybe_later",
+                title: L10n.tr("education.common.maybe_later")
+            )
         )
-    )
+    }
 }

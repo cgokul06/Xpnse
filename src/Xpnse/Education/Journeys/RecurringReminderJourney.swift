@@ -5,7 +5,8 @@
 
 import Foundation
 
-/// Nudges the user to enable a reminder after saving their first recurring transaction without notify on.
+/// Nudges the user to enable a reminder when saving an expense or savings recurring transaction without notify on.
+/// Started by Add Transaction before the save; the engine never publishes it on its own.
 struct RecurringReminderJourney: EducationOpportunityCampaign {
     static let campaignID = "recurring_reminder"
 
@@ -15,6 +16,8 @@ struct RecurringReminderJourney: EducationOpportunityCampaign {
         priority: 4
     )
 
+    var presentsAutomatically: Bool { false }
+
     var completionValidator: any JourneyCompletionValidator {
         RecurringReminderCompletionValidator()
     }
@@ -23,7 +26,7 @@ struct RecurringReminderJourney: EducationOpportunityCampaign {
         if context.hasCriticalErrorThisSession {
             return .notEligible(.custom("criticalSessionError"))
         }
-        if context.recurringTransactionCount == 0 {
+        if context.reminderEligibleRecurringCount == 0 {
             return .notEligible(.noRecurringTransaction)
         }
         if context.hasEnabledRecurringReminder {
@@ -72,18 +75,20 @@ struct RecurringReminderJourney: EducationOpportunityCampaign {
         ])
     }
 
-    private static let sheetModel = EducationSheetModel(
-        id: "recurring_reminder_sheet",
-        icon: .sfSymbol("bell.badge.fill"),
-        title: "Get a reminder before it's due",
-        description: "We'll remind you before this transaction happens next time, so you can keep your funds ready.",
-        primaryButton: EducationSheetButtonModel(
-            id: "enable_reminder",
-            title: "Yes, remind me"
-        ),
-        secondaryButton: EducationSheetButtonModel(
-            id: "not_now",
-            title: "Not Now"
+    private static var sheetModel: EducationSheetModel {
+        EducationSheetModel(
+            id: "recurring_reminder_sheet",
+            icon: .sfSymbol("bell.badge.fill"),
+            title: L10n.tr("education.reminder.title"),
+            description: L10n.tr("education.reminder.description"),
+            primaryButton: EducationSheetButtonModel(
+                id: "enable_reminder",
+                title: L10n.tr("education.reminder.primary")
+            ),
+            secondaryButton: EducationSheetButtonModel(
+                id: "not_now",
+                title: L10n.tr("education.reminder.secondary")
+            )
         )
-    )
+    }
 }

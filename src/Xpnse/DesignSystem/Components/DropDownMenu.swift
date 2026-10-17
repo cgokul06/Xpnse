@@ -23,7 +23,6 @@ struct DropDownMenu: View {
     @Binding var selectedCategoryId: String
     @Binding var showDropdown: Bool
     @Environment(\.colorScheme) private var colorScheme
-    @State private var scrollPosition: String?
 
     private var selectedCategory: CategoryDefinition {
         options.first(where: { $0.id == selectedCategoryId })
@@ -115,29 +114,46 @@ struct DropDownMenu: View {
 
     private var optionsList: some View {
         VStack(spacing: 0) {
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    ForEach(Array(options.enumerated()), id: \.element.id) { index, option in
-                        optionRow(
-                            option: option,
-                            index: index,
-                            isLast: index == options.count - 1
-                        )
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(spacing: 0) {
+                        ForEach(Array(options.enumerated()), id: \.element.id) { index, option in
+                            optionRow(
+                                option: option,
+                                index: index,
+                                isLast: index == options.count - 1
+                            )
+                            .id(option.id)
+                        }
                     }
                 }
-                .scrollTargetLayout()
+                .scrollDisabled(options.count <= maxItemDisplayed)
+                .frame(height: CGFloat(visibleOptionCount) * buttonHeight)
+                .onAppear {
+                    revealSelectedCategory(using: proxy)
+                }
             }
-            .scrollPosition(id: $scrollPosition)
-            .scrollDisabled(options.count <= maxItemDisplayed)
-            .frame(height: CGFloat(visibleOptionCount) * buttonHeight)
 
             if showsAddCategoryRow {
                 addCategoryRow
             }
         }
         .frame(height: expandedListHeight)
-        .onAppear {
-            scrollPosition = selectedCategoryId
+    }
+
+    /// Starts at the top, then animates to the current selection so the list reads as scrollable.
+    private func revealSelectedCategory(using proxy: ScrollViewProxy) {
+        guard options.count > maxItemDisplayed else { return }
+        guard options.contains(where: { $0.id == selectedCategoryId }) else { return }
+        DispatchQueue.main.async {
+            if let first = options.first?.id {
+                proxy.scrollTo(first, anchor: .top)
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
+                withAnimation(.easeInOut(duration: 0.45)) {
+                    proxy.scrollTo(selectedCategoryId, anchor: .center)
+                }
+            }
         }
     }
 

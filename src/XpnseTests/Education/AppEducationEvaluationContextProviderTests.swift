@@ -61,6 +61,7 @@ final class AppEducationEvaluationContextProviderTests: XCTestCase {
         XCTAssertTrue(context.hasRecurringIncome)
         XCTAssertTrue(context.hasConfiguredIncome)
         XCTAssertEqual(context.recurringTransactionCount, 1)
+        XCTAssertEqual(context.reminderEligibleRecurringCount, 0)
         XCTAssertFalse(context.hasEnabledRecurringReminder)
     }
 
@@ -75,8 +76,24 @@ final class AppEducationEvaluationContextProviderTests: XCTestCase {
         )
 
         XCTAssertEqual(context.recurringTransactionCount, 1)
+        XCTAssertEqual(context.reminderEligibleRecurringCount, 1)
         XCTAssertTrue(context.hasEnabledRecurringReminder)
         XCTAssertEqual(context.notificationAuthorizationStatus, .notDetermined)
+    }
+
+    func testSavingsRecurringIsReminderEligibleAndIncomeIsNot() {
+        var incomeWithReminder = recurring(type: .income, state: .active)
+        incomeWithReminder.notificationReminderEnabled = true
+        let savings = recurring(type: .savings, state: .active)
+        let context = AppEducationEvaluationContextProvider.makeCampaignContext(
+            transactions: [],
+            recurring: [incomeWithReminder, savings],
+            categories: []
+        )
+
+        XCTAssertEqual(context.recurringTransactionCount, 2)
+        XCTAssertEqual(context.reminderEligibleRecurringCount, 1)
+        XCTAssertFalse(context.hasEnabledRecurringReminder)
     }
 
     func testPausedRecurringIncomeIsIgnored() {

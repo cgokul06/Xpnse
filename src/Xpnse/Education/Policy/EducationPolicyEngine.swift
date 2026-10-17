@@ -23,7 +23,8 @@ struct EducationPolicyEngine: Sendable {
         runtime: EducationRuntimeState,
         event: EducationEvent,
         context: CampaignContext,
-        now: Date
+        now: Date,
+        followUpAfterSkipOf skippedJourneyID: String? = nil
     ) -> EducationPolicyDecision {
         if !runtime.isIdle {
             return .blocked(.journeyAlreadyActive)
@@ -33,6 +34,13 @@ struct EducationPolicyEngine: Sendable {
         }
         guard let outcome = policy.lastJourneyOutcome else {
             return .allowed
+        }
+        if let skippedJourneyID,
+           policy.lastPresentedJourneyID == skippedJourneyID,
+           outcome == .declined || outcome == .dismissed {
+            return event == .appLaunched || event == .appBecameActive
+                ? .allowed
+                : .blocked(.waitingForEvaluationTrigger)
         }
         return evaluateStrategy(
             configuration.strategy(for: outcome),

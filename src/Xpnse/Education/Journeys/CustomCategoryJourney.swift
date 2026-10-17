@@ -64,17 +64,19 @@ struct CustomCategoryJourney: EducationOpportunityCampaign {
         ])
     }
 
-    private static let sheetModel = EducationSheetModel(
-        id: "custom_category_sheet",
-        title: "Organize your spending your way",
-        description: "Create your own categories to match how you manage your finances. Whether it's Kids, Travel, Pets or Investments, SnapLedger adapts to you.",
-        primaryButton: EducationSheetButtonModel(
-            id: "create_category",
-            title: "Create Category"
-        ),
-        secondaryButton: EducationSheetButtonModel(
-            id: "maybe_later",
-            title: "Maybe Later"
+    private static var sheetModel: EducationSheetModel {
+        EducationSheetModel(
+            id: "custom_category_sheet",
+            title: L10n.tr("education.category.title"),
+            description: L10n.tr("education.category.description"),
+            primaryButton: EducationSheetButtonModel(
+                id: "create_category",
+                title: L10n.tr("education.category.primary")
+            ),
+            secondaryButton: EducationSheetButtonModel(
+                id: "maybe_later",
+                title: L10n.tr("education.common.maybe_later")
+            )
         )
-    )
+    }
 }

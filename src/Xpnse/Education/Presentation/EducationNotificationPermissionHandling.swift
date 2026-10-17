@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// Requests OS notification permission and enables a default recurring reminder when the user accepts.
+/// Requests OS notification permission when the user accepts the reminder prompt.
 protocol EducationNotificationPermissionHandling: AnyObject {
     func requestAuthorizationAndEnableReminder() async -> CampaignOutcome
 }
@@ -17,11 +17,6 @@ final class LiveEducationNotificationPermissionHandler: EducationNotificationPer
         guard allowed else {
             return RecurringReminderJourney.outcomeForSecondaryButton()
         }
-        let enabled = await RecurringReminderScheduler.shared.enableDefaultReminderOnFirstUnnotifiedRecurring()
-        guard enabled else {
-            return .actionFailed
-        }
-        await AppEducationEvaluationContextProvider.shared.refresh()
         return RecurringReminderJourney.outcomeForSuccessfulPermission()
     }
 }

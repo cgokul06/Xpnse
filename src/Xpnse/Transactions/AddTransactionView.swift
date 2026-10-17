@@ -54,6 +54,8 @@ struct AddTransactionView: View {
     @State private var remindRecurring: Bool = false
     @State private var reminderDateTime: Date = AddTransactionView.defaultReminderDateTime(for: Date())
     @State private var showReminderPermissionAlert: Bool = false
+    @State private var isApplyingEducationRemindMe = false
+    @State private var isAwaitingReminderPrompt = false
     @State private var didManuallySelectCategory = false
     @State private var lastNormalizedDescription = ""
     @State private var lastNormalizedMerchant = ""
@@ -401,6 +403,10 @@ struct AddTransactionView: View {
                 Text("txn.notifications_settings")
             }
             .onChange(of: remindRecurring) { _, newValue in
+                if isApplyingEducationRemindMe {
+                    isApplyingEducationRemindMe = false
+                    return
+                }
                 guard newValue, isRecurring else { return }
                 Task {
                     let allowed = await RecurringReminderScheduler.shared.validateWhenTurningRemindMeOn()
@@ -408,6 +414,16 @@ struct AddTransactionView: View {
                         await MainActor.run { showReminderPermissionAlert = true }
                     }
                 }
+            }
+            .onAppear {
+                EducationPresentationCoordinator.shared.hostFinishRecurringSave = { enableReminder in
+                    await continueRecurringSaveAfterReminderPrompt(enableReminder: enableReminder)
+                }
+            }
+            .onDisappear {
+                // The reminder sheet covers this screen and still needs the pending save.
+                guard !isAwaitingReminderPrompt else { return }
+                EducationPresentationCoordinator.shared.hostFinishRecurringSave = nil
             }
         }
         .navigationBarBackButtonHidden()
@@ -765,7 +781,7 @@ struct AddTransactionView: View {
             .buttonStyle(
                 XpnsePrimaryButtonStyle.defaultButton(
                     isDisabled: .constant(
-                        !isFormValid || isLoading || !recurringDateRangeValid
+                        !isFormValid || isLoading || isAwaitingReminderPrompt || !recurringDateRangeValid
                             || (isRecurring && remindRecurring && !isRecurringReminderScheduleValid)
                     ),
                     isLoading: $isLoading
@@ -801,10 +817,44 @@ struct AddTransactionView: View {
 
     // MARK: - Actions
     private func addOrUpdateTransaction() {
-        guard !amount.isEmpty else { return }
+        guard !amount.isEmpty, !isAwaitingReminderPrompt else { return }
 
         isLoading = true
 
+        Task {
+            if shouldOfferReminderPromptBeforeSave {
+                let offered = await EducationPresentationCoordinator.shared.beginReminderPromptOnAddTransaction()
+                if offered {
+                    await MainActor.run {
+                        isAwaitingReminderPrompt = true
+                        isLoading = false
+                    }
+                    return
+                }
+            }
+            await persistAndDismiss(remindMe: remindRecurring)
+        }
+    }
+
+    private var shouldOfferReminderPromptBeforeSave: Bool {
+        isRecurring
+            && !isEditing
+            && !remindRecurring
+            && transactionType.isEducationReminderEligible
+    }
+
+    private func continueRecurringSaveAfterReminderPrompt(enableReminder: Bool) async {
+        isAwaitingReminderPrompt = false
+        isLoading = true
+        if enableReminder {
+            isApplyingEducationRemindMe = !remindRecurring
+            remindRecurring = true
+            reminderDateTime = Self.defaultReminderDateTime(for: selectedDate)
+        }
+        await persistAndDismiss(remindMe: enableReminder)
+    }
+
+    private func persistAndDismiss(remindMe: Bool) async {
         let transaction = Transaction(
             id: isEditing ? (self.transaction?.id ?? UUID().uuidString) : UUID().uuidString,
             type: transactionType,
@@ -815,78 +865,79 @@ struct AddTransactionView: View {
             merchant: normalizedMerchantOrNil
         )
 
-        Task {
-            if isRecurring && !isEditing {
-                suggestionEngine.upsert(
+        if isRecurring && !isEditing {
+            suggestionEngine.upsert(
+                from: TransactionAdapter(
+                    title: transaction.title,
+                    categoryIdentifier: transaction.categoryId,
+                    date: Date(timeIntervalSince1970: transaction.date)
+                )
+            )
+            if let merchantName = normalizedMerchantOrNil {
+                merchantSuggestionEngine.upsert(
                     from: TransactionAdapter(
-                        title: transaction.title,
-                        categoryIdentifier: transaction.categoryId,
+                        title: merchantName,
+                        categoryIdentifier: nil,
                         date: Date(timeIntervalSince1970: transaction.date)
                     )
                 )
-                if let merchantName = normalizedMerchantOrNil {
-                    merchantSuggestionEngine.upsert(
-                        from: TransactionAdapter(
-                            title: merchantName,
-                            categoryIdentifier: nil,
-                            date: Date(timeIntervalSince1970: transaction.date)
-                        )
-                    )
-                }
-                let computedEndDate = hasRecurringEndDate ? recurringEndDate : nil
-                let reminderOffset: TimeInterval? = {
-                    guard remindRecurring else { return nil }
-                    return RecurringReminderScheduleMath.offsetFromEndOfTransactionDay(
-                        transactionDay: selectedDate,
-                        reminderDateTime: reminderDateTime
-                    )
-                }()
-                let recurring = RecurringTransaction(
-                    title: description,
-                    merchant: normalizedMerchantOrNil,
-                    type: transactionType.rawValue,
-                    categoryIdentifier: selectedCategoryId,
-                    amount: AmountFormatter.parseDecimal(amount) ?? 0,
-                    startDate: selectedDate,
-                    endDate: computedEndDate,
-                    recurrence: mappedRecurrenceFrequency(),
-                    notificationReminderEnabled: remindRecurring,
-                    notificationReminderOffsetFromEndOfDay: reminderOffset,
-                    notificationScheduledForOccurrenceDate: nil,
-                    metadata: [
-                        "createdFrom": "AddTransactionView"
-                    ]
+            }
+            let computedEndDate = hasRecurringEndDate ? recurringEndDate : nil
+            let reminderOffset: TimeInterval? = {
+                guard remindMe else { return nil }
+                let when = remindRecurring
+                    ? reminderDateTime
+                    : Self.defaultReminderDateTime(for: selectedDate)
+                return RecurringReminderScheduleMath.offsetFromEndOfTransactionDay(
+                    transactionDay: selectedDate,
+                    reminderDateTime: when
                 )
-                await transactionManager.createRecurringTransaction(recurring)
-                await transactionManager.processRecurringTransactions()
-            } else if isEditing {
-                await transactionManager.updateTransaction(transaction)
-            } else {
-                suggestionEngine.upsert(
+            }()
+            let recurring = RecurringTransaction(
+                title: description,
+                merchant: normalizedMerchantOrNil,
+                type: transactionType.rawValue,
+                categoryIdentifier: selectedCategoryId,
+                amount: AmountFormatter.parseDecimal(amount) ?? 0,
+                startDate: selectedDate,
+                endDate: computedEndDate,
+                recurrence: mappedRecurrenceFrequency(),
+                notificationReminderEnabled: remindMe,
+                notificationReminderOffsetFromEndOfDay: reminderOffset,
+                notificationScheduledForOccurrenceDate: nil,
+                metadata: [
+                    "createdFrom": "AddTransactionView"
+                ]
+            )
+            await transactionManager.createRecurringTransaction(recurring)
+            await transactionManager.processRecurringTransactions()
+        } else if isEditing {
+            await transactionManager.updateTransaction(transaction)
+        } else {
+            suggestionEngine.upsert(
+                from: TransactionAdapter(
+                    title: transaction.title,
+                    categoryIdentifier: transaction.categoryId,
+                    date: Date(timeIntervalSince1970: transaction.date)
+                )
+            )
+            if let merchantName = normalizedMerchantOrNil {
+                merchantSuggestionEngine.upsert(
                     from: TransactionAdapter(
-                        title: transaction.title,
-                        categoryIdentifier: transaction.categoryId,
+                        title: merchantName,
+                        categoryIdentifier: nil,
                         date: Date(timeIntervalSince1970: transaction.date)
                     )
                 )
-                if let merchantName = normalizedMerchantOrNil {
-                    merchantSuggestionEngine.upsert(
-                        from: TransactionAdapter(
-                            title: merchantName,
-                            categoryIdentifier: nil,
-                            date: Date(timeIntervalSince1970: transaction.date)
-                        )
-                    )
-                }
-                await transactionManager.addTransaction(transaction)
             }
+            await transactionManager.addTransaction(transaction)
+        }
 
-            AppAnalytics.logEvent(AppAnalytics.Event.txnSave)
+        AppAnalytics.logEvent(AppAnalytics.Event.txnSave)
 
-            await MainActor.run {
-                isLoading = false
-                self.dismiss()
-            }
+        await MainActor.run {
+            isLoading = false
+            self.dismiss()
         }
     }
 

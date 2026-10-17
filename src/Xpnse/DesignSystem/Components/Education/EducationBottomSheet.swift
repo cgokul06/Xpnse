@@ -62,6 +62,7 @@ struct EducationBottomSheet<Illustration: View, CustomContent: View>: View {
             }
 
             buttonSection
+                .padding(.top, 16)
         }
         .padding(.horizontal, 20)
         .padding(.top, 12)

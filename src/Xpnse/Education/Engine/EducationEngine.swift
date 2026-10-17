@@ -152,6 +152,43 @@ final class EducationEngine: @unchecked Sendable {
         logger.log("Journey locked: \(campaignID)")
     }
 
+    /// Starts a host-presented campaign when the runtime is idle and the campaign is eligible
+    /// for the adjusted context (for example, a recurring item that is about to be saved).
+    func beginHostedPresentation(
+        campaignID: String,
+        adjustingContext: (inout CampaignContext) -> Void
+    ) -> EducationOpportunity? {
+        var started: EducationOpportunity?
+        let yields = withLockReturningYields { continuations, yields in
+            guard runtimeStateValue.isIdle else {
+                logger.log("Hosted presentation skipped: runtime \(runtimeStateValue.debugDescription)")
+                return continuations
+            }
+            guard let campaign = registry.campaign(id: campaignID) as? any EducationOpportunityCampaign else {
+                return continuations
+            }
+            var context = contextProvider.snapshot(for: lastEvent, at: clock.now()).campaignContext
+            adjustingContext(&context)
+            let state = states[campaignID] ?? CampaignState.fresh(campaignID: campaignID)
+            let allStates = Array(states.values)
+            let decision = campaign.evaluate(context: context, state: state, allStates: allStates)
+            logger.log("Hosted journey evaluated \(campaignID): \(decision.debugDescription)")
+            guard decision == .eligible else { return continuations }
+            guard let opportunity = campaign.makeOpportunity(
+                context: context,
+                state: state,
+                allStates: allStates
+            ) else {
+                return continuations
+            }
+            publishIfNeeded(opportunity, yields: &yields)
+            started = opportunity
+            return continuations
+        }
+        flush(yields)
+        return started
+    }
+
     func applyOutcome(_ outcome: CampaignOutcome, campaignID: String) {
         let yields = withLockReturningYields { continuations, yields in
             applyOutcomeLocked(outcome, campaignID: campaignID, yields: &yields)
@@ -229,7 +266,7 @@ final class EducationEngine: @unchecked Sendable {
         let allStates = Array(states.values)
         var eligible: [(opportunity: EducationOpportunity, registrationIndex: Int)] = []
 
-        for (index, campaign) in registry.campaigns.enumerated() {
+        for (index, campaign) in registry.campaigns.enumerated() where campaign.presentsAutomatically {
             let campaignID = campaign.identity.id
             let state = states[campaignID] ?? CampaignState.fresh(campaignID: campaignID)
             let decision = campaign.evaluate(
@@ -267,6 +304,7 @@ final class EducationEngine: @unchecked Sendable {
         }
 
         let winner = eligible.first?.opportunity
+        let winnerCampaign = eligible.first.map { registry.campaigns[$0.registrationIndex] }
 
         guard runtimeStateValue.isIdle else {
             logger.log("Evaluation skipped publish: runtime \(runtimeStateValue.debugDescription)")
@@ -283,7 +321,8 @@ final class EducationEngine: @unchecked Sendable {
             runtime: runtimeStateValue,
             event: triggerEvent,
             context: snapshot.campaignContext,
-            now: clock.now()
+            now: clock.now(),
+            followUpAfterSkipOf: winnerCampaign?.followUpAfterSkipOf
         )
         logger.log(decision.debugDescription)
 

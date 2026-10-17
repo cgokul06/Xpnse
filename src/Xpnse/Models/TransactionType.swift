@@ -20,6 +20,16 @@ enum TransactionType: String, CaseIterable, Codable, Hashable {
         [.expense, .savings, .income]
     }
 
+    /// Recurring reminder education is for money leaving the account, not income.
+    var isEducationReminderEligible: Bool {
+        switch self {
+        case .expense, .savings:
+            return true
+        case .income:
+            return false
+        }
+    }
+
     var displayName: String {
         switch self {
         case .expense: return L10n.tr("txn.type.expense")

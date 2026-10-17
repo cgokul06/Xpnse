@@ -16,12 +16,14 @@ final class RecurringReminderJourneyTests: XCTestCase {
 
     private func eligibleContext(
         recurringTransactionCount: Int = 1,
+        reminderEligibleRecurringCount: Int = 1,
         hasEnabledRecurringReminder: Bool = false,
         notificationAuthorizationStatus: EducationNotificationAuthorizationStatus = .notDetermined,
         hasCriticalErrorThisSession: Bool = false
     ) -> CampaignContext {
         CampaignContext(
             recurringTransactionCount: recurringTransactionCount,
+            reminderEligibleRecurringCount: reminderEligibleRecurringCount,
             hasEnabledRecurringReminder: hasEnabledRecurringReminder,
             notificationAuthorizationStatus: notificationAuthorizationStatus,
             hasCriticalErrorThisSession: hasCriticalErrorThisSession,
@@ -38,7 +40,16 @@ final class RecurringReminderJourneyTests: XCTestCase {
     }
 
     func testNotEligibleWhenNoRecurringExists() {
-        let context = eligibleContext(recurringTransactionCount: 0)
+        let context = eligibleContext(recurringTransactionCount: 0, reminderEligibleRecurringCount: 0)
+
+        XCTAssertEqual(
+            journey.evaluate(context: context, state: freshState(), allStates: [freshState()]),
+            .notEligible(.noRecurringTransaction)
+        )
+    }
+
+    func testNotEligibleWhenOnlyIncomeRecurringExists() {
+        let context = eligibleContext(recurringTransactionCount: 1, reminderEligibleRecurringCount: 0)
 
         XCTAssertEqual(
             journey.evaluate(context: context, state: freshState(), allStates: [freshState()]),
@@ -105,13 +116,13 @@ final class RecurringReminderJourneyTests: XCTestCase {
         XCTAssertEqual(opportunity.campaignID, RecurringReminderJourney.campaignID)
         XCTAssertEqual(opportunity.priority, 4)
         XCTAssertEqual(opportunity.primaryAction, .requestNotificationPermission)
-        XCTAssertEqual(opportunity.sheetModel.title, "Get a reminder before it's due")
+        XCTAssertEqual(opportunity.sheetModel.title, L10n.tr("education.reminder.title"))
         XCTAssertEqual(
             opportunity.sheetModel.description,
-            "We'll remind you before this transaction happens next time, so you can keep your funds ready."
+            L10n.tr("education.reminder.description")
         )
-        XCTAssertEqual(opportunity.sheetModel.primaryButton.title, "Yes, remind me")
-        XCTAssertEqual(opportunity.sheetModel.secondaryButton?.title, "Not Now")
+        XCTAssertEqual(opportunity.sheetModel.primaryButton.title, L10n.tr("education.reminder.primary"))
+        XCTAssertEqual(opportunity.sheetModel.secondaryButton?.title, L10n.tr("education.reminder.secondary"))
     }
 
     func testCompletionRequiresReminderEnabled() {

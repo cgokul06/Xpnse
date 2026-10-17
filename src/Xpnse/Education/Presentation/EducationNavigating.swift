@@ -20,6 +20,10 @@ protocol EducationPresentingEngine: AnyObject {
     func applyOutcome(_ outcome: CampaignOutcome, campaignID: String)
     func acceptPrimaryAction(campaignID: String)
     func track(_ event: EducationEvent)
+    func beginHostedPresentation(
+        campaignID: String,
+        adjustingContext: (inout CampaignContext) -> Void
+    ) -> EducationOpportunity?
 }
 
 extension EducationEngine: EducationPresentingEngine {}

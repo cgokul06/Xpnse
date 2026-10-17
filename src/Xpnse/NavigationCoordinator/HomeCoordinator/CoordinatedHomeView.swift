@@ -265,7 +265,7 @@ struct CoordinatedHomeView: View {
         guard !showSendFeedback else { return }
         guard engagement.presentedEngagement == nil else { return }
         if educationEnabled {
-            guard education.presentedOpportunity == nil else { return }
+            guard !education.isBlockingCompetingOverlays else { return }
         }
         guard !appLock.isLocked else { return }
         guard homeCoordinator.path.isEmpty else { return }

@@ -206,13 +206,13 @@ final class ExpenseSetupJourneyTests: XCTestCase {
         XCTAssertEqual(opportunity.campaignID, ExpenseSetupJourney.campaignID)
         XCTAssertEqual(opportunity.priority, 5)
         XCTAssertEqual(opportunity.metadata?["journey"], ExpenseSetupJourney.campaignID)
-        XCTAssertEqual(opportunity.sheetModel.title, "Track your first expense")
+        XCTAssertEqual(opportunity.sheetModel.title, L10n.tr("education.expense.title"))
         XCTAssertEqual(
             opportunity.sheetModel.description,
-            "Adding a spend helps SnapLedger understand where your money goes and personalize your dashboard."
+            L10n.tr("education.expense.description")
         )
-        XCTAssertEqual(opportunity.sheetModel.primaryButton.title, "Add Expense")
-        XCTAssertEqual(opportunity.sheetModel.secondaryButton?.title, "Maybe Later")
+        XCTAssertEqual(opportunity.sheetModel.primaryButton.title, L10n.tr("education.expense.primary"))
+        XCTAssertEqual(opportunity.sheetModel.secondaryButton?.title, L10n.tr("education.common.maybe_later"))
         XCTAssertEqual(opportunity.primaryAction, .openAddTransaction(.expenseSetupDefault))
 
         guard case .openAddTransaction(let configuration) = opportunity.primaryAction else {

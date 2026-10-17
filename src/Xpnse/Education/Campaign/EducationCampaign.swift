@@ -10,6 +10,11 @@ protocol EducationCampaign: Sendable {
     var identity: EducationCampaignIdentity { get }
     var prerequisites: [JourneyPrerequisite] { get }
     var completionValidator: any JourneyCompletionValidator { get }
+    /// When false, the engine never publishes this campaign on its own; a host screen starts it explicitly.
+    var presentsAutomatically: Bool { get }
+    /// When the user just skipped this journey, the follow-up skips the decline cooldown
+    /// and shows on the next launch or foreground.
+    var followUpAfterSkipOf: String? { get }
 
     /// Feature-specific eligibility only — no terminal guard, no dependency checks.
     func evaluateFeatureEligibility(context: CampaignContext, state: CampaignState) -> CampaignDecision
@@ -17,6 +22,10 @@ protocol EducationCampaign: Sendable {
 
 extension EducationCampaign {
     var prerequisites: [JourneyPrerequisite] { [] }
+
+    var presentsAutomatically: Bool { true }
+
+    var followUpAfterSkipOf: String? { nil }
 
     var completionValidator: any JourneyCompletionValidator {
         TrustingJourneyCompletionValidator()

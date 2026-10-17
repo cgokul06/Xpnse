@@ -69,7 +69,12 @@ final class AppEducationEvaluationContextProvider: EducationEvaluationContextPro
         let hasRecurringIncome = activeRecurring.contains {
             $0.type == TransactionType.income.rawValue
         }
-        let hasEnabledRecurringReminder = activeRecurring.contains { $0.notificationReminderEnabled }
+        let reminderEligibleRecurring = activeRecurring.filter {
+            TransactionType(rawValue: $0.type)?.isEducationReminderEligible == true
+        }
+        let hasEnabledRecurringReminder = reminderEligibleRecurring.contains {
+            $0.notificationReminderEnabled
+        }
         let customCategoryCount = categories.filter { !$0.isBuiltIn && !$0.isDeleted }.count
         return CampaignContext(
             transactionCount: transactions.count,
@@ -78,6 +83,7 @@ final class AppEducationEvaluationContextProvider: EducationEvaluationContextPro
             hasConfiguredIncome: !incomeTransactions.isEmpty || hasRecurringIncome,
             expenseCount: expenseTransactions.count,
             recurringTransactionCount: activeRecurring.count,
+            reminderEligibleRecurringCount: reminderEligibleRecurring.count,
             hasEnabledRecurringReminder: hasEnabledRecurringReminder,
             customCategoryCount: customCategoryCount,
             notificationAuthorizationStatus: notificationAuthorizationStatus,
