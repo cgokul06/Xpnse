@@ -64,10 +64,25 @@ struct CoordinatedContentView: View {
                 appCoordinator: appCoordinator,
                 homeCoordinator: homeCoordinator
             )
+            deepLinkRouter.consumeRootAddExpenseIfNeeded(
+                appCoordinator: appCoordinator,
+                homeCoordinator: homeCoordinator
+            )
         }
         .onChange(of: appCoordinator.currentRoute) { _, newRoute in
             guard newRoute == .home else { return }
             deepLinkRouter.consumePendingLink(
+                appCoordinator: appCoordinator,
+                homeCoordinator: homeCoordinator
+            )
+            deepLinkRouter.consumeRootAddExpenseIfNeeded(
+                appCoordinator: appCoordinator,
+                homeCoordinator: homeCoordinator
+            )
+            requestExpenseReminderAuthorizationIfNeeded()
+        }
+        .onChange(of: deepLinkRouter.pendingRootAddExpense) { _, _ in
+            deepLinkRouter.consumeRootAddExpenseIfNeeded(
                 appCoordinator: appCoordinator,
                 homeCoordinator: homeCoordinator
             )
@@ -78,7 +93,19 @@ struct CoordinatedContentView: View {
                 appCoordinator: appCoordinator,
                 homeCoordinator: homeCoordinator
             )
+            deepLinkRouter.consumeRootAddExpenseIfNeeded(
+                appCoordinator: appCoordinator,
+                homeCoordinator: homeCoordinator
+            )
+            if appCoordinator.currentRoute == .home {
+                requestExpenseReminderAuthorizationIfNeeded()
+            }
         }
+    }
+
+    private func requestExpenseReminderAuthorizationIfNeeded() {
+        guard !EducationTracking.isRunningInTests else { return }
+        Task { await ExpenseReminderScheduler.shared.requestProvisionalAuthorizationIfNeeded() }
     }
 }
 

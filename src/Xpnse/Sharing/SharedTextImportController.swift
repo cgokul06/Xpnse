@@ -59,8 +59,8 @@ final class SharedTextImportController: ObservableObject {
         await billScannerService.analyzeSharedText(text)
 
         if billScannerService.extractedTransaction != nil {
-            if homeCoordinator.path.last != .transactions {
-                homeCoordinator.push(.transactions)
+            if homeCoordinator.path.last?.isNewTransactionForm != true {
+                homeCoordinator.push(.transactions(source: .shareText))
             }
         } else {
             alertMessage = billScannerService.errorMessage ?? L10n.tr("share.not_transaction")
@@ -90,11 +90,13 @@ final class SharedTextImportController: ObservableObject {
         }
 
         guard FeatureFlags.shared.receiptScanEnabled else {
+            AppAnalytics.logFeatureUnavailable(feature: "scan", reason: "remote_config_off")
             alertMessage = L10n.tr("share.receipt_scan_unavailable")
             return
         }
 
         guard FoundationModelsAvailability.isAvailable else {
+            AppAnalytics.logFeatureUnavailable(feature: "scan", reason: "apple_intelligence_unavailable")
             alertMessage = FoundationModelsAvailability.unavailabilityMessage
                 ?? L10n.tr("share.receipt_scan_unavailable")
             return
@@ -102,11 +104,11 @@ final class SharedTextImportController: ObservableObject {
 
         homeCoordinator.popToRoot()
         billScannerService.extractedTransaction = nil
-        await billScannerService.scanBill(from: image)
+        await billScannerService.scanBill(from: image, source: .shareImage)
 
         if billScannerService.extractedTransaction != nil {
-            if homeCoordinator.path.last != .transactions {
-                homeCoordinator.push(.transactions)
+            if homeCoordinator.path.last?.isNewTransactionForm != true {
+                homeCoordinator.push(.transactions(source: .shareImage))
             }
         } else {
             alertMessage = billScannerService.errorMessage ?? L10n.tr("share.empty_image")

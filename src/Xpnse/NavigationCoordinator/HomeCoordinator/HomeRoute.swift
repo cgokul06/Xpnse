@@ -9,14 +9,19 @@ import Foundation
 
 enum HomeRoute: Route {
 //    case main
-    case transactions
-    case addTransaction(prefill: AddTransactionPrefill)
+    case transactions(source: AppAnalytics.TxnSource)
+    case addTransaction(prefill: AddTransactionPrefill, source: AppAnalytics.TxnSource)
     case editTransaction(transaction: Transaction)
     case settings
     case manageCategories
 //    case profile
     case billScanner
     case insights
+
+    var isNewTransactionForm: Bool {
+        if case .transactions = self { return true }
+        return false
+    }
 }
 
 //enum HomeSheet: Route {

@@ -67,7 +67,7 @@ final class RecurringReminderJourneyTests: XCTestCase {
     }
 
     func testNotEligibleWhenNotificationAlreadyGranted() {
-        for status: EducationNotificationAuthorizationStatus in [.authorized, .provisional, .ephemeral] {
+        for status: EducationNotificationAuthorizationStatus in [.authorized, .ephemeral] {
             let context = eligibleContext(notificationAuthorizationStatus: status)
             XCTAssertEqual(
                 journey.evaluate(context: context, state: freshState(), allStates: [freshState()]),
@@ -75,6 +75,15 @@ final class RecurringReminderJourneyTests: XCTestCase {
                 "status \(status)"
             )
         }
+    }
+
+    func testEligibleWhenNotificationAuthorizationIsProvisional() {
+        let context = eligibleContext(notificationAuthorizationStatus: .provisional)
+
+        XCTAssertEqual(
+            journey.evaluate(context: context, state: freshState(), allStates: [freshState()]),
+            .eligible
+        )
     }
 
     func testNotEligibleWhenNotificationDenied() {

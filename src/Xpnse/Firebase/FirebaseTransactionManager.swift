@@ -126,9 +126,11 @@ final class FirebaseTransactionManager {
 
     // MARK: - CRUD Operations
 
-    func addTransaction(_ transaction: Transaction) async {
+    @discardableResult
+    func addTransaction(_ transaction: Transaction) async -> Bool {
         do {
             try await transactionRepository.add(transaction)
+            AnalyticsUserProperties.refresh()
             await MainActor.run {
                 UserSatisfactionEngine.shared.track(.transactionAdded)
             }
@@ -138,36 +140,56 @@ final class FirebaseTransactionManager {
             }
             if transaction.type == .expense {
                 await EducationTracking.track(.expenseAdded)
-            }
-        } catch {
-            print("Failed to add transaction: \(error.localizedDescription)")
-            await MainActor.run {
-                UserSatisfactionEngine.shared.track(.criticalErrorOccurred)
-            }
-        }
-    }
-
-    func updateTransaction(_ transaction: Transaction) async {
-        do {
-            try await transactionRepository.update(transaction)
-        } catch {
-            print("Failed to update transaction: \(error.localizedDescription)")
-            await MainActor.run {
-                UserSatisfactionEngine.shared.track(.criticalErrorOccurred)
-            }
-        }
-    }
-
-        func deleteTransaction(_ transaction: Transaction) async {
-            do {
-                try await transactionRepository.delete(transaction)
-            } catch {
-                print("Failed to delete transaction: \(error.localizedDescription)")
-                await MainActor.run {
-                    UserSatisfactionEngine.shared.track(.criticalErrorOccurred)
+                WidgetReminderActivityStore.recordExpenseSaved(at: Date())
+                WidgetTimelineReloader.reloadBalance()
+                // Occurrences inserted by recurring processing are not a user response to a check-in.
+                if transaction.recurringSeriesId == nil {
+                    await ExpenseReminderScheduler.shared.noteExpenseAdded()
+                    await WidgetReminderAttribution.shared.noteExpenseSavedIfAttributed()
                 }
             }
+            return true
+        } catch {
+            print("Failed to add transaction: \(error.localizedDescription)")
+            AppDiagnostics.recordNonFatal(operation: .transactionAdd, feature: "transactions", reason: .persistence, error: error)
+            await MainActor.run {
+                UserSatisfactionEngine.shared.track(.criticalErrorOccurred)
+            }
+            return false
         }
+    }
+
+    @discardableResult
+    func updateTransaction(_ transaction: Transaction) async -> Bool {
+        do {
+            try await transactionRepository.update(transaction)
+            AnalyticsUserProperties.refresh()
+            return true
+        } catch {
+            print("Failed to update transaction: \(error.localizedDescription)")
+            AppDiagnostics.recordNonFatal(operation: .transactionUpdate, feature: "transactions", reason: .persistence, error: error)
+            await MainActor.run {
+                UserSatisfactionEngine.shared.track(.criticalErrorOccurred)
+            }
+            return false
+        }
+    }
+
+    @discardableResult
+    func deleteTransaction(_ transaction: Transaction) async -> Bool {
+        do {
+            try await transactionRepository.delete(transaction)
+            AnalyticsUserProperties.refresh()
+            return true
+        } catch {
+            print("Failed to delete transaction: \(error.localizedDescription)")
+            AppDiagnostics.recordNonFatal(operation: .transactionDelete, feature: "transactions", reason: .persistence, error: error)
+            await MainActor.run {
+                UserSatisfactionEngine.shared.track(.criticalErrorOccurred)
+            }
+            return false
+        }
+    }
 
     func loadTransactions(
         startDate: Date,
@@ -206,7 +228,8 @@ final class FirebaseTransactionManager {
         listeners = []
     }
 
-    func clearAll() async {
+    @discardableResult
+    func clearAll() async -> Bool {
         do {
             try await transactionRepository.clearAll()
             try await SwiftDataRecurringRepository.shared.clearAll()
@@ -214,18 +237,30 @@ final class FirebaseTransactionManager {
             try await PotentialRecurringDismissStore.clearAll()
             await CategoryStore.shared.load()
             UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+            await ExpenseReminderScheduler.shared.noteLocalDataCleared()
+            AnalyticsUserProperties.refresh()
+            return true
         } catch {
             print("Failed to clear local data: \(error.localizedDescription)")
+            AppDiagnostics.recordNonFatal(operation: .localDataClear, feature: "settings", reason: .persistence, error: error)
+            AnalyticsUserProperties.refresh()
+            return false
         }
     }
 
-    func createRecurringTransaction(_ recurring: RecurringTransaction) async {
-        await recurringTransactionManager.create(recurring)
+    @discardableResult
+    func createRecurringTransaction(_ recurring: RecurringTransaction) async -> Bool {
+        if TransactionType(rawValue: recurring.type)?.isEducationReminderEligible == true {
+            await RecurringReminderScheduler.shared.requestExplicitAuthorizationIfProvisional()
+        }
+        guard await recurringTransactionManager.create(recurring) else { return false }
         await RecurringReminderScheduler.shared.handleRecurringSaved(recurring)
         await EducationTracking.track(.recurringTransactionCreated)
         if recurring.type == TransactionType.income.rawValue {
             await EducationTracking.track(.incomeConfigured)
         }
+        AnalyticsUserProperties.refresh()
+        return true
     }
 
     /// Tag an existing one-off as belonging to a recurring series (Insights convert flow).
@@ -249,10 +284,13 @@ final class FirebaseTransactionManager {
         }
     }
 
-    func updateRecurringTransaction(_ recurring: RecurringTransaction) async {
-        await recurringTransactionManager.update(recurring)
+    @discardableResult
+    func updateRecurringTransaction(_ recurring: RecurringTransaction) async -> Bool {
+        guard await recurringTransactionManager.update(recurring) else { return false }
         await backfillGeneratedTransactions(from: recurring)
         await RecurringReminderScheduler.shared.handleRecurringSaved(recurring)
+        AnalyticsUserProperties.refresh()
+        return true
     }
 
     /// Propagate rule title/merchant onto already-materialized occurrences so Insights
@@ -281,9 +319,12 @@ final class FirebaseTransactionManager {
         }
     }
 
-    func cancelRecurringTransaction(id: UUID) async {
-        await recurringTransactionManager.cancel(id: id)
+    @discardableResult
+    func cancelRecurringTransaction(id: UUID) async -> Bool {
+        let paused = await recurringTransactionManager.cancel(id: id)
         await RecurringReminderScheduler.shared.cancelReminder(for: id)
+        AnalyticsUserProperties.refresh()
+        return paused
     }
 
     func skipRecurringTransaction(id: UUID) async {

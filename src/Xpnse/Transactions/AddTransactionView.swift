@@ -20,6 +20,7 @@ struct AddTransactionView: View {
     @EnvironmentObject var homeCoordinator: NavigationCoordinator<HomeRoute>
     @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.scenePhase) private var scenePhase
 
     @ObservedObject var billScannerService: BillScannerService
     @FocusState fileprivate var focussedField: AddTransactionViewFocusField?
@@ -60,6 +61,14 @@ struct AddTransactionView: View {
     @State private var lastNormalizedDescription = ""
     @State private var lastNormalizedMerchant = ""
     @State private var isPushingBillScanner = false
+    @State private var didLogFormOpened = false
+    @State private var didLogRecurringSetupStarted = false
+    @State private var didApplyScanPreview = false
+    @State private var loggedValidationFields: Set<String> = []
+    @State private var formPresentationId = UUID()
+    @State private var didFinishForm = false
+    @State private var didLogAbandonment = false
+    private let source: AppAnalytics.TxnSource
     private let transactionManager: FirebaseTransactionManager = .shared
     private let categoryClassifier = CategoryClassificationService()
     private let merchantClassifier = MerchantClassificationService()
@@ -116,12 +125,14 @@ struct AddTransactionView: View {
     init(
         billScannerService: BillScannerService,
         transaction: Transaction? = nil,
-        prefill: AddTransactionPrefill? = nil
+        prefill: AddTransactionPrefill? = nil,
+        source: AppAnalytics.TxnSource
     ) {
         self.billScannerService = billScannerService
         self.transaction = transaction
         self.isEditing = transaction != nil
         self.prefill = prefill
+        self.source = source
         self.focussedField = self.isEditing ? nil : .description
     }
 
@@ -317,6 +328,8 @@ struct AddTransactionView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: {
+                        markFormFinished()
+                        logExplicitCancel()
                         self.dismiss()
                         self.showSuggestions = false
                         self.showMerchantSuggestions = false
@@ -350,6 +363,9 @@ struct AddTransactionView: View {
             }
             .onAppear(perform: handleOnAppear)
             .onDisappear(perform: handleOnDisappear)
+            .onChange(of: scenePhase) { _, phase in
+                handleScenePhaseForAbandonment(phase)
+            }
             .sheet(isPresented: $showAddCategory) {
                 EditCategoryView(
                     mode: .add,
@@ -376,6 +392,22 @@ struct AddTransactionView: View {
                 if newType != .expense {
                     clearMerchantForNonExpenseType()
                 }
+            }
+            .onChange(of: isRecurring) { _, enabled in
+                guard enabled, !isEditing, !didLogRecurringSetupStarted else { return }
+                didLogRecurringSetupStarted = true
+                AppAnalytics.logEvent(AppAnalytics.Event.recurringSetupStarted, parameters: [
+                    AppAnalytics.Param.txnType: transactionType.rawValue,
+                    AppAnalytics.Param.source: source.rawValue
+                ])
+            }
+            .onChange(of: recurringDateRangeValid) { _, isValid in
+                guard !isValid else { return }
+                logValidationFailure(field: "end_date", reason: "invalid_range")
+            }
+            .onChange(of: isRecurringReminderScheduleValid) { _, isValid in
+                guard !isValid else { return }
+                logValidationFailure(field: "reminder_time", reason: "invalid_schedule")
             }
             .alert(isPresented: $showDeleteAlert) {
                 Alert(
@@ -855,6 +887,7 @@ struct AddTransactionView: View {
     }
 
     private func persistAndDismiss(remindMe: Bool) async {
+        markFormFinished()
         let transaction = Transaction(
             id: isEditing ? (self.transaction?.id ?? UUID().uuidString) : UUID().uuidString,
             type: transactionType,
@@ -864,6 +897,7 @@ struct AddTransactionView: View {
             title: description,
             merchant: normalizedMerchantOrNil
         )
+        var didPersist = false
 
         if isRecurring && !isEditing {
             suggestionEngine.upsert(
@@ -909,10 +943,10 @@ struct AddTransactionView: View {
                     "createdFrom": "AddTransactionView"
                 ]
             )
-            await transactionManager.createRecurringTransaction(recurring)
+            didPersist = await transactionManager.createRecurringTransaction(recurring)
             await transactionManager.processRecurringTransactions()
         } else if isEditing {
-            await transactionManager.updateTransaction(transaction)
+            didPersist = await transactionManager.updateTransaction(transaction)
         } else {
             suggestionEngine.upsert(
                 from: TransactionAdapter(
@@ -930,10 +964,26 @@ struct AddTransactionView: View {
                     )
                 )
             }
-            await transactionManager.addTransaction(transaction)
+            didPersist = await transactionManager.addTransaction(transaction)
         }
 
-        AppAnalytics.logEvent(AppAnalytics.Event.txnSave)
+        if didPersist {
+            AppAnalytics.logTransactionSaved(
+                type: transactionType,
+                source: source,
+                mode: analyticsMode,
+                recurring: isRecurring && !isEditing,
+                reminder: isRecurring && !isEditing ? remindMe : nil
+            )
+            if isEditing, let original = self.transaction, original.categoryId != transaction.categoryId {
+                AppAnalytics.logEvent(
+                    AppAnalytics.Event.categoryChanged,
+                    parameters: [AppAnalytics.Param.changeSource: "edit_form"]
+                )
+            }
+        } else {
+            AppAnalytics.logTransactionSaveFailed(type: transactionType, source: source, reason: .persistence)
+        }
 
         await MainActor.run {
             isLoading = false
@@ -1018,6 +1068,46 @@ struct AddTransactionView: View {
         isPushingBillScanner = false
         suggestionEngine.load()
         merchantSuggestionEngine.load()
+        if !didLogFormOpened {
+            didLogFormOpened = true
+            AppAnalytics.logFormEvent(
+                AppAnalytics.Event.transactionFormOpened,
+                type: transactionType,
+                source: source,
+                mode: analyticsMode
+            )
+        }
+    }
+
+    private var analyticsMode: AppAnalytics.TxnMode {
+        if isEditing { return .edit }
+        return isRecurring ? .recurringCreate : .create
+    }
+
+    private func logExplicitCancel() {
+        AppAnalytics.logFormEvent(
+            AppAnalytics.Event.transactionFormCancelled,
+            type: transactionType,
+            source: source,
+            mode: analyticsMode
+        )
+        if didApplyScanPreview {
+            AppAnalytics.logEvent(AppAnalytics.Event.billScanAbandoned, parameters: [
+                AppAnalytics.Param.stage: AppAnalytics.ScanStage.preview.rawValue,
+                AppAnalytics.Param.reason: "closed"
+            ])
+        }
+    }
+
+    private func logValidationFailure(field: String, reason: String) {
+        guard !loggedValidationFields.contains(field) else { return }
+        loggedValidationFields.insert(field)
+        AppAnalytics.logEvent(AppAnalytics.Event.transactionValidationFailed, parameters: [
+            AppAnalytics.Param.field: field,
+            AppAnalytics.Param.reason: reason,
+            AppAnalytics.Param.txnType: transactionType.rawValue,
+            AppAnalytics.Param.source: source.rawValue
+        ])
     }
 
     private func handleOnDisappear() {
@@ -1025,6 +1115,54 @@ struct AddTransactionView: View {
         merchantClassifier.cancel()
         guard !isPushingBillScanner else { return }
         billScannerService.clearExtractedTransaction()
+        guard didLogFormOpened, !didFinishForm, !didLogAbandonment, !isAwaitingReminderPrompt else { return }
+        didLogAbandonment = true
+        TransactionFormAbandonment.formLeftByNavigation(
+            presentationId: formPresentationId,
+            type: transactionType,
+            source: source,
+            mode: analyticsMode,
+            stage: analyticsFormStage
+        )
+    }
+
+    private func markFormFinished() {
+        didFinishForm = true
+        TransactionFormAbandonment.formFinished(presentationId: formPresentationId)
+    }
+
+    private var analyticsFormStage: TransactionFormStage {
+        let canSave = isFormValid && recurringDateRangeValid
+            && !(isRecurring && remindRecurring && !isRecurringReminderScheduleValid)
+        return TransactionFormStage.classify(
+            hasAmount: !amount.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            hasDescription: !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            canSave: canSave
+        )
+    }
+
+    private func handleScenePhaseForAbandonment(_ phase: ScenePhase) {
+        // While the scanner is on top, a successful scan replaces this form with a new one.
+        guard didLogFormOpened, !didFinishForm, !didLogAbandonment, !isPushingBillScanner else { return }
+        switch phase {
+        case .background:
+            TransactionFormAbandonment.formBackgrounded(
+                PendingTransactionFormMarker(
+                    presentationId: formPresentationId,
+                    txnType: transactionType.rawValue,
+                    source: source.rawValue,
+                    mode: analyticsMode.rawValue,
+                    stage: analyticsFormStage.rawValue,
+                    backgroundedAt: Date()
+                )
+            )
+        case .active:
+            if TransactionFormAbandonment.formReturned(presentationId: formPresentationId) {
+                didLogAbandonment = true
+            }
+        default:
+            break
+        }
     }
 
     private func handleExtractedTransactionChange(_ extractedData: ScannedTransaction?) {
@@ -1056,6 +1194,13 @@ struct AddTransactionView: View {
     }
 
     private func applyExtractedTransaction(_ data: ScannedTransaction) {
+        if source != .shareText, !didApplyScanPreview {
+            didApplyScanPreview = true
+            AppAnalytics.logEvent(AppAnalytics.Event.billScanPreviewShown, parameters: [
+                AppAnalytics.Param.result: AppAnalytics.Outcome.success.rawValue,
+                AppAnalytics.Param.source: source.rawValue
+            ])
+        }
         self.amount = AmountFormatter.format(data.amount)
         self.description = data.title
         // Leave merchant for on-device inference from the description (not a history lookup).
@@ -1075,18 +1220,24 @@ struct AddTransactionView: View {
 
     private func deleteTransaction() async {
         guard let transaction else { return }
+        markFormFinished()
         AppAnalytics.logButtonClick(
             AppAnalytics.Button.deleteTransaction,
             source: AppAnalytics.Screen.editTransaction
         )
         UserEngagementCoordinator.shared.beginBusyWork(.deleteTransaction)
         defer { UserEngagementCoordinator.shared.endBusyWork(.deleteTransaction) }
-        await self.transactionManager.deleteTransaction(transaction)
-        suggestionEngine.decrement(title: transaction.title)
-        if let merchantName = transaction.merchant {
-            merchantSuggestionEngine.decrement(title: merchantName)
+        let deleted = await self.transactionManager.deleteTransaction(transaction)
+        if deleted {
+            suggestionEngine.decrement(title: transaction.title)
+            if let merchantName = transaction.merchant {
+                merchantSuggestionEngine.decrement(title: merchantName)
+            }
+            AppAnalytics.logEvent(AppAnalytics.Event.transactionDeleted, parameters: [
+                AppAnalytics.Param.txnType: transaction.type.rawValue,
+                AppAnalytics.Param.source: source.rawValue
+            ])
         }
-        AppAnalytics.logEvent(AppAnalytics.Event.txnDelete)
         self.dismiss()
     }
 

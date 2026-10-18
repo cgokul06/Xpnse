@@ -14,6 +14,9 @@ final class HomeScreenViewModel: ObservableObject {
     @Published var transactionSummaryDict: [Int: TransactionSummary] = [:]
     @Published var currentKey: Int = 0
     @Published private(set) var isLoading: Bool = true
+    /// Lifetime count used only for coarse analytics buckets.
+    @Published private(set) var lifetimeTransactionCount: Int?
+    @Published private(set) var didFailToLoad = false
 
     private let transactionManager: FirebaseTransactionManager = .shared
     private let calendar = Calendar.current
@@ -43,7 +46,17 @@ final class HomeScreenViewModel: ObservableObject {
 
     func fetchCurrentMonthData() async {
         await fetchData(forKeys: [0])
+        await refreshLifetimeCount()
         self.isLoading = false
+    }
+
+    private func refreshLifetimeCount() async {
+        do {
+            lifetimeTransactionCount = try await SwiftDataTransactionRepository.shared.fetchAll().count
+        } catch {
+            didFailToLoad = true
+            AppDiagnostics.recordNonFatal(operation: .homeLoad, feature: "home", reason: .persistence, error: error)
+        }
     }
 
     // MARK: - Initial Prefetch
@@ -70,7 +83,10 @@ final class HomeScreenViewModel: ObservableObject {
             .debounce(for: .milliseconds(250), scheduler: DispatchQueue.main)
             .sink { [weak self] _ in
                 guard let self else { return }
-                Task { await self.refreshVisibleData() }
+                Task {
+                    await self.refreshVisibleData()
+                    await self.refreshLifetimeCount()
+                }
             }
             .store(in: &cancellables)
 
@@ -111,11 +127,16 @@ final class HomeScreenViewModel: ObservableObject {
                             self?.loadedKeys.insert(key)
                         case .failure(let error):
                             print("Error listening to transactions:", error)
+                            if key == 0 { self?.didFailToLoad = true }
                         }
                     }
                 }
             } catch {
                 print("❌ Failed to fetch for key \(key): \(error)")
+                if key == 0 {
+                    didFailToLoad = true
+                    AppDiagnostics.recordNonFatal(operation: .homeLoad, feature: "home", reason: .persistence, error: error)
+                }
             }
         }
     }

@@ -48,17 +48,19 @@ struct CoordinatedHomeView: View {
                 .ignoresSafeArea(.container, edges: .bottom)
                 .navigationDestination(for: HomeRoute.self) { route in
                     switch route {
-                    case .transactions:
-                        AddTransactionView(billScannerService: billScannerService)
-                    case .addTransaction(let prefill):
+                    case .transactions(let source):
+                        AddTransactionView(billScannerService: billScannerService, source: source)
+                    case .addTransaction(let prefill, let source):
                         AddTransactionView(
                             billScannerService: billScannerService,
-                            prefill: prefill
+                            prefill: prefill,
+                            source: source
                         )
                     case .editTransaction(let transaction):
                         AddTransactionView(
                             billScannerService: billScannerService,
-                            transaction: transaction
+                            transaction: transaction,
+                            source: .edit
                         )
                     case .settings:
                         Settings()
@@ -364,8 +366,9 @@ private final class HomeEducationNavigator: EducationNavigating {
     }
 
     func openAddTransaction(_ prefill: AddTransactionPrefill) {
+        let source: AppAnalytics.TxnSource = prefill.transactionType == .income ? .educationIncome : .educationExpense
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [coordinator] in
-            coordinator.push(.addTransaction(prefill: prefill))
+            coordinator.push(.addTransaction(prefill: prefill, source: source))
         }
     }
 

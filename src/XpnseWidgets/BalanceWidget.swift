@@ -13,6 +13,7 @@ struct BalanceWidgetEntry: TimelineEntry {
     let shouldHideSensitiveData: Bool
     let isPrivacyEnabled: Bool
     let isRevealActive: Bool
+    let reminderState: WidgetReminderState
 }
 
 struct BalanceWidgetProvider: TimelineProvider {
@@ -25,28 +26,79 @@ struct BalanceWidgetProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<BalanceWidgetEntry>) -> Void) {
+        let now = Date()
         let snapshot = WidgetDataStore.load() ?? .empty
-        let entry = makeEntry(date: Date(), snapshot: snapshot)
+        let activity = WidgetReminderActivityStore.load()
+        let policy = WidgetReminderPolicy.runtime
+        let calendar = Calendar.current
+        let transitions = WidgetReminderEvaluator.transitionDates(
+            activity: activity,
+            now: now,
+            policy: policy,
+            calendar: calendar
+        )
 
-        let nextUpdate: Date
-        if let expiry = WidgetPrivacyManager.revealExpiresAt {
-            nextUpdate = expiry
-        } else {
-            nextUpdate = Calendar.current.date(byAdding: .minute, value: 45, to: Date())
-                ?? Date().addingTimeInterval(2700)
+        var dates = [now]
+        dates.append(contentsOf: transitions)
+        if let expiry = WidgetPrivacyManager.revealExpiresAt, expiry > now {
+            dates.append(expiry)
         }
+        let snapshotRefresh = calendar.date(byAdding: .minute, value: 45, to: now) ?? now.addingTimeInterval(2700)
+        dates.append(snapshotRefresh)
 
-        completion(Timeline(entries: [entry], policy: .after(nextUpdate)))
+        let entries = Array(Set(dates)).sorted().map { date in
+            makeEntry(
+                date: date,
+                snapshot: snapshot,
+                activity: activity,
+                policy: policy,
+                calendar: calendar
+            )
+        }
+        let nextRefresh = [WidgetPrivacyManager.revealExpiresAt, transitions.first, snapshotRefresh]
+            .compactMap { $0 }
+            .filter { $0 > now }
+            .min() ?? snapshotRefresh
+        completion(Timeline(entries: entries, policy: .after(nextRefresh)))
     }
 
     private func makeEntry(date: Date, snapshot: WidgetMonthSnapshot) -> BalanceWidgetEntry {
-        BalanceWidgetEntry(
+        makeEntry(
             date: date,
             snapshot: snapshot,
-            shouldHideSensitiveData: WidgetPrivacyManager.shouldHideData,
-            isPrivacyEnabled: WidgetPrivacyManager.isEnabled,
-            isRevealActive: WidgetPrivacyManager.isRevealActive
+            activity: WidgetReminderActivityStore.load(),
+            policy: .runtime,
+            calendar: .current
         )
+    }
+
+    private func makeEntry(
+        date: Date,
+        snapshot: WidgetMonthSnapshot,
+        activity: WidgetReminderActivity,
+        policy: WidgetReminderPolicy,
+        calendar: Calendar
+    ) -> BalanceWidgetEntry {
+        let privacy = privacyPresentation(at: date)
+        return BalanceWidgetEntry(
+            date: date,
+            snapshot: snapshot,
+            shouldHideSensitiveData: privacy.shouldHide,
+            isPrivacyEnabled: privacy.isEnabled,
+            isRevealActive: privacy.isRevealActive,
+            reminderState: WidgetReminderEvaluator.state(
+                activity: activity,
+                now: date,
+                policy: policy,
+                calendar: calendar
+            )
+        )
+    }
+
+    private func privacyPresentation(at date: Date) -> (shouldHide: Bool, isEnabled: Bool, isRevealActive: Bool) {
+        let isEnabled = WidgetPrivacyManager.isEnabled
+        let isRevealActive = WidgetPrivacyManager.revealExpiresAt.map { date < $0 } ?? false
+        return (isEnabled && !isRevealActive, isEnabled, isRevealActive)
     }
 
     private var previewSnapshot: WidgetMonthSnapshot {
@@ -100,7 +152,22 @@ struct BalanceWidgetView: View {
         }
     }
 
+    private var showsReminder: Bool {
+        entry.reminderState != .normal
+    }
+
+    private var addExpenseURL: URL {
+        WidgetReminderLink.addExpenseURL(family: isSmall ? "systemSmall" : "systemMedium")
+    }
+
     var body: some View {
+        summary
+            .padding(0)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .widgetURL(showsReminder ? addExpenseURL : URL(string: "\(AppGroupConstants.urlScheme)://home"))
+    }
+
+    private var summary: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 8) {
                 balanceHeader
@@ -118,13 +185,24 @@ struct BalanceWidgetView: View {
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(privacyAccessibilityLabel)
 
-            Spacer(minLength: isSmall ? 6 : 10)
+            Spacer(minLength: isSmall ? 8 : 10)
 
-            bottomStatsRow
+            if showsReminder {
+                reminderMessage
+            } else {
+                bottomStatsRow
+            }
         }
-        .padding(0)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .widgetURL(URL(string: "\(AppGroupConstants.urlScheme)://home"))
+    }
+
+    private var reminderMessage: some View {
+        Text(L10n.tr("widget.reminder.message"))
+            .font(.system(size: isSmall ? 13 : 15, weight: .medium))
+            .foregroundStyle(WidgetStyle.primaryText)
+            .multilineTextAlignment(.leading)
+            .lineLimit(isSmall ? 3 : 2)
+            .minimumScaleFactor(0.8)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder
@@ -329,3 +407,34 @@ struct BalanceWidget: Widget {
         .contentMarginsDisabled()
     }
 }
+
+#if DEBUG
+private extension BalanceWidgetEntry {
+    static func preview(_ state: WidgetReminderState) -> BalanceWidgetEntry {
+        BalanceWidgetEntry(
+            date: Date(),
+            snapshot: .empty,
+            shouldHideSensitiveData: false,
+            isPrivacyEnabled: false,
+            isRevealActive: false,
+            reminderState: state
+        )
+    }
+}
+
+#Preview(as: .systemSmall) {
+    BalanceWidget()
+} timeline: {
+    BalanceWidgetEntry.preview(.normal)
+    BalanceWidgetEntry.preview(.gentleReminder)
+    BalanceWidgetEntry.preview(.overdueReminder)
+}
+
+#Preview(as: .systemMedium) {
+    BalanceWidget()
+} timeline: {
+    BalanceWidgetEntry.preview(.normal)
+    BalanceWidgetEntry.preview(.gentleReminder)
+    BalanceWidgetEntry.preview(.overdueReminder)
+}
+#endif

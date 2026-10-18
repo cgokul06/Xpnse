@@ -90,6 +90,12 @@ struct BillScannerView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button {
+                        if billScannerService.extractedTransaction == nil {
+                            AppAnalytics.logEvent(AppAnalytics.Event.billScanAbandoned, parameters: [
+                                AppAnalytics.Param.stage: AppAnalytics.ScanStage.capture.rawValue,
+                                AppAnalytics.Param.reason: billScannerService.isScanning ? "closed_while_scanning" : "closed"
+                            ])
+                        }
                         dismiss()
                     } label: {
                         Image(systemName: "xmark")
@@ -110,7 +116,7 @@ struct BillScannerView: View {
                 guard newTxn != nil else { return }
 
                 if homeCoordinator.path == [.billScanner] {
-                    homeCoordinator.path = [.transactions]
+                    homeCoordinator.path = [.transactions(source: .scan)]
                 } else {
                     dismiss()
                 }
@@ -120,7 +126,7 @@ struct BillScannerView: View {
         .onChange(of: imagePicker.uiImages) { _, images in
             if let image = images.first {
                 Task {
-                    await billScannerService.scanBill(from: image)
+                    await billScannerService.scanBill(from: image, source: scanSource)
                 }
             }
         }
@@ -134,7 +140,7 @@ struct BillScannerView: View {
         .fullScreenCover(isPresented: $showingCamera) {
             CameraPicker { image in
                 Task {
-                    await billScannerService.scanBill(from: image)
+                    await billScannerService.scanBill(from: image, source: scanSource)
                 }
             } onCancel: {}
             .ignoresSafeArea()
@@ -142,6 +148,10 @@ struct BillScannerView: View {
         .onAppear {
             AppAnalytics.logScreen(AppAnalytics.Screen.scan)
         }
+    }
+
+    private var scanSource: AppAnalytics.ScanSource {
+        homeCoordinator.path == [.billScanner] ? .home : .addForm
     }
 
     private var heroCard: some View {

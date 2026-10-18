@@ -40,6 +40,7 @@ private enum HomeBottomBarAnimation {
 struct Home: View {
     @EnvironmentObject var homeCoordinator: NavigationCoordinator<HomeRoute>
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var homeViewModel: HomeScreenViewModel = HomeScreenViewModel()
     @State private var monthDragOffset: CGFloat = 0
     @State private var monthDragAxis: MonthDragAxis?
@@ -57,6 +58,7 @@ struct Home: View {
     @State private var featureFlags = FeatureFlags.shared
     @State private var isSummaryCardOffscreen = false
     @State private var scrollToTopTick: UInt = 0
+    @State private var lastLoggedHomeState: AppAnalytics.FeatureState?
 
     private var isBottomBarVisuallyHidden: Bool {
         isTransactionSearchActive || isBottomActionBarHidden
@@ -113,6 +115,49 @@ struct Home: View {
         }
         .onAppear {
             AppAnalytics.logScreen(AppAnalytics.Screen.home)
+            logFeatureAvailability()
+            logHomeStateIfResolved()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .background:
+                lastLoggedHomeState = nil
+            case .active:
+                logHomeStateIfResolved()
+            default:
+                break
+            }
+        }
+        .onChange(of: resolvedHomeState) { _, _ in
+            logHomeStateIfResolved()
+        }
+    }
+
+    private var resolvedHomeState: AppAnalytics.FeatureState? {
+        guard !homeViewModel.isLoading else { return nil }
+        if homeViewModel.didFailToLoad { return .error }
+        guard let count = homeViewModel.lifetimeTransactionCount else { return nil }
+        return count == 0 ? .empty : .ready
+    }
+
+    private func logHomeStateIfResolved() {
+        guard let state = resolvedHomeState, state != lastLoggedHomeState else { return }
+        lastLoggedHomeState = state
+        AppAnalytics.logEvent(AppAnalytics.Event.homeStateViewed, parameters: [
+            AppAnalytics.Param.state: state.rawValue,
+            AppAnalytics.Param.txnBucket: AppAnalytics.Bucket.txnCount(homeViewModel.lifetimeTransactionCount ?? 0)
+        ])
+        AppDiagnostics.markStartupCompleted(destination: "home")
+    }
+
+    private func logFeatureAvailability() {
+        if !featureFlags.receiptScanEnabled {
+            AppAnalytics.logFeatureUnavailable(feature: "scan", reason: "remote_config_off")
+        } else if !FoundationModelsAvailability.isAvailable {
+            AppAnalytics.logFeatureUnavailable(feature: "scan", reason: "apple_intelligence_unavailable")
+        }
+        if !featureFlags.insightsEnabled {
+            AppAnalytics.logFeatureUnavailable(feature: "insights", reason: "remote_config_off")
         }
     }
 
@@ -218,7 +263,7 @@ struct Home: View {
             HStack(spacing: 12) {
                 Button {
                     AppAnalytics.logButtonClick(AppAnalytics.Button.addTransaction, source: AppAnalytics.Screen.home)
-                    self.homeCoordinator.push(.transactions)
+                    self.homeCoordinator.push(.transactions(source: .home))
                 } label: {
                     Text("home.add_transaction")
                         .font(.system(size: 20, weight: .bold))
@@ -461,9 +506,9 @@ struct Home: View {
         let canGoForward = homeViewModel.currentKey < homeViewModel.maxFuturisticRange
 
         if translation <= -swipeThreshold, canGoForward {
-            commitMonthChange(direction: 1, pageWidth: pageWidth)
+            commitMonthChange(direction: 1, pageWidth: pageWidth, navigationMethod: "swipe")
         } else if translation >= swipeThreshold {
-            commitMonthChange(direction: -1, pageWidth: pageWidth)
+            commitMonthChange(direction: -1, pageWidth: pageWidth, navigationMethod: "swipe")
         } else {
             snapMonthOffsetToZero()
         }
@@ -477,7 +522,11 @@ struct Home: View {
         }
     }
 
-    private func commitMonthChange(direction: Int, pageWidth: CGFloat) {
+    private func commitMonthChange(direction: Int, pageWidth: CGFloat, navigationMethod: String) {
+        AppAnalytics.logEvent(AppAnalytics.Event.reportPeriodChanged, parameters: [
+            AppAnalytics.Param.navigationMethod: navigationMethod,
+            AppAnalytics.Param.direction: direction > 0 ? "next" : "previous"
+        ])
         let targetOffset: CGFloat = direction > 0 ? -pageWidth : pageWidth
         let needsNeighborMount = !mountsNeighborMonthLists
         mountsNeighborMonthLists = true
@@ -557,8 +606,7 @@ struct Home: View {
         return HStack(spacing: 12) {
             Button {
                 guard canChangeMonth else { return }
-                AppAnalytics.logButtonClick(AppAnalytics.Button.monthPrevious, source: AppAnalytics.Screen.home)
-                commitMonthChange(direction: -1, pageWidth: pageWidth)
+                commitMonthChange(direction: -1, pageWidth: pageWidth, navigationMethod: "arrow")
             } label: {
                 Image(systemName: "arrowtriangle.left.fill")
                     .resizable()
@@ -590,8 +638,7 @@ struct Home: View {
 
             Button {
                 guard canChangeMonth, canGoForward else { return }
-                AppAnalytics.logButtonClick(AppAnalytics.Button.monthNext, source: AppAnalytics.Screen.home)
-                commitMonthChange(direction: 1, pageWidth: pageWidth)
+                commitMonthChange(direction: 1, pageWidth: pageWidth, navigationMethod: "arrow")
             } label: {
                 Image(systemName: "arrowtriangle.right.fill")
                     .resizable()

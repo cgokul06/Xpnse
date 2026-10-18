@@ -25,28 +25,43 @@ class BillScannerService: ObservableObject {
 
     // MARK: - Scan Methods
 
-    func scanBill(from image: UIImage) async {
+    func scanBill(from image: UIImage, source: AppAnalytics.ScanSource) async {
         isScanning = true
         errorMessage = nil
-        AppAnalytics.logEvent(AppAnalytics.Event.receiptScanStart)
+        let startedAt = Date()
+        currentScanStage = .ocr
+        AppAnalytics.logEvent(
+            AppAnalytics.Event.billScanStarted,
+            parameters: [AppAnalytics.Param.source: source.rawValue]
+        )
 
         do {
             let extractedTransaction = try await extractTransactionFromImage(image)
             self.extractedTransaction = extractedTransaction
-            AppAnalytics.logEvent(
-                AppAnalytics.Event.receiptScanResult,
-                parameters: [AppAnalytics.Param.result: "success"]
-            )
             UserSatisfactionEngine.shared.track(.receiptScanned)
         } catch {
             errorMessage = L10n.tr("scanner.extract_failed", error.localizedDescription)
-            AppAnalytics.logEvent(
-                AppAnalytics.Event.receiptScanResult,
-                parameters: [AppAnalytics.Param.result: "fail"]
-            )
+            let reason = Self.failureReason(for: error)
+            AppAnalytics.logBillScanFailed(stage: currentScanStage, reason: reason)
+            if !(error is BillScannerError) {
+                AppDiagnostics.recordNonFatal(operation: .scan, feature: "scanner", reason: reason, error: error)
+            }
         }
 
+        AppAnalytics.logIfSlow(operation: "scan", since: startedAt)
         isScanning = false
+    }
+
+    private var currentScanStage: AppAnalytics.ScanStage = .ocr
+
+    static func failureReason(for error: Error) -> AppAnalytics.FailureReason {
+        guard let scannerError = error as? BillScannerError else { return .unexpected }
+        switch scannerError {
+        case .invalidImage: return .invalidImage
+        case .noTextFound: return .noTextFound
+        case .modelUnavailable: return .unavailable
+        case .extractionFailed: return .unexpected
+        }
     }
 
     /// Analyzes shared plain text for a transaction (Share Extension → Add Transaction).
@@ -112,7 +127,7 @@ class BillScannerService: ObservableObject {
             errorMessage = error.localizedDescription
             AppAnalytics.logEvent(
                 AppAnalytics.Event.shareTextAnalyzeResult,
-                parameters: [AppAnalytics.Param.result: "fail"]
+                parameters: [AppAnalytics.Param.result: AppAnalytics.Outcome.failed.rawValue]
             )
         }
 
@@ -141,6 +156,7 @@ class BillScannerService: ObservableObject {
             throw BillScannerError.noTextFound
         }
 
+        currentScanStage = .extraction
         return try await parseTransactionWithLanguageModel(allText.joined(separator: "\n"))
     }
 

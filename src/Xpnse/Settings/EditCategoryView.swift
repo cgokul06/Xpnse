@@ -243,7 +243,10 @@ struct EditCategoryView: View {
                     colorHex: colorHex,
                     transactionType: transactionType
                 )
-                AppAnalytics.logEvent(AppAnalytics.Event.categoryAdd)
+                AppAnalytics.logEvent(
+                    AppAnalytics.Event.categoryCreated,
+                    parameters: [AppAnalytics.Param.categoryType: transactionType.rawValue]
+                )
                 onCategoryCreated?(created)
             case .edit(let existing):
                 var updated = existing
@@ -260,6 +263,9 @@ struct EditCategoryView: View {
             dismiss()
         } catch {
             formError = error.localizedDescription
+            if !(error is CategoryStoreError) {
+                AppDiagnostics.recordNonFatal(operation: .categorySave, feature: "categories", reason: .persistence, error: error)
+            }
         }
     }
 }

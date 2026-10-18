@@ -732,4 +732,55 @@ final class EducationEngineTests: XCTestCase {
         XCTAssertNil(secondEngine.currentOpportunity)
         XCTAssertEqual(secondEngine.policyState.lastJourneyOutcome, .declined)
     }
+
+    // MARK: - Outcome observer (analytics)
+
+    func testCompletedOutcomeIsReportedOnlyOnFirstTransition() {
+        let (engine, _, _, _) = makeEngine(
+            campaigns: [IncomeSetupJourney()],
+            campaignContext: incomeEligibleContext(),
+            validationContext: CompletionValidationContext(hasConfiguredIncome: true)
+        )
+        var reported: [(CampaignOutcome, String)] = []
+        engine.outcomeObserver = { reported.append(($0, $1)) }
+
+        engine.track(.appLaunched)
+        engine.applyOutcome(.completed, campaignID: IncomeSetupJourney.campaignID)
+        engine.applyOutcome(.completed, campaignID: IncomeSetupJourney.campaignID)
+
+        XCTAssertEqual(reported.count, 1)
+        XCTAssertEqual(reported.first?.0, .completed)
+        XCTAssertEqual(reported.first?.1, IncomeSetupJourney.campaignID)
+    }
+
+    func testCompletedOutcomeIsNotReportedWhenValidationFails() {
+        let (engine, _, _, _) = makeEngine(
+            campaigns: [IncomeSetupJourney()],
+            campaignContext: incomeEligibleContext(),
+            validationContext: CompletionValidationContext(hasConfiguredIncome: false)
+        )
+        var reportedCount = 0
+        engine.outcomeObserver = { _, _ in reportedCount += 1 }
+
+        engine.track(.appLaunched)
+        engine.applyOutcome(.completed, campaignID: IncomeSetupJourney.campaignID)
+
+        XCTAssertEqual(reportedCount, 0)
+    }
+
+    func testActionFailedIsReportedOnlyForActiveJourney() {
+        let (engine, _, _, _) = makeEngine(
+            campaigns: [IncomeSetupJourney()],
+            campaignContext: incomeEligibleContext()
+        )
+        var reported: [CampaignOutcome] = []
+        engine.outcomeObserver = { outcome, _ in reported.append(outcome) }
+
+        engine.track(.appLaunched)
+        engine.acceptPrimaryAction(campaignID: IncomeSetupJourney.campaignID)
+        engine.applyOutcome(.actionFailed, campaignID: IncomeSetupJourney.campaignID)
+        engine.applyOutcome(.actionFailed, campaignID: IncomeSetupJourney.campaignID)
+
+        XCTAssertEqual(reported, [.actionFailed])
+    }
 }

@@ -26,6 +26,8 @@ final class InsightsViewModel: ObservableObject {
     @Published private(set) var year: Int
     /// Ghost until analytics are ready; content appears all at once.
     @Published private(set) var phase: Phase = .loading
+    /// The last load failed and the empty state is a fallback. Analytics only; the UI is unchanged.
+    @Published private(set) var didFailToLoad = false
 
     private let transactionRepository: TransactionRepository
     private let recurringRepository: RecurringRepository
@@ -232,13 +234,17 @@ final class InsightsViewModel: ObservableObject {
             )
 
             guard !Task.isCancelled else { return }
+            didFailToLoad = false
             publish(trend: builtTrend, snapshot: builtSnapshot, narratives: .empty, revision: revision)
+            AppAnalytics.logIfSlow(operation: "insights_generate", since: now)
             let focusExpenses = expenses.filter { expense in
                 focusCycle.contains(Date(timeIntervalSince1970: expense.date))
             }
             scheduleNarratives(for: builtSnapshot, focusExpenses: focusExpenses, revision: revision)
         } catch {
             guard !Task.isCancelled else { return }
+            didFailToLoad = true
+            AppDiagnostics.recordNonFatal(operation: .insightsLoad, feature: "insights", reason: .persistence, error: error)
             if reason == .appear || !hasContent {
                 publish(trend: emptyTrend(), snapshot: nil, narratives: .empty, revision: revision)
             }

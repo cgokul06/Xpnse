@@ -2995,12 +2995,6 @@
     "discover SnapLedger." : {
 
     },
-    "Enjoying SnapLedger?" : {
-
-    },
-    "Error" : {
-
-    },
     "education.category.description" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -3406,6 +3400,12 @@
           }
         }
       }
+    },
+    "Enjoying SnapLedger?" : {
+
+    },
+    "Error" : {
+
     },
     "feedback.form_subtitle" : {
       "extractionState" : "manual",
@@ -7424,6 +7424,64 @@
     "No insights yet" : {
 
     },
+    "notification.expense_reminder.body" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hattest du kürzlich Ausgaben? Nimm dir einen Moment und trag sie in SnapLedger ein, damit deine Ausgaben aktuell bleiben."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Had any expenses recently? Take a moment to log them in SnapLedger and keep your spending records up to date."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Tuviste algún gasto recientemente? Tómate un momento para registrarlo en SnapLedger y mantener tus gastos al día."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vous avez eu des dépenses récemment ? Prenez un moment pour les noter dans SnapLedger et garder vos relevés à jour."
+          }
+        }
+      }
+    },
+    "notification.expense_reminder.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kurzer Ausgaben-Check"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A quick expense check-in"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un breve repaso de gastos"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un petit point sur vos dépenses"
+          }
+        }
+      }
+    },
     "notification.upcoming" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -8633,6 +8691,64 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Supprimer le compte"
+          }
+        }
+      }
+    },
+    "settings.expense_reminder" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ausgaben-Check"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Expense check-in"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Repaso de gastos"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Point dépenses"
+          }
+        }
+      }
+    },
+    "settings.expense_reminder.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eine leise Erinnerung um 19:00 Uhr, wenn du SnapLedger 24 Stunden nicht geöffnet hast."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A quiet reminder at 7:00 PM if you have not opened SnapLedger for 24 hours."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un recordatorio silencioso a las 19:00 si no has abierto SnapLedger durante 24 horas."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un rappel discret à 19:00 si vous n'avez pas ouvert SnapLedger depuis 24 heures."
           }
         }
       }
@@ -11147,6 +11263,35 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Masquer"
+          }
+        }
+      }
+    },
+    "widget.reminder.message" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tägliche Ausgaben eintragen und dranbleiben."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add your daily expenses to keep tracking."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Añade tus gastos diarios para seguir el control."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajoutez vos dépenses du jour pour continuer le suivi."
           }
         }
       }

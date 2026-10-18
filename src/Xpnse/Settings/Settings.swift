@@ -27,7 +27,10 @@ struct Settings: View {
     @State private var appLock = AppLockController.shared
     @State private var isTogglingAppLock = false
     @State private var highlightAppLock = false
+    /// `deep_link` when Settings was opened by the App Lock promo or `snapledger://settings/app-lock`.
+    @State private var appLockEntrySource = "settings"
     @State private var widgetPrivacyEnabled = WidgetPrivacyManager.isEnabled
+    @State private var expenseReminderEnabled = ExpenseReminderScheduler.shared.isEnabled
     @State private var numberFormatPreference = NumberFormatPreference.current
     @ObservedObject private var monthlyCycleStore = MonthlyCycleStore.shared
 
@@ -60,8 +63,12 @@ struct Settings: View {
         .onAppear {
             AppAnalytics.logScreen(AppAnalytics.Screen.settings)
             numberFormatPreference = NumberFormatPreference.current
+            if !featureFlags.exportImportEnabled {
+                AppAnalytics.logFeatureUnavailable(feature: "export_import", reason: "remote_config_off")
+            }
         }
         .onReceive(NotificationCenter.default.publisher(for: .focusAppLockSettings)) { _ in
+            appLockEntrySource = "deep_link"
             highlightAppLock = true
             Task {
                 try? await Task.sleep(for: .seconds(1.5))
@@ -120,6 +127,7 @@ struct Settings: View {
                 Task { @MainActor in
                     isWorking = true
                     UserEngagementCoordinator.shared.beginBusyWork(.importExport)
+                    let startedAt = Date()
                     do {
                         let didAccess = fileURL.startAccessingSecurityScopedResource()
                         defer {
@@ -128,31 +136,31 @@ struct Settings: View {
                             }
                         }
                         let content = try String(contentsOf: fileURL, encoding: .utf8)
-                        try await exportService.importAllData(content)
+                        let recordCount = try await exportService.importAllData(content)
                         selectedCurrency = CurrencyManager.shared.selectedCurrency.code
                         importResultText = L10n.tr("settings.import_success")
-                        AppAnalytics.logEvent(
-                            AppAnalytics.Event.importBackup,
-                            parameters: [AppAnalytics.Param.result: "success"]
-                        )
+                        AppAnalytics.logEvent(AppAnalytics.Event.dataImportCompleted, parameters: [
+                            AppAnalytics.Param.result: AppAnalytics.Outcome.success.rawValue,
+                            AppAnalytics.Param.recordCountBucket: AppAnalytics.Bucket.recordCount(recordCount)
+                        ])
+                        AnalyticsUserProperties.refresh()
                     } catch {
                         importResultText = L10n.tr("settings.import_failed", error.localizedDescription)
-                        AppAnalytics.logEvent(
-                            AppAnalytics.Event.importBackup,
-                            parameters: [AppAnalytics.Param.result: "fail"]
-                        )
+                        let reason = ExportImportService.failureReason(for: error)
+                        logImportFailed(reason)
+                        if reason == .unexpected {
+                            AppDiagnostics.recordNonFatal(operation: .import, feature: "import_export", reason: reason, error: error)
+                        }
                         UserSatisfactionEngine.shared.track(.criticalErrorOccurred)
                     }
+                    AppAnalytics.logIfSlow(operation: "import", since: startedAt)
                     UserEngagementCoordinator.shared.endBusyWork(.importExport)
                     isWorking = false
                     showImportResult = true
                 }
             case .failure(let error):
                 importResultText = L10n.tr("settings.import_failed", error.localizedDescription)
-                AppAnalytics.logEvent(
-                    AppAnalytics.Event.importBackup,
-                    parameters: [AppAnalytics.Param.result: "fail"]
-                )
+                logImportFailed(.permissionDenied)
                 showImportResult = true
             }
         }
@@ -168,7 +176,16 @@ struct Settings: View {
                     AppAnalytics.logEvent(AppAnalytics.Event.clearDataConfirm)
                     isWorking = true
                     UserEngagementCoordinator.shared.beginBusyWork(.settingsCriticalFlow)
-                    await FirebaseTransactionManager.shared.clearAll()
+                    if await FirebaseTransactionManager.shared.clearAll() {
+                        AppAnalytics.logEvent(AppAnalytics.Event.localDataClearCompleted, parameters: [
+                            AppAnalytics.Param.source: AppAnalytics.Screen.settings,
+                            AppAnalytics.Param.result: AppAnalytics.Outcome.success.rawValue
+                        ])
+                    } else {
+                        AppAnalytics.logEvent(AppAnalytics.Event.localDataClearFailed, parameters: [
+                            AppAnalytics.Param.failureReason: AppAnalytics.FailureReason.persistence.rawValue
+                        ])
+                    }
                     UserEngagementCoordinator.shared.endBusyWork(.settingsCriticalFlow)
                     isWorking = false
                 }
@@ -289,6 +306,34 @@ struct Settings: View {
 
     private var transactionsSection: some View {
         Section {
+            Toggle(isOn: Binding(
+                get: { expenseReminderEnabled },
+                set: { newValue in
+                    expenseReminderEnabled = newValue
+                    AppAnalytics.logEvent(
+                        AppAnalytics.Event.checkInPreferenceChanged,
+                        parameters: [AppAnalytics.Param.enabled: AppAnalytics.flag(newValue)]
+                    )
+                    Task {
+                        await ExpenseReminderScheduler.shared.setEnabled(newValue)
+                        AnalyticsUserProperties.refresh()
+                    }
+                }
+            )) {
+                settingsLabel(
+                    titleKey: "settings.expense_reminder",
+                    systemImage: "bell",
+                    subtitleKey: "settings.expense_reminder.subtitle"
+                )
+            }
+            .accessibilityHint(Text("settings.expense_reminder.subtitle"))
+            #if DEBUG
+            Text("Debug timing: notification 30 minutes after you leave. Widget version 1 at 30 minutes, version 2 at 1 hour.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            #endif
+
             NavigationLink {
                 RecurringTransactionsView()
                     .onAppear {
@@ -547,9 +592,17 @@ struct Settings: View {
         let success = await appLock.setEnabled(enabled)
         guard success else { return }
         AppAnalytics.logEvent(
-            enabled ? AppAnalytics.Event.appLockEnabled : AppAnalytics.Event.appLockDisabled
+            enabled ? AppAnalytics.Event.appLockEnabled : AppAnalytics.Event.appLockDisabled,
+            parameters: [AppAnalytics.Param.source: appLockEntrySource]
         )
-        AppAnalytics.logFeatureExposure(featureKey: "app_lock", enabled: enabled)
+        AnalyticsUserProperties.refresh()
+    }
+
+    private func logImportFailed(_ reason: AppAnalytics.FailureReason) {
+        AppAnalytics.logEvent(
+            AppAnalytics.Event.dataImportFailed,
+            parameters: [AppAnalytics.Param.failureReason: reason.rawValue]
+        )
     }
 
     private func setWidgetPrivacyEnabled(_ enabled: Bool) {
@@ -559,7 +612,10 @@ struct Settings: View {
     }
 
     private func startExport() {
+        let format = [AppAnalytics.Param.format: "json"]
+        AppAnalytics.logEvent(AppAnalytics.Event.exportStarted, parameters: format)
         Task {
+            let startedAt = Date()
             do {
                 isWorking = true
                 UserEngagementCoordinator.shared.beginBusyWork(.importExport)
@@ -569,20 +625,18 @@ struct Settings: View {
                 showExporter = true
                 UserEngagementCoordinator.shared.endBusyWork(.importExport)
                 isWorking = false
-                AppAnalytics.logEvent(
-                    AppAnalytics.Event.exportBackup,
-                    parameters: [AppAnalytics.Param.result: "success"]
-                )
+                AppAnalytics.logEvent(AppAnalytics.Event.exportCompleted, parameters: format)
             } catch {
                 UserEngagementCoordinator.shared.endBusyWork(.importExport)
                 isWorking = false
                 importResultText = L10n.tr("settings.export_failed", error.localizedDescription)
                 showImportResult = true
-                AppAnalytics.logEvent(
-                    AppAnalytics.Event.exportBackup,
-                    parameters: [AppAnalytics.Param.result: "fail"]
-                )
+                var parameters = format
+                parameters[AppAnalytics.Param.failureReason] = AppAnalytics.FailureReason.persistence.rawValue
+                AppAnalytics.logEvent(AppAnalytics.Event.exportFailed, parameters: parameters)
+                AppDiagnostics.recordNonFatal(operation: .export, feature: "import_export", reason: .persistence, error: error)
             }
+            AppAnalytics.logIfSlow(operation: "export", since: startedAt)
         }
     }
 }

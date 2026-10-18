@@ -138,7 +138,12 @@ struct RecurringTransactionsView: View {
                         Button {
                             AppAnalytics.logButtonClick(AppAnalytics.Button.pauseRecurring, source: AppAnalytics.Screen.recurring)
                             Task {
-                                await transactionManager.cancelRecurringTransaction(id: item.id)
+                                if await transactionManager.cancelRecurringTransaction(id: item.id) {
+                                    AppAnalytics.logEvent(
+                                        AppAnalytics.Event.recurringTransactionPaused,
+                                        parameters: [AppAnalytics.Param.source: "recurring_list"]
+                                    )
+                                }
                                 await reload()
                             }
                         } label: {
@@ -195,6 +200,7 @@ struct EditRecurringTransactionView: View {
     @State private var remindRecurring: Bool
     @State private var reminderDateTime: Date
     @State private var showReminderPermissionAlert: Bool = false
+    @State private var didLogSetupStarted = false
     @State private var merchantSuggestionEngine = SuggestionEngine(
         storeFileName: SuggestionEngine.merchantStoreFileName
     )
@@ -470,6 +476,13 @@ struct EditRecurringTransactionView: View {
             .onAppear {
                 AppAnalytics.logScreen(AppAnalytics.Screen.editRecurring)
                 merchantSuggestionEngine.load()
+                if isCreating, !didLogSetupStarted {
+                    didLogSetupStarted = true
+                    AppAnalytics.logEvent(AppAnalytics.Event.recurringSetupStarted, parameters: [
+                        AppAnalytics.Param.txnType: transactionType.rawValue,
+                        AppAnalytics.Param.source: AppAnalytics.TxnSource.insightsSuggestion.rawValue
+                    ])
+                }
             }
             .task {
                 await categoryStore.load()
@@ -523,7 +536,17 @@ struct EditRecurringTransactionView: View {
                 notificationScheduledForOccurrenceDate: nil,
                 metadata: original.metadata
             )
-            await transactionManager.createRecurringTransaction(created)
+            if await transactionManager.createRecurringTransaction(created) {
+                AppAnalytics.logTransactionSaved(
+                    type: transactionType,
+                    source: .insightsSuggestion,
+                    mode: .recurringCreate,
+                    recurring: true,
+                    reminder: remindRecurring
+                )
+            } else {
+                AppAnalytics.logTransactionSaveFailed(type: transactionType, source: .insightsSuggestion, reason: .persistence)
+            }
             if let sourceTransactionId {
                 await transactionManager.linkTransaction(
                     id: sourceTransactionId,
@@ -556,13 +579,31 @@ struct EditRecurringTransactionView: View {
                 notificationScheduledForOccurrenceDate: nil,
                 metadata: original.metadata
             )
-            await transactionManager.updateRecurringTransaction(updated)
+            if await transactionManager.updateRecurringTransaction(updated),
+               let parameters = AppAnalytics.recurringScheduleChangeParameters(
+                   scheduleChangeTypes(from: original, to: updated)
+               ) {
+                AppAnalytics.logEvent(AppAnalytics.Event.recurringScheduleChanged, parameters: parameters)
+            }
         }
 
         await MainActor.run {
             onSaved()
             dismiss()
         }
+    }
+
+    private func scheduleChangeTypes(
+        from original: RecurringTransaction,
+        to updated: RecurringTransaction,
+        calendar: Calendar = .current
+    ) -> [String] {
+        var changes: [String] = []
+        if original.recurrence != updated.recurrence { changes.append("frequency") }
+        if !calendar.isDate(original.startDate, inSameDayAs: updated.startDate) { changes.append("start_date") }
+        if !sameOptionalDay(original.endDate, updated.endDate, calendar: calendar) { changes.append("end_date") }
+        if original.notificationReminderEnabled != updated.notificationReminderEnabled { changes.append("reminder") }
+        return changes
     }
 
     /// Avoid resetting `nextOccurrence` to the series start on every edit — that caused

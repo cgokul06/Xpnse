@@ -132,6 +132,8 @@ struct TransactionListView: View {
     @State private var searchText = ""
     @State private var debouncedSearchQuery = ""
     @State private var searchDebounceTask: Task<Void, Never>?
+    @State private var didLogSearchUsed = false
+    @State private var lastSearchMatched: Bool?
     @FocusState private var isSearchFieldFocused: Bool
     @State private var upcomingItems: [UpcomingRecurringItem] = []
     @State private var selectedRecurringForEdit: RecurringTransaction?
@@ -429,6 +431,7 @@ struct TransactionListView: View {
             guard !Task.isCancelled else { return }
             await MainActor.run {
                 debouncedSearchQuery = text
+                noteSearchQueryApplied()
             }
         }
     }
@@ -456,6 +459,32 @@ struct TransactionListView: View {
         searchText = ""
         debouncedSearchQuery = ""
         isSearchFieldFocused = false
+        endSearchAnalyticsSession()
+    }
+
+    /// The query itself is never logged; only whether a session ran and whether it matched.
+    private func noteSearchQueryApplied() {
+        guard isSearchActive else { return }
+        if !didLogSearchUsed {
+            didLogSearchUsed = true
+            AppAnalytics.logEvent(
+                AppAnalytics.Event.transactionSearchUsed,
+                parameters: [AppAnalytics.Param.entryPoint: AppAnalytics.Screen.home]
+            )
+        }
+        lastSearchMatched = !filteredSearchResults.isEmpty
+    }
+
+    private func endSearchAnalyticsSession() {
+        defer {
+            didLogSearchUsed = false
+            lastSearchMatched = nil
+        }
+        guard let lastSearchMatched else { return }
+        AppAnalytics.logEvent(
+            AppAnalytics.Event.transactionSearchResult,
+            parameters: [AppAnalytics.Param.result: lastSearchMatched ? "match" : "no_match"]
+        )
     }
 
     private func resignSearchKeyboard() {

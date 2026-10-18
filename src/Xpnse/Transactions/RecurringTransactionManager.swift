@@ -1,7 +1,8 @@
 import Foundation
 
 protocol TransactionSink {
-    func addTransaction(_ transaction: Transaction) async
+    @discardableResult
+    func addTransaction(_ transaction: Transaction) async -> Bool
     func hasMaterializedRecurringOccurrence(seriesId: String, occurrenceEpoch: TimeInterval) async -> Bool
 }
 
@@ -26,19 +27,33 @@ final class RecurringTransactionManager {
 
     /// Creates and stores a new recurring transaction asynchronously.
     /// - Parameter item: The recurring transaction to create.
-    func create(_ item: RecurringTransaction) async {
+    @discardableResult
+    func create(_ item: RecurringTransaction) async -> Bool {
         items.append(item)
-        try? await repository.upsert(item)
+        do {
+            try await repository.upsert(item)
+            return true
+        } catch {
+            AppDiagnostics.recordNonFatal(operation: .recurringCreate, feature: "recurring", reason: .persistence, error: error)
+            return false
+        }
     }
 
     /// Updates an existing recurring transaction asynchronously by matching id.
     /// - Parameter item: The updated recurring transaction.
-    func update(_ item: RecurringTransaction) async {
+    @discardableResult
+    func update(_ item: RecurringTransaction) async -> Bool {
         guard let index = items.firstIndex(where: { $0.id == item.id }) else {
-            return
+            return false
         }
         items[index] = item
-        try? await repository.upsert(item)
+        do {
+            try await repository.upsert(item)
+            return true
+        } catch {
+            AppDiagnostics.recordNonFatal(operation: .recurringUpdate, feature: "recurring", reason: .persistence, error: error)
+            return false
+        }
     }
 
     /// Deletes a recurring transaction asynchronously by its identifier.
@@ -194,14 +209,21 @@ final class RecurringTransactionManager {
         }
     }
 
-    func cancel(id: UUID, at date: Date = Date()) async {
+    @discardableResult
+    func cancel(id: UUID, at date: Date = Date()) async -> Bool {
         _ = date
         await self.load()
-        guard let index = items.firstIndex(where: { $0.id == id }) else { return }
+        guard let index = items.firstIndex(where: { $0.id == id }) else { return false }
         items[index].state = .paused
         items[index].nextOccurrence = nil
         items[index].notificationScheduledForOccurrenceDate = nil
-        try? await repository.upsert(items[index])
+        do {
+            try await repository.upsert(items[index])
+            return true
+        } catch {
+            AppDiagnostics.recordNonFatal(operation: .recurringPause, feature: "recurring", reason: .persistence, error: error)
+            return false
+        }
     }
 
     func skipNextOccurrence(id: UUID, calendar: Calendar = .current) async {

@@ -65,7 +65,9 @@ struct ExportImportService {
         return String(data: data, encoding: .utf8) ?? "{}"
     }
 
-    func importAllData(_ text: String) async throws {
+    /// Returns the number of transactions and recurring rules in the backup.
+    @discardableResult
+    func importAllData(_ text: String) async throws -> Int {
         guard let data = text.data(using: .utf8) else {
             throw ExportImportError.invalidBackup
         }
@@ -104,6 +106,18 @@ struct ExportImportService {
             await MainActor.run {
                 UserSatisfactionEngine.shared.reconcileLifetimeTransactionCount(transactions.count)
             }
+        }
+        return payload.transactions.count + payload.recurringTransactions.count
+    }
+
+    static func failureReason(for error: Error) -> AppAnalytics.FailureReason {
+        switch error {
+        case ExportImportError.invalidBackup, ExportImportError.unsupportedSchemaVersion:
+            return .unsupportedFormat
+        case is DecodingError:
+            return .unsupportedFormat
+        default:
+            return .unexpected
         }
     }
 

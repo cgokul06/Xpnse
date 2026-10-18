@@ -7,17 +7,23 @@ import Foundation
 
 /// Runtime orchestrator and scheduler for the education framework.
 final class EducationEngine: @unchecked Sendable {
-    static let shared = EducationEngine(
-        registry: EducationCampaignRegistry(campaigns: [
-            IncomeSetupJourney(),
-            RecurringReminderJourney(),
-            ExpenseSetupJourney(),
-            CustomCategoryJourney()
-        ]),
-        store: UserDefaultsEducationCampaignStateStore(),
-        contextProvider: AppEducationEvaluationContextProvider.shared,
-        policyStore: UserDefaultsEducationPolicyStateStore()
-    )
+    static let shared: EducationEngine = {
+        let engine = EducationEngine(
+            registry: EducationCampaignRegistry(campaigns: [
+                IncomeSetupJourney(),
+                RecurringReminderJourney(),
+                ExpenseSetupJourney(),
+                CustomCategoryJourney()
+            ]),
+            store: UserDefaultsEducationCampaignStateStore(),
+            contextProvider: AppEducationEvaluationContextProvider.shared,
+            policyStore: UserDefaultsEducationPolicyStateStore()
+        )
+        engine.outcomeObserver = { outcome, campaignID in
+            EducationAnalytics.outcomeApplied(outcome, campaignID: campaignID)
+        }
+        return engine
+    }()
 
     private let registry: EducationCampaignRegistry
     private let store: EducationCampaignStateStore
@@ -34,6 +40,8 @@ final class EducationEngine: @unchecked Sendable {
     private var currentOpportunityValue: EducationOpportunity?
     private var lastEvent: EducationEvent = .appLaunched
     private var opportunityContinuations: [UUID: AsyncStream<EducationOpportunity?>.Continuation] = [:]
+    /// Receives outcomes that changed journey state (see `applyOutcomeLocked`). Set on `shared` only.
+    var outcomeObserver: ((CampaignOutcome, String) -> Void)?
 
     init(
         registry: EducationCampaignRegistry,
@@ -190,23 +198,30 @@ final class EducationEngine: @unchecked Sendable {
     }
 
     func applyOutcome(_ outcome: CampaignOutcome, campaignID: String) {
+        var shouldReport = false
         let yields = withLockReturningYields { continuations, yields in
-            applyOutcomeLocked(outcome, campaignID: campaignID, yields: &yields)
+            shouldReport = applyOutcomeLocked(outcome, campaignID: campaignID, yields: &yields)
             return continuations
         }
         flush(yields)
+        if shouldReport {
+            outcomeObserver?(outcome, campaignID)
+        }
     }
 
     // MARK: - Locked work
 
+    /// Returns true when the outcome should be reported to analytics: a first real completion,
+    /// or an action failure for the journey the user was actively working through.
+    @discardableResult
     private func applyOutcomeLocked(
         _ outcome: CampaignOutcome,
         campaignID: String,
         yields: inout [EducationOpportunity?]
-    ) {
+    ) -> Bool {
         guard let campaign = registry.campaign(id: campaignID) else {
             logger.log("Outcome ignored for unknown campaign: \(campaignID)")
-            return
+            return false
         }
 
         let snapshot = contextProvider.snapshot(for: lastEvent, at: clock.now())
@@ -217,12 +232,21 @@ final class EducationEngine: @unchecked Sendable {
             at: clock.now(),
             validationContext: snapshot.validationContext
         )
+        let shouldReport: Bool
+        switch outcome {
+        case .completed:
+            shouldReport = previousState.status != .completed && updatedState.status == .completed
+        case .actionFailed:
+            shouldReport = runtimeStateValue.activeJourneyID == campaignID
+        case .declined, .dismissed:
+            shouldReport = false
+        }
 
         if updatedState == previousState {
             if case .completed = outcome {
                 logger.log("Completion validation failed for campaign: \(campaignID)")
                 logger.log("Journey Completed: \(campaignID) rejected")
-                return
+                return false
             }
             logger.log("Outcome applied for campaign \(campaignID): \(outcome.debugDescription)")
         } else {
@@ -239,7 +263,7 @@ final class EducationEngine: @unchecked Sendable {
         let isActiveJourney = runtimeStateValue.activeJourneyID == campaignID
         guard isActiveJourney || runtimeStateValue.isIdle else {
             logger.log("Evaluation skipped publish: runtime \(runtimeStateValue.debugDescription)")
-            return
+            return shouldReport
         }
 
         policyStateValue = policyEngine.endingSession(
@@ -256,6 +280,7 @@ final class EducationEngine: @unchecked Sendable {
 
         endActiveJourneyLocked(yields: &yields)
         evaluateJourneysLocked(triggerEvent: lastEvent, yields: &yields)
+        return shouldReport
     }
 
     private func evaluateJourneysLocked(

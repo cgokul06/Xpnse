@@ -140,9 +140,39 @@ final class AppLockController {
             if success {
                 markUnlocked()
             }
+            logAuthResult(success ? .success : .failed, operation: "unlock")
             return success
         } catch {
+            logAuthResult(Self.authOutcome(for: error), operation: "unlock")
             return false
+        }
+    }
+
+    /// Method is the authentication path that ran, never biometric data.
+    private var lastAuthMethod = "passcode"
+
+    private func logAuthResult(_ outcome: AppAnalytics.Outcome, operation: String) {
+        AppAnalytics.logEvent(AppAnalytics.Event.appLockAuthResult, parameters: [
+            AppAnalytics.Param.result: outcome.rawValue,
+            AppAnalytics.Param.method: lastAuthMethod,
+            AppAnalytics.Param.operation: operation
+        ])
+    }
+
+    private static func authOutcome(for error: Error) -> AppAnalytics.Outcome {
+        guard let laError = error as? LAError else { return .failed }
+        switch laError.code {
+        case .userCancel, .appCancel, .systemCancel: return .cancelled
+        default: return .failed
+        }
+    }
+
+    private static func methodName(for context: LAContext) -> String {
+        switch context.biometryType {
+        case .faceID: return "face_id"
+        case .touchID: return "touch_id"
+        case .opticID: return "optic_id"
+        default: return "passcode"
         }
     }
 
@@ -157,8 +187,10 @@ final class AppLockController {
         isAuthenticating = true
         defer { isAuthenticating = false }
 
+        let operation = enabled ? "enable" : "disable"
         do {
             let success = try await authenticateWithBiometricsThenPasscode(reason: reason)
+            logAuthResult(success ? .success : .failed, operation: operation)
             guard success else { return false }
 
             isEnabled = enabled
@@ -173,6 +205,7 @@ final class AppLockController {
             }
             return true
         } catch {
+            logAuthResult(Self.authOutcome(for: error), operation: operation)
             return false
         }
     }
@@ -214,6 +247,7 @@ final class AppLockController {
         guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {
             throw error ?? LAError(.authenticationFailed)
         }
+        lastAuthMethod = Self.methodName(for: context)
         return try await context.evaluatePolicy(
             .deviceOwnerAuthentication,
             localizedReason: reason
@@ -236,6 +270,7 @@ final class AppLockController {
         }
 
         let context = makeAuthContext()
+        lastAuthMethod = "passcode"
         return try await withCheckedThrowingContinuation { continuation in
             context.evaluateAccessControl(
                 accessControl,

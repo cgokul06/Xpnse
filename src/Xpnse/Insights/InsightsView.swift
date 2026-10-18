@@ -8,6 +8,7 @@ import SwiftUI
 struct InsightsView: View {
     @StateObject private var viewModel = InsightsViewModel()
     @State private var createRecurringSuggestion: InsightsPotentialRecurring?
+    @State private var loggedViewStates: Set<AppAnalytics.FeatureState> = []
 
     var body: some View {
         ZStack {
@@ -35,6 +36,12 @@ struct InsightsView: View {
             AppAnalytics.logScreen(AppAnalytics.Screen.insights)
             viewModel.onAppear()
         }
+        .onChange(of: viewModel.phase, initial: true) { _, _ in
+            logViewedIfResolved()
+        }
+        .onChange(of: viewModel.didFailToLoad) { _, _ in
+            logViewedIfResolved()
+        }
         .onDisappear {
             viewModel.onDisappear()
         }
@@ -43,6 +50,33 @@ struct InsightsView: View {
                 viewModel.onAppear()
             }
         }
+    }
+
+    /// Once per distinct rendered state per visit; redraws and refreshes into the same state are ignored.
+    private func logViewedIfResolved() {
+        guard let state = Self.viewedState(phase: viewModel.phase, didFailToLoad: viewModel.didFailToLoad),
+              loggedViewStates.insert(state).inserted else { return }
+        var parameters = [AppAnalytics.Param.state: state.rawValue]
+        if state == .error {
+            parameters[AppAnalytics.Param.failureReason] = AppAnalytics.FailureReason.persistence.rawValue
+        }
+        AppAnalytics.logEvent(AppAnalytics.Event.insightsViewed, parameters: parameters)
+    }
+
+    /// A failed refresh that keeps earlier content on screen is still `ready`; the failure is what the
+    /// user sees only when the fallback empty state replaces it.
+    static func viewedState(phase: InsightsViewModel.Phase, didFailToLoad: Bool) -> AppAnalytics.FeatureState? {
+        switch phase {
+        case .loading: return nil
+        case .ready: return .ready
+        case .empty: return didFailToLoad ? .error : .empty
+        }
+    }
+
+    private func logInsightAction(_ actionType: String) {
+        AppAnalytics.logEvent(AppAnalytics.Event.insightActionSelected, parameters: [
+            AppAnalytics.Param.actionType: actionType
+        ])
     }
 
     private var insightsContent: some View {
@@ -99,8 +133,14 @@ struct InsightsView: View {
                         InsightPotentialRecurringCard(
                             items: snapshot.potentialRecurring,
                             currencyCode: CurrencyManager.shared.selectedCurrency.code,
-                            onMakeRecurring: { createRecurringSuggestion = $0 },
-                            onMarkNotRecurring: { viewModel.dismissPotentialRecurring($0) }
+                            onMakeRecurring: {
+                                logInsightAction("make_recurring")
+                                createRecurringSuggestion = $0
+                            },
+                            onMarkNotRecurring: {
+                                logInsightAction("not_recurring")
+                                viewModel.dismissPotentialRecurring($0)
+                            }
                         )
                     }
 

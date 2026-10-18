@@ -23,7 +23,7 @@ final class RecurringReminderScheduler: NSObject {
     }
 
     func configureNotificationCenterDelegate() {
-        UNUserNotificationCenter.current().delegate = self
+        AppNotificationCenterDelegate.shared.configure()
     }
 
     func authorizationStatus() async -> UNAuthorizationStatus {
@@ -34,6 +34,7 @@ final class RecurringReminderScheduler: NSObject {
         }
     }
 
+    /// Standard system prompt. Never includes `.provisional`, which grants permission without showing the alert.
     func requestAuthorization() async -> Bool {
         do {
             return try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
@@ -42,19 +43,44 @@ final class RecurringReminderScheduler: NSObject {
         }
     }
 
-    /// Call once when the user turns **Remind me** on. Requests the system prompt only if status is `.notDetermined`.
+    /// Call once when the user turns **Remind me** on, and again when a recurring transaction is created.
+    /// Requests the standard system prompt when status is `.notDetermined`, and requests that same
+    /// prompt again when status is only `.provisional`. Provisional authorization never counts as the prompt.
     /// - Returns: `true` if notifications are allowed for scheduling; `false` if the user should be pointed to Settings.
     func validateWhenTurningRemindMeOn() async -> Bool {
         let status = await authorizationStatus()
         switch status {
-        case .authorized, .provisional, .ephemeral:
+        case .authorized, .ephemeral:
             return true
-        case .notDetermined:
+        case .notDetermined, .provisional:
             return await requestAuthorization()
         case .denied:
             return false
         @unknown default:
             return false
+        }
+    }
+
+    /// Shows the system notification permission alert when the app only has provisional authorization.
+    /// Creating a recurring transaction calls this so the quiet provisional grant does not skip the prompt.
+    func requestExplicitAuthorizationIfProvisional() async {
+        let status = await authorizationStatus()
+        guard status == .provisional else { return }
+        _ = await requestAuthorization()
+    }
+
+    func handleNotificationResponse(userInfo: [AnyHashable: Any]) {
+        guard let idString = userInfo["recurringId"] as? String,
+              let id = UUID(uuidString: idString),
+              let timestamp = (userInfo["occurrenceDate"] as? NSNumber)?.doubleValue else {
+            return
+        }
+        let occurrenceStart = Date(timeIntervalSince1970: timestamp)
+        Task { @MainActor in
+            await self.scheduleNextAfterNotificationDelivery(
+                recurringId: id,
+                afterOccurrenceStart: occurrenceStart
+            )
         }
     }
 
@@ -269,32 +295,5 @@ final class RecurringReminderScheduler: NSObject {
         } catch {
             // ignore scheduling errors
         }
-    }
-}
-
-extension RecurringReminderScheduler: UNUserNotificationCenterDelegate {
-    nonisolated func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        willPresent notification: UNNotification,
-        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
-    ) {
-        completionHandler([.banner, .sound])
-    }
-
-    nonisolated func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse,
-        withCompletionHandler completionHandler: @escaping () -> Void
-    ) {
-        let userInfo = response.notification.request.content.userInfo
-        if let idString = userInfo["recurringId"] as? String,
-           let id = UUID(uuidString: idString),
-           let timestamp = (userInfo["occurrenceDate"] as? NSNumber)?.doubleValue {
-            let occurrenceStart = Date(timeIntervalSince1970: timestamp)
-            Task { @MainActor in
-                await self.scheduleNextAfterNotificationDelivery(recurringId: id, afterOccurrenceStart: occurrenceStart)
-            }
-        }
-        completionHandler()
     }
 }

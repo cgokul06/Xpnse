@@ -11,7 +11,7 @@ Priority is lower-int-first (Income wins over everything else).
 | Priority | Journey | When it shows | Primary action |
 |---|---|---|---|
 | 0 | **Income Setup** | No transactions, no configured income, no active recurring income | Opens Add Transaction as income with recurring on |
-| 4 | **Recurring reminder** | User taps Save on **Add Transaction** for an **expense or savings** recurring item with **Remind me** off, and notification permission is still **not determined**. Does **not** show for income. | Dismisses the sheet, asks for notification permission, then if allowed turns on Remind me with the default time, saves, and dismisses Add Transaction |
+| 4 | **Recurring reminder** | User taps Save on **Add Transaction** for an **expense or savings** recurring item with **Remind me** off, and notification permission is **not determined** or **provisional**. Does **not** show for income. | Dismisses the sheet, asks for full notification permission (upgrading provisional when needed), then if allowed turns on Remind me with the default time, saves, and dismisses Add Transaction |
 | 5 | **Expense Setup** | After Income Setup is completed **or** declined/swiped, and the user still has **no expenses** | Opens Add Transaction as expense |
 | 10 | **Custom Category** | At least 3 transactions and no custom categories | Pushes Settings → Categories and opens the new-category modal |
 
@@ -31,10 +31,10 @@ Priority is lower-int-first (Income wins over everything else).
 
 - Shows on **Add Transaction** when the user taps Save for an **expense or savings** recurring item with **Remind me** off, **before** the item is saved. Does not wait until Home.
 - Does **not** show after an income recurring save.
-- **Yes** dismisses the sheet, then asks for system notification permission. If allowed, turns on **Remind me** with the default time (9 PM the day before), saves the recurring item, and dismisses Add Transaction.
-- If permission is denied, or the user taps **Not Now** / swipes the sheet, the recurring item is saved without Remind me and Add Transaction dismisses.
+- **Yes** dismisses the sheet, then asks for full system notification permission. If the app only has provisional authorization, this is the upgrade prompt. If allowed, turns on **Remind me** with the default time (9 PM the day before), saves the recurring item, and dismisses Add Transaction.
+- If permission is denied, or the user taps **Not Now** / swipes the sheet, the recurring item is saved without Remind me and Add Transaction dismisses. If authorization is still only provisional, saving the recurring item also requests the standard system notification prompt, because the earlier provisional grant does not show that prompt.
 - Does **not** show if notify was already on (the form already requested permission).
-- Does **not** show if OS notification permission is already granted or denied.
+- Does **not** show if OS notification permission is already fully granted (authorized or ephemeral) or denied. It still shows when authorization is provisional, so the user can upgrade to full alerts.
 - After **Not Now**, never shows again. After a swipe, does not show again this session.
 - The engine never publishes this journey on its own (`presentsAutomatically == false`). Add Transaction starts it with `beginHostedPresentation`, so recurring items created elsewhere (for example, Settings → Recurring) never show it, and it never appears on Home.
 - Does not interrupt another journey that is already in progress (for example, when Add Transaction was opened from the expense sheet).

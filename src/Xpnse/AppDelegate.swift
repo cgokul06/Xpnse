@@ -12,8 +12,10 @@ import FirebaseCore
 class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
+        AppDiagnostics.markLaunchStarted()
         FirebaseApp.configure()
         AnonymousIdentity.bootstrap()
+        TransactionFormAbandonment.resolveAtLaunch()
         RecurringReminderScheduler.shared.configureNotificationCenterDelegate()
         Task { @MainActor in
             UserSatisfactionEngine.shared.track(.appLaunched)

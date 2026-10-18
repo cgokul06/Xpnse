@@ -66,6 +66,15 @@ struct CurrencySelectionView: View {
                         if let selected = CurrencyManager.shared.currency(for: selectedCurrencyCode) {
                             CurrencyManager.shared.selectedCurrency = selected
                         }
+                        let isSelectionPersisted = CurrencyManager.shared.hasStoredSelection
+                            && UserDefaultsHelper.shared.string(forKey: .selectedCurrencyCode) == selectedCurrencyCode
+                        if isSelectionPersisted, !UserDefaultsHelper.shared.bool(forKey: .analyticsSetupCompletedLogged) {
+                            UserDefaultsHelper.shared.set(true, forKey: .analyticsSetupCompletedLogged)
+                            AppAnalytics.logEvent(
+                                AppAnalytics.Event.appSetupCompleted,
+                                parameters: [AppAnalytics.Param.setupPath: "currency_selected"]
+                            )
+                        }
                         appCoordinator.navigateToHome()
                     } label: {
                         Text("Continue")
@@ -90,6 +99,7 @@ struct CurrencySelectionView: View {
             .toolbar(.hidden, for: .navigationBar)
             .onAppear {
                 AppAnalytics.logScreen(AppAnalytics.Screen.currencySelection)
+                AppDiagnostics.markStartupCompleted(destination: "currency_setup")
                 UserEngagementCoordinator.shared.beginBusyWork(.currencySetup)
             }
             .onDisappear {

@@ -221,8 +221,9 @@ private final class RecordingTransactionSink: TransactionSink {
         self.calendar = calendar
     }
 
-    func addTransaction(_ transaction: Transaction) async {
+    func addTransaction(_ transaction: Transaction) async -> Bool {
         added.append(transaction)
+        return true
     }
 
     func hasMaterializedRecurringOccurrence(seriesId: String, occurrenceEpoch: TimeInterval) async -> Bool {

@@ -33,9 +33,9 @@ struct RecurringReminderJourney: EducationOpportunityCampaign {
             return .notEligible(.reminderAlreadyEnabled)
         }
         switch context.notificationAuthorizationStatus {
-        case .notDetermined:
+        case .notDetermined, .provisional:
             break
-        case .authorized, .provisional, .ephemeral:
+        case .authorized, .ephemeral:
             return .notEligible(.notificationAlreadyGranted)
         case .denied:
             return .notEligible(.notificationPermissionDenied)

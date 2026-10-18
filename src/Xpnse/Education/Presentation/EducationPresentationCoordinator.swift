@@ -135,6 +135,7 @@ final class EducationPresentationCoordinator {
         guard !suppressedCampaignIDs.contains(opportunity.campaignID) else { return }
         skipDismissOutcome = false
         presentedOpportunity = opportunity
+        EducationAnalytics.presented(campaignID: opportunity.campaignID, trigger: "home_visit")
     }
 
     /// Shows the reminder sheet on Add Transaction **before** the recurring item is saved.
@@ -154,6 +155,7 @@ final class EducationPresentationCoordinator {
         skipDismissOutcome = false
         pendingOpportunity = opportunity
         presentedOpportunity = opportunity
+        EducationAnalytics.presented(campaignID: opportunity.campaignID, trigger: "recurring_save")
         return true
     }
 
@@ -170,6 +172,7 @@ final class EducationPresentationCoordinator {
 
     func handlePrimary() {
         guard let opportunity = presentedOpportunity else { return }
+        EducationAnalytics.actionSelected(campaignID: opportunity.campaignID, action: opportunity.primaryAction)
         skipDismissOutcome = true
         engine?.acceptPrimaryAction(campaignID: opportunity.campaignID)
         presentedOpportunity = nil
@@ -179,6 +182,7 @@ final class EducationPresentationCoordinator {
 
     func handleSecondary() {
         guard let opportunity = presentedOpportunity else { return }
+        EducationAnalytics.dismissed(campaignID: opportunity.campaignID, method: "secondary_button")
         suppressedCampaignIDs.insert(opportunity.campaignID)
         skipDismissOutcome = true
         applyOutcome(Self.declinedOutcome(for: opportunity.campaignID), campaignID: opportunity.campaignID)
@@ -195,6 +199,7 @@ final class EducationPresentationCoordinator {
             presentedOpportunity = nil
             return
         }
+        EducationAnalytics.dismissed(campaignID: opportunity.campaignID, method: "swipe")
         suppressedCampaignIDs.insert(opportunity.campaignID)
         applyOutcome(Self.dismissedOutcome(for: opportunity.campaignID), campaignID: opportunity.campaignID)
         presentedOpportunity = nil

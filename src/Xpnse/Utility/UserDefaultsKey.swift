@@ -33,6 +33,30 @@ enum UserDefaultsKey: String {
     case categoryOrphanMigrationVersion
     /// Monthly billing-cycle start day (1...30). Absent → 1. Prefer `MonthlyCyclePreference`.
     case monthlyCycleStartDay
+    /// Expense check-in reminder. Absent → enabled.
+    case expenseReminderEnabled
+    /// Epoch seconds of the last qualifying foreground session.
+    case expenseReminderLastActiveAt
+    /// Epoch seconds of the fire date currently armed for the expense check-in.
+    case expenseReminderLastScheduledAt
+    /// Epoch seconds when a delivered expense check-in was last observed. Not proof the user saw it.
+    case expenseReminderLastDeliveredAt
+    /// Policy version used to drop a pending request from an older campaign.
+    case expenseReminderCampaignVersion
+    /// Provisional authorization has already been attempted for this install.
+    case expenseReminderDidAttemptProvisionalAuthorization
+    /// Last analytics signature per expense-reminder event, JSON `[String: String]`.
+    case expenseReminderAnalyticsSignatures
+    /// JSON `ExpenseReminderConversionAttribution` for the 24h check-in conversion window.
+    case expenseReminderConversionAttribution
+    /// `app_setup_completed` has already been reported for this install.
+    case analyticsSetupCompletedLogged
+    /// `first_transaction_saved` has been reported (or pre-existing data was found) for this install.
+    case analyticsFirstTransactionLogged
+    /// One-shot check that marks existing installs with data as already activated.
+    case analyticsFirstTransactionBaselineChecked
+    /// JSON marker for a transaction form that was open when the app backgrounded.
+    case analyticsPendingFormMarker
 }
 
 /// Wrapper for UserDefaults
@@ -106,7 +130,14 @@ class UserDefaultsHelper {
             .transactionListSortOrder,
             .transactionListTypeFilter,
             .categoryOrphanMigrationVersion,
-            .monthlyCycleStartDay
+            .monthlyCycleStartDay,
+            .expenseReminderEnabled,
+            .expenseReminderLastActiveAt,
+            .expenseReminderLastScheduledAt,
+            .expenseReminderLastDeliveredAt,
+            .expenseReminderCampaignVersion,
+            .expenseReminderDidAttemptProvisionalAuthorization,
+            .expenseReminderAnalyticsSignatures
         ]
 
         for key in keys {

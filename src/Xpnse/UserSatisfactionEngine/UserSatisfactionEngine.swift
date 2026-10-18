@@ -80,6 +80,9 @@ final class UserSatisfactionEngine {
         )
     }
 
+    /// First launch recorded by this engine (install, or first launch after the engine shipped).
+    var installationDate: Date { state.installationDate }
+
     /// Raises `lifetimeTransactions` to match the real local store count.
     /// The event counter only tracks adds observed after the engine shipped, so
     /// existing / imported transactions must be reconciled from SwiftData.
